@@ -11,9 +11,6 @@ infile = r'sunapee_highfrequency_record_22Jul2019.csv'
 geefile = r'temp_stats_sunapee_gee.csv'
 
 outfile = r'temp_sunapee_paired.csv'
-sumfile = os.path.splitext(outfile)[0] + '_sum.csv'
-
-thermocline = 11
 
 # available depths
 # [2.0, 0.5, 1.0, 1.5, 2.5, 3.0, 1.25]
