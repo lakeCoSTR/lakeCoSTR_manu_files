@@ -1,5 +1,5 @@
-var sw = ee.Image("JRC/GSW1_0/GlobalSurfaceWater"),
-    jrc_meta = ee.Image("JRC/GSW1_0/Metadata"),
+var sw = ee.Image("JRC/GSW1_1/GlobalSurfaceWater"),
+    jrc_meta = ee.Image("JRC/GSW1_1/Metadata"),
     ag100 = ee.Image("NASA/ASTER_GED/AG100_003"),
     l4t1 = ee.ImageCollection("LANDSAT/LT04/C01/T1"),
     l4t2 = ee.ImageCollection("LANDSAT/LT04/C01/T2"),
@@ -10,16 +10,88 @@ var sw = ee.Image("JRC/GSW1_0/GlobalSurfaceWater"),
     l8t1 = ee.ImageCollection("LANDSAT/LC08/C01/T1"),
     l8t2 = ee.ImageCollection("LANDSAT/LC08/C01/T2"),
     vapor = ee.ImageCollection("NCEP_RE/surface_wv"),
-    midge = /* color: #d62c92 */ee.Geometry.Point([-72.0344711064929, 43.41009720033876]),
-    coffin = /* color: #6990ff */ee.Geometry.Point([-72.0780033617383, 43.39301630882498]),
-    newbury = /* color: #cecba7 */ee.Geometry.Point([-72.03916756416504, 43.32433355925022]),
-    fichter = /* color: #968fff */ee.Geometry.Point([-72.04593263953979, 43.344331531537485]),
-    st200 = /* color: #d63000 */ee.Geometry.Point([-72.043774, 43.403914]),
-    st210 = /* color: #98ff00 */ee.Geometry.Point([-72.062433, 43.384405]),
-    st220 = /* color: #10bae1 */ee.Geometry.Point([-72.055073, 43.3602]),
-    st230 = /* color: #ffc82d */ee.Geometry.Point([-72.042191, 43.335879]),
-    loon = /* color: #976fd6 */ee.Geometry.Point([-72.0576666, 43.3913333]),
-    harbor = /* color: #98ff00 */ee.Geometry.Point([-72.0812139, 43.38565]),
+    midge = 
+    /* color: #d62c92 */
+    /* shown: false */
+    ee.Feature(
+        ee.Geometry.Point([-72.0344711064929, 43.41009720033876]),
+        {
+          "Name": "Midge",
+          "system:index": "0"
+        }),
+    coffin = 
+    /* color: #6990ff */
+    /* shown: false */
+    ee.Feature(
+        ee.Geometry.Point([-72.0780033617383, 43.39301630882498]),
+        {
+          "Name": "Coffin",
+          "system:index": "0"
+        }),
+    newbury = 
+    /* color: #cecba7 */
+    /* shown: false */
+    ee.Feature(
+        ee.Geometry.Point([-72.03916756416504, 43.32433355925022]),
+        {
+          "system:index": "0"
+        }),
+    fichter = 
+    /* color: #968fff */
+    /* shown: false */
+    ee.Feature(
+        ee.Geometry.Point([-72.04593263953979, 43.344331531537485]),
+        {
+          "system:index": "0"
+        }),
+    st200 = 
+    /* color: #d63000 */
+    /* shown: false */
+    ee.Feature(
+        ee.Geometry.Point([-72.043774, 43.403914]),
+        {
+          "system:index": "0"
+        }),
+    st210 = 
+    /* color: #98ff00 */
+    /* shown: false */
+    ee.Feature(
+        ee.Geometry.Point([-72.062433, 43.384405]),
+        {
+          "system:index": "0"
+        }),
+    st220 = 
+    /* color: #10bae1 */
+    /* shown: false */
+    ee.Feature(
+        ee.Geometry.Point([-72.055073, 43.3602]),
+        {
+          "system:index": "0"
+        }),
+    st230 = 
+    /* color: #ffc82d */
+    /* shown: false */
+    ee.Feature(
+        ee.Geometry.Point([-72.042191, 43.335879]),
+        {
+          "system:index": "0"
+        }),
+    loon = 
+    /* color: #976fd6 */
+    /* shown: false */
+    ee.Feature(
+        ee.Geometry.Point([-72.0576666, 43.3913333]),
+        {
+          "system:index": "0"
+        }),
+    harbor = 
+    /* color: #98ff00 */
+    /* shown: false */
+    ee.Feature(
+        ee.Geometry.Point([-72.0812139, 43.38565]),
+        {
+          "system:index": "0"
+        }),
     box = /* color: #be3bb3 */ee.Geometry.Polygon(
         [[[-72.09056854248053, 43.316935124838935],
           [-72.02533721923834, 43.31643554010213],
