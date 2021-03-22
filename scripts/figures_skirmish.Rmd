@@ -18,6 +18,7 @@ library(tidyverse)
 library(readxl)
 library(ggthemes)
 library(mcr)
+library(cowplot)
 
 final_theme=theme_bw() +
   theme(axis.text=element_text(size=12),
@@ -63,6 +64,12 @@ ggplot(lst_insitu, aes(x = avg_temp, y = surface_temp_mean)) +
        x = 'in-situ mean water temp (deg C)') +
   final_theme
 ggsave(paste0(dir, 'figures/predicted-observed_v02Mar2021.jpg'), height = 5, width = 5, units = 'in')
+
+#and with error
+lst_insitu <- lst_insitu %>% 
+  mutate(insitu_se = t_std_dev/sqrt(count),
+         lst_se = surface_temp_stdDev/sqrt(pixel_count))
+#se too small to see
 ```
 
 
@@ -229,4 +236,38 @@ ggsave(paste0(dir, 'figures/optresid_doy_bycloudcover_v02Mar2021.jpg'), height =
 
 ```
 
+#### correlation between doy / pixel count / cloud cover
+
+Because there seems to be some functional dependency between these three, let's show the correlation of the 3 of them
+```{r}
+cor_pixel_doy = round(cor(x = lst_insitu$pixel_count, y = lst_insitu$doy), digits = 2)
+pixel_doy <- ggplot(lst_insitu, aes(x = pixel_count, y = doy)) +
+  geom_point() +
+  geom_text(label = paste0('r = ', cor_pixel_doy), aes(y = 125, x = 8500)) +
+  labs(x = 'day of year\n', y='pixel count\ncontributing to mean LST') +
+  final_theme+
+  theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm"))
+
+cor_pixel_cloud = round(cor(x = lst_insitu$pixel_count, y = lst_insitu$cloud_cover), digits = 2)
+cor_pixel_cloud = '-0.50' #save as character for digit resolution
+pixel_cloud <- ggplot(lst_insitu, aes(x = pixel_count, y = cloud_cover)) +
+  geom_point() +
+  geom_text(label = paste0('r = ', cor_pixel_cloud), aes(y = 0, x = 8500)) +
+  labs(x = 'pixel count\ncontributing to mean LST', y='percent cloud cover\nin Landsat image') +
+  final_theme+
+  theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm"))
+
+cor_doy_cloud = round(cor(x = lst_insitu$doy, y = lst_insitu$cloud_cover), digits = 2)
+doy_cloud <- ggplot(lst_insitu, aes(x = doy, y = cloud_cover)) +
+  geom_point() +
+    geom_text(label = paste0('r = ', cor_doy_cloud), aes(y = 0, x = 275)) +
+labs(x = 'day of year\n', y='percent cloud cover\nin Landsat image') +
+  final_theme+
+  theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm"))
+
+plot_grid(pixel_doy, pixel_cloud, doy_cloud, labels = c('a', 'b', 'c'), nrow = 1)
+
+ggsave(paste0(dir, 'figures/correlation_plot.png'), width = 12, height = 4)
+
+```
 
