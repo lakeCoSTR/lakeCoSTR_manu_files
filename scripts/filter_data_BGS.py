@@ -1,6 +1,7 @@
 #some edits made to run in RStudio 1.4. OG script by CH. Run R_library.R before running this to activate reticulate. At this time, the code is not running - likely needs extensive syntax edits for RStudio. Just run the OG script in PyCharm for now.
 
-import os, csv
+import os
+import csv
 from datetime import datetime
 import pytz
 from time import strftime
@@ -81,7 +82,7 @@ with open(infile, 'rb') as incsv, open(geefile, 'rb') as geecsv, open(outfile, '
 
         newrow = each[:-1] + [landsatexceltime, vaporexceltime, "0"]
 
-        reader.next()
+        reader.next() #skip header
         with open(scene+'.csv','wb') as copycsv:
             copywriter = csv.writer(copycsv)
             copywriter.writerow(header)
