@@ -54,6 +54,8 @@ summary(lst_insitu_ls)
 lst_insitu_dem <-deming::deming(lst_insitu$surface_temp_mean ~ lst_insitu$avg_temp)
 lst_insitu_dem
 
+cor(lst_insitu$surface_temp_mean, lst_insitu$avg_temp)
+
 ggplot(lst_insitu, aes(x = avg_temp, y = surface_temp_mean)) +
   geom_point() +
   geom_abline(intercept = lst_insitu_dem$coefficients[1], slope = lst_insitu_dem$coefficients[2], color = 'blue') +
@@ -70,6 +72,9 @@ lst_insitu <- lst_insitu %>%
   mutate(insitu_se = t_std_dev/sqrt(count),
          lst_se = surface_temp_stdDev/sqrt(pixel_count))
 #se too small to see
+
+ggplot(lst_insitu, aes(x = avg_temp, y = surface_temp_mean, color = cloud_cover)) +
+  geom_point()
 ```
 
 
@@ -77,6 +82,10 @@ lst_insitu <- lst_insitu %>%
 ```{r}
 lst_insitu_dem_forresid = mcreg(x = lst_insitu$avg_temp, y = lst_insitu$surface_temp_mean, method.reg = 'Deming')
 lst_insitu$opt_resid = MCResult.getResiduals(lst_insitu_dem_forresid)$optimized
+
+ggplot(lst_insitu, aes(sample = opt_resid)) +
+  geom_qq() +
+  geom_qq_line()
 
 ggplot(lst_insitu, aes (y = opt_resid, x = avg_temp)) +
   geom_point() +
@@ -244,7 +253,7 @@ cor_pixel_doy = round(cor(x = lst_insitu$pixel_count, y = lst_insitu$doy), digit
 pixel_doy <- ggplot(lst_insitu, aes(x = pixel_count, y = doy)) +
   geom_point() +
   geom_text(label = paste0('r = ', cor_pixel_doy), aes(y = 125, x = 8500)) +
-  labs(x = 'day of year\n', y='pixel count\ncontributing to mean LST') +
+  labs(x = 'pixel count\ncontributing to mean LST', y='day of year') +
   final_theme+
   theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm"))
 
@@ -270,4 +279,26 @@ plot_grid(pixel_doy, pixel_cloud, doy_cloud, labels = c('a', 'b', 'c'), nrow = 1
 ggsave(paste0(dir, 'figures/correlation_plot.png'), width = 12, height = 4)
 
 ```
+
+
+# summary stats tables of insitu data
+```{r}
+master_temp <- read_csv(paste0(dir, 'data/sunapee_highfrequency_record_22Jul2019.csv')) 
+
+filtered_temp <- master_temp %>% 
+  filter(depth_m <=1.5 & datetime > as.Date('2015-01-01')) %>% 
+  filter(!is.na(temp_degC)) %>% 
+  mutate(month = as.numeric(format(datetime, '%m'))) %>% 
+  filter(month >=5 & month <=10)
+
+summarized_temp <- filtered_temp %>% 
+  group_by(datetime, source, lat_dd, long_dd) %>% 
+  arrange(datetime, depth_m) %>% 
+  summarize(first_temp_degC = first(temp_degC),
+            first_depth_m = first(depth_m))
+
+write_csv(summarized_temp, paste0(dir, 'data/filtered_raw_temp_v25March2021.csv'))
+
+```
+
 
