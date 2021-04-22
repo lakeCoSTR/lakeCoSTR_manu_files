@@ -1,0 +1,1537 @@
+---
+title: "validation - data download and harmonize"
+author: "B. Steele"
+date: "4/20/2021"
+output: html_document
+---
+
+R version: 4.0.4 RStudio Version: 1.4.1103
+
+updated 26Mar2019 to include 2018 buoy thermistor data (no upper do data in 2018) 
+updated 05July2019 to include 17-18 winter data, 18-19 winter data, oct 18-may 19 data
+updated 26March2021 to pull from EDI and to filter for upper value at all locations 
+updated 20April2021 to pull LSPA LMP from GitHub
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+source('R_library.R')
+
+dir.create('~/GitHub/ids-ne-lakes/data/temporary')
+temp_dumpdir = '~/GitHub/ids-ne-lakes/data/temporary'
+
+dumpdir = '~/GitHub/ids-ne-lakes/data/'
+```
+
+## Read in files from EDI and filter for desired data
+
+These code chunks in this section are copied directly from the EDI website except the LSPA LMP data.
+
+### Winter Hobo files at the buoy site
+
+```{r}
+# Package ID: edi.500.2 Cataloging System:https://pasta.edirepository.org.
+# Data set title: High-frequency under-ice water temperature and dissolved oxygen at Lake Sunapee, New Hampshire, USA, 2014-2019.
+# Data set creator:   LSPA - Lake Sunapee Protective Association 
+# Data set creator:  Kathleen Weathers - Cary Institute of Ecosystem Studies 
+# Data set creator:  Bethel Steele - Cary Institute of Ecosystem Studies 
+# Contact:   LSPA -  Lake Sunapee Protective Association  - lspa@lakesunapee.org
+# Stylesheet v2.11 for metadata conversion into program: John H. Porter, Univ. Virginia, jporter@virginia.edu 
+
+inUrl1  <- "https://pasta.lternet.edu/package/data/eml/edi/500/2/a64a1a7af863d8310daa9b8859060bc7" 
+infile1 <- tempfile(tmpdir = temp_dumpdir)
+try(download.file(inUrl1,infile1,method = 'curl'))
+if (is.na(file.size(infile1))) download.file(inUrl1,infile1,method="auto")
+
+
+winterhobo <-read.csv(infile1
+                      ,header=F 
+               ,skip=1
+               ,sep=","  
+               , col.names=c(
+                 "datetime",     
+                 "do_ppm",     
+                 "TempC_1p5m",     
+                 "TempC_2p5m",     
+                 "TempC_3p5m",     
+                 "TempC_4p5m",     
+                 "TempC_5p5m",     
+                 "TempC_6p5m",     
+                 "TempC_7p5m",     
+                 "TempC_8p5m",     
+                 "TempC_9p5m",     
+                 "TempC_10p5m",     
+                 "location"    ), check.names=TRUE)
+
+unlink(infile1)
+
+# Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
+
+# attempting to convert winterhobo$datetime dateTime string to R date structure (date or POSIXct)                                
+tmpDateFormat<-"%Y-%m-%d %H:%M:%S" 
+tmp1datetime<-as.POSIXct(winterhobo$datetime,format=tmpDateFormat)
+# Keep the new dates only if they all converted correctly
+if(length(tmp1datetime) == length(tmp1datetime[!is.na(tmp1datetime)])){winterhobo$datetime <- tmp1datetime } else {print("Date conversion failed for winterhobo$datetime. Please inspect the data and do the date conversion yourself.")}                                                                    
+rm(tmpDateFormat,tmp1datetime) 
+if (class(winterhobo$do_ppm)=="factor") winterhobo$do_ppm <-as.numeric(levels(winterhobo$do_ppm))[as.integer(winterhobo$do_ppm) ]               
+if (class(winterhobo$do_ppm)=="character") winterhobo$do_ppm <-as.numeric(winterhobo$do_ppm)
+if (class(winterhobo$TempC_1p5m)=="factor") winterhobo$TempC_1p5m <-as.numeric(levels(winterhobo$TempC_1p5m))[as.integer(winterhobo$TempC_1p5m) ]               
+if (class(winterhobo$TempC_1p5m)=="character") winterhobo$TempC_1p5m <-as.numeric(winterhobo$TempC_1p5m)
+if (class(winterhobo$TempC_2p5m)=="factor") winterhobo$TempC_2p5m <-as.numeric(levels(winterhobo$TempC_2p5m))[as.integer(winterhobo$TempC_2p5m) ]               
+if (class(winterhobo$TempC_2p5m)=="character") winterhobo$TempC_2p5m <-as.numeric(winterhobo$TempC_2p5m)
+if (class(winterhobo$TempC_3p5m)=="factor") winterhobo$TempC_3p5m <-as.numeric(levels(winterhobo$TempC_3p5m))[as.integer(winterhobo$TempC_3p5m) ]               
+if (class(winterhobo$TempC_3p5m)=="character") winterhobo$TempC_3p5m <-as.numeric(winterhobo$TempC_3p5m)
+if (class(winterhobo$TempC_4p5m)=="factor") winterhobo$TempC_4p5m <-as.numeric(levels(winterhobo$TempC_4p5m))[as.integer(winterhobo$TempC_4p5m) ]               
+if (class(winterhobo$TempC_4p5m)=="character") winterhobo$TempC_4p5m <-as.numeric(winterhobo$TempC_4p5m)
+if (class(winterhobo$TempC_5p5m)=="factor") winterhobo$TempC_5p5m <-as.numeric(levels(winterhobo$TempC_5p5m))[as.integer(winterhobo$TempC_5p5m) ]               
+if (class(winterhobo$TempC_5p5m)=="character") winterhobo$TempC_5p5m <-as.numeric(winterhobo$TempC_5p5m)
+if (class(winterhobo$TempC_6p5m)=="factor") winterhobo$TempC_6p5m <-as.numeric(levels(winterhobo$TempC_6p5m))[as.integer(winterhobo$TempC_6p5m) ]               
+if (class(winterhobo$TempC_6p5m)=="character") winterhobo$TempC_6p5m <-as.numeric(winterhobo$TempC_6p5m)
+if (class(winterhobo$TempC_7p5m)=="factor") winterhobo$TempC_7p5m <-as.numeric(levels(winterhobo$TempC_7p5m))[as.integer(winterhobo$TempC_7p5m) ]               
+if (class(winterhobo$TempC_7p5m)=="character") winterhobo$TempC_7p5m <-as.numeric(winterhobo$TempC_7p5m)
+if (class(winterhobo$TempC_8p5m)=="factor") winterhobo$TempC_8p5m <-as.numeric(levels(winterhobo$TempC_8p5m))[as.integer(winterhobo$TempC_8p5m) ]               
+if (class(winterhobo$TempC_8p5m)=="character") winterhobo$TempC_8p5m <-as.numeric(winterhobo$TempC_8p5m)
+if (class(winterhobo$TempC_9p5m)=="factor") winterhobo$TempC_9p5m <-as.numeric(levels(winterhobo$TempC_9p5m))[as.integer(winterhobo$TempC_9p5m) ]               
+if (class(winterhobo$TempC_9p5m)=="character") winterhobo$TempC_9p5m <-as.numeric(winterhobo$TempC_9p5m)
+if (class(winterhobo$TempC_10p5m)=="factor") winterhobo$TempC_10p5m <-as.numeric(levels(winterhobo$TempC_10p5m))[as.integer(winterhobo$TempC_10p5m) ]               
+if (class(winterhobo$TempC_10p5m)=="character") winterhobo$TempC_10p5m <-as.numeric(winterhobo$TempC_10p5m)
+if (class(winterhobo$location)!="factor") winterhobo$location<- as.factor(winterhobo$location)
+
+# Convert Missing Values to NA for non-dates
+
+winterhobo$do_ppm <- ifelse((trimws(as.character(winterhobo$do_ppm))==trimws("NA")),NA,winterhobo$do_ppm)               
+suppressWarnings(winterhobo$do_ppm <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(winterhobo$do_ppm))==as.character(as.numeric("NA"))),NA,winterhobo$do_ppm))
+winterhobo$TempC_1p5m <- ifelse((trimws(as.character(winterhobo$TempC_1p5m))==trimws("NA")),NA,winterhobo$TempC_1p5m)               
+suppressWarnings(winterhobo$TempC_1p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(winterhobo$TempC_1p5m))==as.character(as.numeric("NA"))),NA,winterhobo$TempC_1p5m))
+winterhobo$TempC_2p5m <- ifelse((trimws(as.character(winterhobo$TempC_2p5m))==trimws("NA")),NA,winterhobo$TempC_2p5m)               
+suppressWarnings(winterhobo$TempC_2p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(winterhobo$TempC_2p5m))==as.character(as.numeric("NA"))),NA,winterhobo$TempC_2p5m))
+winterhobo$TempC_3p5m <- ifelse((trimws(as.character(winterhobo$TempC_3p5m))==trimws("NA")),NA,winterhobo$TempC_3p5m)               
+suppressWarnings(winterhobo$TempC_3p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(winterhobo$TempC_3p5m))==as.character(as.numeric("NA"))),NA,winterhobo$TempC_3p5m))
+winterhobo$TempC_4p5m <- ifelse((trimws(as.character(winterhobo$TempC_4p5m))==trimws("NA")),NA,winterhobo$TempC_4p5m)               
+suppressWarnings(winterhobo$TempC_4p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(winterhobo$TempC_4p5m))==as.character(as.numeric("NA"))),NA,winterhobo$TempC_4p5m))
+winterhobo$TempC_5p5m <- ifelse((trimws(as.character(winterhobo$TempC_5p5m))==trimws("NA")),NA,winterhobo$TempC_5p5m)               
+suppressWarnings(winterhobo$TempC_5p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(winterhobo$TempC_5p5m))==as.character(as.numeric("NA"))),NA,winterhobo$TempC_5p5m))
+winterhobo$TempC_6p5m <- ifelse((trimws(as.character(winterhobo$TempC_6p5m))==trimws("NA")),NA,winterhobo$TempC_6p5m)               
+suppressWarnings(winterhobo$TempC_6p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(winterhobo$TempC_6p5m))==as.character(as.numeric("NA"))),NA,winterhobo$TempC_6p5m))
+winterhobo$TempC_7p5m <- ifelse((trimws(as.character(winterhobo$TempC_7p5m))==trimws("NA")),NA,winterhobo$TempC_7p5m)               
+suppressWarnings(winterhobo$TempC_7p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(winterhobo$TempC_7p5m))==as.character(as.numeric("NA"))),NA,winterhobo$TempC_7p5m))
+winterhobo$TempC_8p5m <- ifelse((trimws(as.character(winterhobo$TempC_8p5m))==trimws("NA")),NA,winterhobo$TempC_8p5m)               
+suppressWarnings(winterhobo$TempC_8p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(winterhobo$TempC_8p5m))==as.character(as.numeric("NA"))),NA,winterhobo$TempC_8p5m))
+winterhobo$TempC_9p5m <- ifelse((trimws(as.character(winterhobo$TempC_9p5m))==trimws("NA")),NA,winterhobo$TempC_9p5m)               
+suppressWarnings(winterhobo$TempC_9p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(winterhobo$TempC_9p5m))==as.character(as.numeric("NA"))),NA,winterhobo$TempC_9p5m))
+winterhobo$TempC_10p5m <- ifelse((trimws(as.character(winterhobo$TempC_10p5m))==trimws("NA")),NA,winterhobo$TempC_10p5m)               
+suppressWarnings(winterhobo$TempC_10p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(winterhobo$TempC_10p5m))==as.character(as.numeric("NA"))),NA,winterhobo$TempC_10p5m))
+
+
+# Here is the structure of the input data frame:
+str(winterhobo)                            
+attach(winterhobo)                            
+# The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
+
+summary(datetime)
+summary(do_ppm)
+summary(TempC_1p5m)
+summary(TempC_2p5m)
+summary(TempC_3p5m)
+summary(TempC_4p5m)
+summary(TempC_5p5m)
+summary(TempC_6p5m)
+summary(TempC_7p5m)
+summary(TempC_8p5m)
+summary(TempC_9p5m)
+summary(TempC_10p5m)
+summary(location) 
+# Get more details on character variables
+
+summary(as.factor(winterhobo$location))
+detach(winterhobo)               
+
+
+inUrl2  <- "https://pasta.lternet.edu/package/data/eml/edi/500/2/9cd342fb70af70d79bc3a258aedeed26" 
+infile2 <- tempfile(tmpdir = temp_dumpdir)
+try(download.file(inUrl2,infile2,method="curl"))
+if (is.na(file.size(infile2))) download.file(inUrl2,infile2,method="auto")
+
+
+winterhobo_loc <-read.csv(infile2,header=F 
+               ,skip=1
+               ,sep=","  
+               , col.names=c(
+                 "location",     
+                 "lat_dd",     
+                 "long_dd"    ), check.names=TRUE)
+
+unlink(infile2)
+
+# Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
+
+if (class(winterhobo_loc$location)!="factor") winterhobo_loc$location<- as.factor(winterhobo_loc$location)
+if (class(winterhobo_loc$lat_dd)=="factor") winterhobo_loc$lat_dd <-as.numeric(levels(winterhobo_loc$lat_dd))[as.integer(winterhobo_loc$lat_dd) ]               
+if (class(winterhobo_loc$lat_dd)=="character") winterhobo_loc$lat_dd <-as.numeric(winterhobo_loc$lat_dd)
+if (class(winterhobo_loc$long_dd)=="factor") winterhobo_loc$long_dd <-as.numeric(levels(winterhobo_loc$long_dd))[as.integer(winterhobo_loc$long_dd) ]               
+if (class(winterhobo_loc$long_dd)=="character") winterhobo_loc$long_dd <-as.numeric(winterhobo_loc$long_dd)
+
+# Convert Missing Values to NA for non-dates
+
+
+
+# Here is the structure of the input data frame:
+str(winterhobo_loc)                            
+attach(winterhobo_loc)                            
+# The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
+
+summary(location)
+summary(lat_dd)
+summary(long_dd) 
+# Get more details on character variables
+
+summary(as.factor(winterhobo_loc$location))
+detach(winterhobo_loc)               
+
+```
+
+### Sunapee Buoy data
+
+```{r}
+# Package ID: edi.499.2 Cataloging System:https://pasta.edirepository.org.
+# Data set title: Lake Sunapee Instrumented Buoy: High Frequency Water Temperature and Dissolved Oxygen Data - 2007-2020.
+# Data set creator:   LSPA - Lake Sunapee Protective Association 
+# Data set creator:  Kathleen Weathers - Cary Institute of Ecosystem Studies 
+# Data set creator:  Bethel Steele - Cary Institute of Ecosystem Studies 
+# Contact:   LSPA -  Lake Sunapee Protective Association  - lspa@lakesunapee.org
+# Stylesheet v2.11 for metadata conversion into program: John H. Porter, Univ. Virginia, jporter@virginia.edu 
+
+inUrl1  <- "https://pasta.lternet.edu/package/data/eml/edi/499/2/1f903796efc8d79e263a549f8b5aa8a6" 
+infile1 <- tempfile(tmpdir = temp_dumpdir)
+try(download.file(inUrl1,infile1,method="curl"))
+if (is.na(file.size(infile1))) download.file(inUrl1,infile1,method="auto")
+
+
+buoytemp <-read.csv(infile1,header=F 
+               ,skip=1
+               ,sep=","  
+               , col.names=c(
+                 "datetime",     
+                 "location",     
+                 "TempC_0p5m",     
+                 "TempC_0p75m",     
+                 "TempC_0p85m",     
+                 "TempC_1m",     
+                 "TempC_1p5m",     
+                 "TempC_1p75m",     
+                 "TempC_1p85m",     
+                 "TempC_2m",     
+                 "TempC_2p5m",     
+                 "TempC_2p75m",     
+                 "TempC_2p85m",     
+                 "TempC_3m",     
+                 "TempC_3p5m",     
+                 "TempC_3p75m",     
+                 "TempC_3p85m",     
+                 "TempC_4p5m",     
+                 "TempC_4p75m",     
+                 "TempC_4p85m",     
+                 "TempC_5p5m",     
+                 "TempC_5p75m",     
+                 "TempC_5p85m",     
+                 "TempC_6p5m",     
+                 "TempC_6p75m",     
+                 "TempC_6p85m",     
+                 "TempC_7p5m",     
+                 "TempC_7p75m",     
+                 "TempC_7p85m",     
+                 "TempC_8p5m",     
+                 "TempC_8p75m",     
+                 "TempC_8p85m",     
+                 "TempC_9p5m",     
+                 "TempC_9p75m",     
+                 "TempC_9p85m",     
+                 "TempC_10p5m",     
+                 "TempC_11p5m",     
+                 "TempC_13p5m",     
+                 "temp_flag"    ), check.names=TRUE)
+
+unlink(infile1)
+
+# Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
+
+# attempting to convert buoytemp$datetime dateTime string to R date structure (date or POSIXct)                                
+tmpDateFormat<-"%Y-%m-%d %H:%M:%S" 
+tmp1datetime<-as.POSIXct(buoytemp$datetime,format=tmpDateFormat)
+# Keep the new dates only if they all converted correctly
+if(length(tmp1datetime) == length(tmp1datetime[!is.na(tmp1datetime)])){buoytemp$datetime <- tmp1datetime } else {print("Date conversion failed for buoytemp$datetime. Please inspect the data and do the date conversion yourself.")}                                                                    
+rm(tmpDateFormat,tmp1datetime) 
+if (class(buoytemp$location)!="factor") buoytemp$location<- as.factor(buoytemp$location)
+if (class(buoytemp$TempC_0p5m)=="factor") buoytemp$TempC_0p5m <-as.numeric(levels(buoytemp$TempC_0p5m))[as.integer(buoytemp$TempC_0p5m) ]               
+if (class(buoytemp$TempC_0p5m)=="character") buoytemp$TempC_0p5m <-as.numeric(buoytemp$TempC_0p5m)
+if (class(buoytemp$TempC_0p75m)=="factor") buoytemp$TempC_0p75m <-as.numeric(levels(buoytemp$TempC_0p75m))[as.integer(buoytemp$TempC_0p75m) ]               
+if (class(buoytemp$TempC_0p75m)=="character") buoytemp$TempC_0p75m <-as.numeric(buoytemp$TempC_0p75m)
+if (class(buoytemp$TempC_0p85m)=="factor") buoytemp$TempC_0p85m <-as.numeric(levels(buoytemp$TempC_0p85m))[as.integer(buoytemp$TempC_0p85m) ]               
+if (class(buoytemp$TempC_0p85m)=="character") buoytemp$TempC_0p85m <-as.numeric(buoytemp$TempC_0p85m)
+if (class(buoytemp$TempC_1m)=="factor") buoytemp$TempC_1m <-as.numeric(levels(buoytemp$TempC_1m))[as.integer(buoytemp$TempC_1m) ]               
+if (class(buoytemp$TempC_1m)=="character") buoytemp$TempC_1m <-as.numeric(buoytemp$TempC_1m)
+if (class(buoytemp$TempC_1p5m)=="factor") buoytemp$TempC_1p5m <-as.numeric(levels(buoytemp$TempC_1p5m))[as.integer(buoytemp$TempC_1p5m) ]               
+if (class(buoytemp$TempC_1p5m)=="character") buoytemp$TempC_1p5m <-as.numeric(buoytemp$TempC_1p5m)
+if (class(buoytemp$TempC_1p75m)=="factor") buoytemp$TempC_1p75m <-as.numeric(levels(buoytemp$TempC_1p75m))[as.integer(buoytemp$TempC_1p75m) ]               
+if (class(buoytemp$TempC_1p75m)=="character") buoytemp$TempC_1p75m <-as.numeric(buoytemp$TempC_1p75m)
+if (class(buoytemp$TempC_1p85m)=="factor") buoytemp$TempC_1p85m <-as.numeric(levels(buoytemp$TempC_1p85m))[as.integer(buoytemp$TempC_1p85m) ]               
+if (class(buoytemp$TempC_1p85m)=="character") buoytemp$TempC_1p85m <-as.numeric(buoytemp$TempC_1p85m)
+if (class(buoytemp$TempC_2m)=="factor") buoytemp$TempC_2m <-as.numeric(levels(buoytemp$TempC_2m))[as.integer(buoytemp$TempC_2m) ]               
+if (class(buoytemp$TempC_2m)=="character") buoytemp$TempC_2m <-as.numeric(buoytemp$TempC_2m)
+if (class(buoytemp$TempC_2p5m)=="factor") buoytemp$TempC_2p5m <-as.numeric(levels(buoytemp$TempC_2p5m))[as.integer(buoytemp$TempC_2p5m) ]               
+if (class(buoytemp$TempC_2p5m)=="character") buoytemp$TempC_2p5m <-as.numeric(buoytemp$TempC_2p5m)
+if (class(buoytemp$TempC_2p75m)=="factor") buoytemp$TempC_2p75m <-as.numeric(levels(buoytemp$TempC_2p75m))[as.integer(buoytemp$TempC_2p75m) ]               
+if (class(buoytemp$TempC_2p75m)=="character") buoytemp$TempC_2p75m <-as.numeric(buoytemp$TempC_2p75m)
+if (class(buoytemp$TempC_2p85m)=="factor") buoytemp$TempC_2p85m <-as.numeric(levels(buoytemp$TempC_2p85m))[as.integer(buoytemp$TempC_2p85m) ]               
+if (class(buoytemp$TempC_2p85m)=="character") buoytemp$TempC_2p85m <-as.numeric(buoytemp$TempC_2p85m)
+if (class(buoytemp$TempC_3m)=="factor") buoytemp$TempC_3m <-as.numeric(levels(buoytemp$TempC_3m))[as.integer(buoytemp$TempC_3m) ]               
+if (class(buoytemp$TempC_3m)=="character") buoytemp$TempC_3m <-as.numeric(buoytemp$TempC_3m)
+if (class(buoytemp$TempC_3p5m)=="factor") buoytemp$TempC_3p5m <-as.numeric(levels(buoytemp$TempC_3p5m))[as.integer(buoytemp$TempC_3p5m) ]               
+if (class(buoytemp$TempC_3p5m)=="character") buoytemp$TempC_3p5m <-as.numeric(buoytemp$TempC_3p5m)
+if (class(buoytemp$TempC_3p75m)=="factor") buoytemp$TempC_3p75m <-as.numeric(levels(buoytemp$TempC_3p75m))[as.integer(buoytemp$TempC_3p75m) ]               
+if (class(buoytemp$TempC_3p75m)=="character") buoytemp$TempC_3p75m <-as.numeric(buoytemp$TempC_3p75m)
+if (class(buoytemp$TempC_3p85m)=="factor") buoytemp$TempC_3p85m <-as.numeric(levels(buoytemp$TempC_3p85m))[as.integer(buoytemp$TempC_3p85m) ]               
+if (class(buoytemp$TempC_3p85m)=="character") buoytemp$TempC_3p85m <-as.numeric(buoytemp$TempC_3p85m)
+if (class(buoytemp$TempC_4p5m)=="factor") buoytemp$TempC_4p5m <-as.numeric(levels(buoytemp$TempC_4p5m))[as.integer(buoytemp$TempC_4p5m) ]               
+if (class(buoytemp$TempC_4p5m)=="character") buoytemp$TempC_4p5m <-as.numeric(buoytemp$TempC_4p5m)
+if (class(buoytemp$TempC_4p75m)=="factor") buoytemp$TempC_4p75m <-as.numeric(levels(buoytemp$TempC_4p75m))[as.integer(buoytemp$TempC_4p75m) ]               
+if (class(buoytemp$TempC_4p75m)=="character") buoytemp$TempC_4p75m <-as.numeric(buoytemp$TempC_4p75m)
+if (class(buoytemp$TempC_4p85m)=="factor") buoytemp$TempC_4p85m <-as.numeric(levels(buoytemp$TempC_4p85m))[as.integer(buoytemp$TempC_4p85m) ]               
+if (class(buoytemp$TempC_4p85m)=="character") buoytemp$TempC_4p85m <-as.numeric(buoytemp$TempC_4p85m)
+if (class(buoytemp$TempC_5p5m)=="factor") buoytemp$TempC_5p5m <-as.numeric(levels(buoytemp$TempC_5p5m))[as.integer(buoytemp$TempC_5p5m) ]               
+if (class(buoytemp$TempC_5p5m)=="character") buoytemp$TempC_5p5m <-as.numeric(buoytemp$TempC_5p5m)
+if (class(buoytemp$TempC_5p75m)=="factor") buoytemp$TempC_5p75m <-as.numeric(levels(buoytemp$TempC_5p75m))[as.integer(buoytemp$TempC_5p75m) ]               
+if (class(buoytemp$TempC_5p75m)=="character") buoytemp$TempC_5p75m <-as.numeric(buoytemp$TempC_5p75m)
+if (class(buoytemp$TempC_5p85m)=="factor") buoytemp$TempC_5p85m <-as.numeric(levels(buoytemp$TempC_5p85m))[as.integer(buoytemp$TempC_5p85m) ]               
+if (class(buoytemp$TempC_5p85m)=="character") buoytemp$TempC_5p85m <-as.numeric(buoytemp$TempC_5p85m)
+if (class(buoytemp$TempC_6p5m)=="factor") buoytemp$TempC_6p5m <-as.numeric(levels(buoytemp$TempC_6p5m))[as.integer(buoytemp$TempC_6p5m) ]               
+if (class(buoytemp$TempC_6p5m)=="character") buoytemp$TempC_6p5m <-as.numeric(buoytemp$TempC_6p5m)
+if (class(buoytemp$TempC_6p75m)=="factor") buoytemp$TempC_6p75m <-as.numeric(levels(buoytemp$TempC_6p75m))[as.integer(buoytemp$TempC_6p75m) ]               
+if (class(buoytemp$TempC_6p75m)=="character") buoytemp$TempC_6p75m <-as.numeric(buoytemp$TempC_6p75m)
+if (class(buoytemp$TempC_6p85m)=="factor") buoytemp$TempC_6p85m <-as.numeric(levels(buoytemp$TempC_6p85m))[as.integer(buoytemp$TempC_6p85m) ]               
+if (class(buoytemp$TempC_6p85m)=="character") buoytemp$TempC_6p85m <-as.numeric(buoytemp$TempC_6p85m)
+if (class(buoytemp$TempC_7p5m)=="factor") buoytemp$TempC_7p5m <-as.numeric(levels(buoytemp$TempC_7p5m))[as.integer(buoytemp$TempC_7p5m) ]               
+if (class(buoytemp$TempC_7p5m)=="character") buoytemp$TempC_7p5m <-as.numeric(buoytemp$TempC_7p5m)
+if (class(buoytemp$TempC_7p75m)=="factor") buoytemp$TempC_7p75m <-as.numeric(levels(buoytemp$TempC_7p75m))[as.integer(buoytemp$TempC_7p75m) ]               
+if (class(buoytemp$TempC_7p75m)=="character") buoytemp$TempC_7p75m <-as.numeric(buoytemp$TempC_7p75m)
+if (class(buoytemp$TempC_7p85m)=="factor") buoytemp$TempC_7p85m <-as.numeric(levels(buoytemp$TempC_7p85m))[as.integer(buoytemp$TempC_7p85m) ]               
+if (class(buoytemp$TempC_7p85m)=="character") buoytemp$TempC_7p85m <-as.numeric(buoytemp$TempC_7p85m)
+if (class(buoytemp$TempC_8p5m)=="factor") buoytemp$TempC_8p5m <-as.numeric(levels(buoytemp$TempC_8p5m))[as.integer(buoytemp$TempC_8p5m) ]               
+if (class(buoytemp$TempC_8p5m)=="character") buoytemp$TempC_8p5m <-as.numeric(buoytemp$TempC_8p5m)
+if (class(buoytemp$TempC_8p75m)=="factor") buoytemp$TempC_8p75m <-as.numeric(levels(buoytemp$TempC_8p75m))[as.integer(buoytemp$TempC_8p75m) ]               
+if (class(buoytemp$TempC_8p75m)=="character") buoytemp$TempC_8p75m <-as.numeric(buoytemp$TempC_8p75m)
+if (class(buoytemp$TempC_8p85m)=="factor") buoytemp$TempC_8p85m <-as.numeric(levels(buoytemp$TempC_8p85m))[as.integer(buoytemp$TempC_8p85m) ]               
+if (class(buoytemp$TempC_8p85m)=="character") buoytemp$TempC_8p85m <-as.numeric(buoytemp$TempC_8p85m)
+if (class(buoytemp$TempC_9p5m)=="factor") buoytemp$TempC_9p5m <-as.numeric(levels(buoytemp$TempC_9p5m))[as.integer(buoytemp$TempC_9p5m) ]               
+if (class(buoytemp$TempC_9p5m)=="character") buoytemp$TempC_9p5m <-as.numeric(buoytemp$TempC_9p5m)
+if (class(buoytemp$TempC_9p75m)=="factor") buoytemp$TempC_9p75m <-as.numeric(levels(buoytemp$TempC_9p75m))[as.integer(buoytemp$TempC_9p75m) ]               
+if (class(buoytemp$TempC_9p75m)=="character") buoytemp$TempC_9p75m <-as.numeric(buoytemp$TempC_9p75m)
+if (class(buoytemp$TempC_9p85m)=="factor") buoytemp$TempC_9p85m <-as.numeric(levels(buoytemp$TempC_9p85m))[as.integer(buoytemp$TempC_9p85m) ]               
+if (class(buoytemp$TempC_9p85m)=="character") buoytemp$TempC_9p85m <-as.numeric(buoytemp$TempC_9p85m)
+if (class(buoytemp$TempC_10p5m)=="factor") buoytemp$TempC_10p5m <-as.numeric(levels(buoytemp$TempC_10p5m))[as.integer(buoytemp$TempC_10p5m) ]               
+if (class(buoytemp$TempC_10p5m)=="character") buoytemp$TempC_10p5m <-as.numeric(buoytemp$TempC_10p5m)
+if (class(buoytemp$TempC_11p5m)=="factor") buoytemp$TempC_11p5m <-as.numeric(levels(buoytemp$TempC_11p5m))[as.integer(buoytemp$TempC_11p5m) ]               
+if (class(buoytemp$TempC_11p5m)=="character") buoytemp$TempC_11p5m <-as.numeric(buoytemp$TempC_11p5m)
+if (class(buoytemp$TempC_13p5m)=="factor") buoytemp$TempC_13p5m <-as.numeric(levels(buoytemp$TempC_13p5m))[as.integer(buoytemp$TempC_13p5m) ]               
+if (class(buoytemp$TempC_13p5m)=="character") buoytemp$TempC_13p5m <-as.numeric(buoytemp$TempC_13p5m)
+if (class(buoytemp$temp_flag)!="factor") buoytemp$temp_flag<- as.factor(buoytemp$temp_flag)
+
+# Convert Missing Values to NA for non-dates
+
+buoytemp$TempC_0p5m <- ifelse((trimws(as.character(buoytemp$TempC_0p5m))==trimws("NA")),NA,buoytemp$TempC_0p5m)               
+suppressWarnings(buoytemp$TempC_0p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_0p5m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_0p5m))
+buoytemp$TempC_0p75m <- ifelse((trimws(as.character(buoytemp$TempC_0p75m))==trimws("NA")),NA,buoytemp$TempC_0p75m)               
+suppressWarnings(buoytemp$TempC_0p75m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_0p75m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_0p75m))
+buoytemp$TempC_0p85m <- ifelse((trimws(as.character(buoytemp$TempC_0p85m))==trimws("NA")),NA,buoytemp$TempC_0p85m)               
+suppressWarnings(buoytemp$TempC_0p85m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_0p85m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_0p85m))
+buoytemp$TempC_1m <- ifelse((trimws(as.character(buoytemp$TempC_1m))==trimws("NA")),NA,buoytemp$TempC_1m)               
+suppressWarnings(buoytemp$TempC_1m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_1m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_1m))
+buoytemp$TempC_1p5m <- ifelse((trimws(as.character(buoytemp$TempC_1p5m))==trimws("NA")),NA,buoytemp$TempC_1p5m)               
+suppressWarnings(buoytemp$TempC_1p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_1p5m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_1p5m))
+buoytemp$TempC_1p75m <- ifelse((trimws(as.character(buoytemp$TempC_1p75m))==trimws("NA")),NA,buoytemp$TempC_1p75m)               
+suppressWarnings(buoytemp$TempC_1p75m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_1p75m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_1p75m))
+buoytemp$TempC_1p85m <- ifelse((trimws(as.character(buoytemp$TempC_1p85m))==trimws("NA")),NA,buoytemp$TempC_1p85m)               
+suppressWarnings(buoytemp$TempC_1p85m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_1p85m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_1p85m))
+buoytemp$TempC_2m <- ifelse((trimws(as.character(buoytemp$TempC_2m))==trimws("NA")),NA,buoytemp$TempC_2m)               
+suppressWarnings(buoytemp$TempC_2m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_2m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_2m))
+buoytemp$TempC_2p5m <- ifelse((trimws(as.character(buoytemp$TempC_2p5m))==trimws("NA")),NA,buoytemp$TempC_2p5m)               
+suppressWarnings(buoytemp$TempC_2p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_2p5m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_2p5m))
+buoytemp$TempC_2p75m <- ifelse((trimws(as.character(buoytemp$TempC_2p75m))==trimws("NA")),NA,buoytemp$TempC_2p75m)               
+suppressWarnings(buoytemp$TempC_2p75m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_2p75m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_2p75m))
+buoytemp$TempC_2p85m <- ifelse((trimws(as.character(buoytemp$TempC_2p85m))==trimws("NA")),NA,buoytemp$TempC_2p85m)               
+suppressWarnings(buoytemp$TempC_2p85m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_2p85m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_2p85m))
+buoytemp$TempC_3m <- ifelse((trimws(as.character(buoytemp$TempC_3m))==trimws("NA")),NA,buoytemp$TempC_3m)               
+suppressWarnings(buoytemp$TempC_3m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_3m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_3m))
+buoytemp$TempC_3p5m <- ifelse((trimws(as.character(buoytemp$TempC_3p5m))==trimws("NA")),NA,buoytemp$TempC_3p5m)               
+suppressWarnings(buoytemp$TempC_3p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_3p5m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_3p5m))
+buoytemp$TempC_3p75m <- ifelse((trimws(as.character(buoytemp$TempC_3p75m))==trimws("NA")),NA,buoytemp$TempC_3p75m)               
+suppressWarnings(buoytemp$TempC_3p75m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_3p75m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_3p75m))
+buoytemp$TempC_3p85m <- ifelse((trimws(as.character(buoytemp$TempC_3p85m))==trimws("NA")),NA,buoytemp$TempC_3p85m)               
+suppressWarnings(buoytemp$TempC_3p85m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_3p85m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_3p85m))
+buoytemp$TempC_4p5m <- ifelse((trimws(as.character(buoytemp$TempC_4p5m))==trimws("NA")),NA,buoytemp$TempC_4p5m)               
+suppressWarnings(buoytemp$TempC_4p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_4p5m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_4p5m))
+buoytemp$TempC_4p75m <- ifelse((trimws(as.character(buoytemp$TempC_4p75m))==trimws("NA")),NA,buoytemp$TempC_4p75m)               
+suppressWarnings(buoytemp$TempC_4p75m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_4p75m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_4p75m))
+buoytemp$TempC_4p85m <- ifelse((trimws(as.character(buoytemp$TempC_4p85m))==trimws("NA")),NA,buoytemp$TempC_4p85m)               
+suppressWarnings(buoytemp$TempC_4p85m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_4p85m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_4p85m))
+buoytemp$TempC_5p5m <- ifelse((trimws(as.character(buoytemp$TempC_5p5m))==trimws("NA")),NA,buoytemp$TempC_5p5m)               
+suppressWarnings(buoytemp$TempC_5p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_5p5m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_5p5m))
+buoytemp$TempC_5p75m <- ifelse((trimws(as.character(buoytemp$TempC_5p75m))==trimws("NA")),NA,buoytemp$TempC_5p75m)               
+suppressWarnings(buoytemp$TempC_5p75m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_5p75m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_5p75m))
+buoytemp$TempC_5p85m <- ifelse((trimws(as.character(buoytemp$TempC_5p85m))==trimws("NA")),NA,buoytemp$TempC_5p85m)               
+suppressWarnings(buoytemp$TempC_5p85m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_5p85m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_5p85m))
+buoytemp$TempC_6p5m <- ifelse((trimws(as.character(buoytemp$TempC_6p5m))==trimws("NA")),NA,buoytemp$TempC_6p5m)               
+suppressWarnings(buoytemp$TempC_6p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_6p5m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_6p5m))
+buoytemp$TempC_6p75m <- ifelse((trimws(as.character(buoytemp$TempC_6p75m))==trimws("NA")),NA,buoytemp$TempC_6p75m)               
+suppressWarnings(buoytemp$TempC_6p75m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_6p75m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_6p75m))
+buoytemp$TempC_6p85m <- ifelse((trimws(as.character(buoytemp$TempC_6p85m))==trimws("NA")),NA,buoytemp$TempC_6p85m)               
+suppressWarnings(buoytemp$TempC_6p85m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_6p85m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_6p85m))
+buoytemp$TempC_7p5m <- ifelse((trimws(as.character(buoytemp$TempC_7p5m))==trimws("NA")),NA,buoytemp$TempC_7p5m)               
+suppressWarnings(buoytemp$TempC_7p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_7p5m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_7p5m))
+buoytemp$TempC_7p75m <- ifelse((trimws(as.character(buoytemp$TempC_7p75m))==trimws("NA")),NA,buoytemp$TempC_7p75m)               
+suppressWarnings(buoytemp$TempC_7p75m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_7p75m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_7p75m))
+buoytemp$TempC_7p85m <- ifelse((trimws(as.character(buoytemp$TempC_7p85m))==trimws("NA")),NA,buoytemp$TempC_7p85m)               
+suppressWarnings(buoytemp$TempC_7p85m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_7p85m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_7p85m))
+buoytemp$TempC_8p5m <- ifelse((trimws(as.character(buoytemp$TempC_8p5m))==trimws("NA")),NA,buoytemp$TempC_8p5m)               
+suppressWarnings(buoytemp$TempC_8p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_8p5m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_8p5m))
+buoytemp$TempC_8p75m <- ifelse((trimws(as.character(buoytemp$TempC_8p75m))==trimws("NA")),NA,buoytemp$TempC_8p75m)               
+suppressWarnings(buoytemp$TempC_8p75m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_8p75m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_8p75m))
+buoytemp$TempC_8p85m <- ifelse((trimws(as.character(buoytemp$TempC_8p85m))==trimws("NA")),NA,buoytemp$TempC_8p85m)               
+suppressWarnings(buoytemp$TempC_8p85m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_8p85m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_8p85m))
+buoytemp$TempC_9p5m <- ifelse((trimws(as.character(buoytemp$TempC_9p5m))==trimws("NA")),NA,buoytemp$TempC_9p5m)               
+suppressWarnings(buoytemp$TempC_9p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_9p5m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_9p5m))
+buoytemp$TempC_9p75m <- ifelse((trimws(as.character(buoytemp$TempC_9p75m))==trimws("NA")),NA,buoytemp$TempC_9p75m)               
+suppressWarnings(buoytemp$TempC_9p75m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_9p75m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_9p75m))
+buoytemp$TempC_9p85m <- ifelse((trimws(as.character(buoytemp$TempC_9p85m))==trimws("NA")),NA,buoytemp$TempC_9p85m)               
+suppressWarnings(buoytemp$TempC_9p85m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_9p85m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_9p85m))
+buoytemp$TempC_10p5m <- ifelse((trimws(as.character(buoytemp$TempC_10p5m))==trimws("NA")),NA,buoytemp$TempC_10p5m)               
+suppressWarnings(buoytemp$TempC_10p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_10p5m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_10p5m))
+buoytemp$TempC_11p5m <- ifelse((trimws(as.character(buoytemp$TempC_11p5m))==trimws("NA")),NA,buoytemp$TempC_11p5m)               
+suppressWarnings(buoytemp$TempC_11p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_11p5m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_11p5m))
+buoytemp$TempC_13p5m <- ifelse((trimws(as.character(buoytemp$TempC_13p5m))==trimws("NA")),NA,buoytemp$TempC_13p5m)               
+suppressWarnings(buoytemp$TempC_13p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoytemp$TempC_13p5m))==as.character(as.numeric("NA"))),NA,buoytemp$TempC_13p5m))
+
+
+# Here is the structure of the input data frame:
+str(buoytemp)                            
+attach(buoytemp)                            
+# The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
+
+summary(datetime)
+summary(location)
+summary(TempC_0p5m)
+summary(TempC_0p75m)
+summary(TempC_0p85m)
+summary(TempC_1m)
+summary(TempC_1p5m)
+summary(TempC_1p75m)
+summary(TempC_1p85m)
+summary(TempC_2m)
+summary(TempC_2p5m)
+summary(TempC_2p75m)
+summary(TempC_2p85m)
+summary(TempC_3m)
+summary(TempC_3p5m)
+summary(TempC_3p75m)
+summary(TempC_3p85m)
+summary(TempC_4p5m)
+summary(TempC_4p75m)
+summary(TempC_4p85m)
+summary(TempC_5p5m)
+summary(TempC_5p75m)
+summary(TempC_5p85m)
+summary(TempC_6p5m)
+summary(TempC_6p75m)
+summary(TempC_6p85m)
+summary(TempC_7p5m)
+summary(TempC_7p75m)
+summary(TempC_7p85m)
+summary(TempC_8p5m)
+summary(TempC_8p75m)
+summary(TempC_8p85m)
+summary(TempC_9p5m)
+summary(TempC_9p75m)
+summary(TempC_9p85m)
+summary(TempC_10p5m)
+summary(TempC_11p5m)
+summary(TempC_13p5m)
+summary(temp_flag) 
+# Get more details on character variables
+
+summary(as.factor(buoytemp$location)) 
+summary(as.factor(buoytemp$temp_flag))
+detach(buoytemp)               
+
+
+inUrl2  <- "https://pasta.lternet.edu/package/data/eml/edi/499/2/f4d3535cebd96715c872a7d3ca45c196" 
+infile2 <- tempfile(tmpdir = temp_dumpdir)
+try(download.file(inUrl2,infile2,method="curl"))
+if (is.na(file.size(infile2))) download.file(inUrl2,infile2,method="auto")
+
+
+buoydo <-read.csv(infile2,header=F 
+               ,skip=1
+               ,sep=","  
+               , col.names=c(
+                 "datetime",     
+                 "location",     
+                 "DOSat",     
+                 "DOppm",     
+                 "DOTempC",     
+                 "upper_do_flag",     
+                 "DOLowSat",     
+                 "DOLowPPM",     
+                 "DOLowTempC",     
+                 "lower_do_flag"    ), check.names=TRUE)
+
+unlink(infile2)
+
+# Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
+
+# attempting to convert buoydo$datetime dateTime string to R date structure (date or POSIXct)                                
+tmpDateFormat<-"%Y-%m-%d %H:%M:%S" 
+tmp2datetime<-as.POSIXct(buoydo$datetime,format=tmpDateFormat)
+# Keep the new dates only if they all converted correctly
+if(length(tmp2datetime) == length(tmp2datetime[!is.na(tmp2datetime)])){buoydo$datetime <- tmp2datetime } else {print("Date conversion failed for buoydo$datetime. Please inspect the data and do the date conversion yourself.")}                                                                    
+rm(tmpDateFormat,tmp2datetime) 
+if (class(buoydo$location)!="factor") buoydo$location<- as.factor(buoydo$location)
+if (class(buoydo$DOSat)=="factor") buoydo$DOSat <-as.numeric(levels(buoydo$DOSat))[as.integer(buoydo$DOSat) ]               
+if (class(buoydo$DOSat)=="character") buoydo$DOSat <-as.numeric(buoydo$DOSat)
+if (class(buoydo$DOppm)=="factor") buoydo$DOppm <-as.numeric(levels(buoydo$DOppm))[as.integer(buoydo$DOppm) ]               
+if (class(buoydo$DOppm)=="character") buoydo$DOppm <-as.numeric(buoydo$DOppm)
+if (class(buoydo$DOTempC)=="factor") buoydo$DOTempC <-as.numeric(levels(buoydo$DOTempC))[as.integer(buoydo$DOTempC) ]               
+if (class(buoydo$DOTempC)=="character") buoydo$DOTempC <-as.numeric(buoydo$DOTempC)
+if (class(buoydo$upper_do_flag)!="factor") buoydo$upper_do_flag<- as.factor(buoydo$upper_do_flag)
+if (class(buoydo$DOLowSat)=="factor") buoydo$DOLowSat <-as.numeric(levels(buoydo$DOLowSat))[as.integer(buoydo$DOLowSat) ]               
+if (class(buoydo$DOLowSat)=="character") buoydo$DOLowSat <-as.numeric(buoydo$DOLowSat)
+if (class(buoydo$DOLowPPM)=="factor") buoydo$DOLowPPM <-as.numeric(levels(buoydo$DOLowPPM))[as.integer(buoydo$DOLowPPM) ]               
+if (class(buoydo$DOLowPPM)=="character") buoydo$DOLowPPM <-as.numeric(buoydo$DOLowPPM)
+if (class(buoydo$DOLowTempC)=="factor") buoydo$DOLowTempC <-as.numeric(levels(buoydo$DOLowTempC))[as.integer(buoydo$DOLowTempC) ]               
+if (class(buoydo$DOLowTempC)=="character") buoydo$DOLowTempC <-as.numeric(buoydo$DOLowTempC)
+if (class(buoydo$lower_do_flag)!="factor") buoydo$lower_do_flag<- as.factor(buoydo$lower_do_flag)
+
+# Convert Missing Values to NA for non-dates
+
+buoydo$DOSat <- ifelse((trimws(as.character(buoydo$DOSat))==trimws("NA")),NA,buoydo$DOSat)               
+suppressWarnings(buoydo$DOSat <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoydo$DOSat))==as.character(as.numeric("NA"))),NA,buoydo$DOSat))
+buoydo$DOppm <- ifelse((trimws(as.character(buoydo$DOppm))==trimws("NA")),NA,buoydo$DOppm)               
+suppressWarnings(buoydo$DOppm <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoydo$DOppm))==as.character(as.numeric("NA"))),NA,buoydo$DOppm))
+buoydo$DOTempC <- ifelse((trimws(as.character(buoydo$DOTempC))==trimws("NA")),NA,buoydo$DOTempC)               
+suppressWarnings(buoydo$DOTempC <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoydo$DOTempC))==as.character(as.numeric("NA"))),NA,buoydo$DOTempC))
+buoydo$DOLowSat <- ifelse((trimws(as.character(buoydo$DOLowSat))==trimws("NA")),NA,buoydo$DOLowSat)               
+suppressWarnings(buoydo$DOLowSat <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoydo$DOLowSat))==as.character(as.numeric("NA"))),NA,buoydo$DOLowSat))
+buoydo$DOLowPPM <- ifelse((trimws(as.character(buoydo$DOLowPPM))==trimws("NA")),NA,buoydo$DOLowPPM)               
+suppressWarnings(buoydo$DOLowPPM <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoydo$DOLowPPM))==as.character(as.numeric("NA"))),NA,buoydo$DOLowPPM))
+buoydo$DOLowTempC <- ifelse((trimws(as.character(buoydo$DOLowTempC))==trimws("NA")),NA,buoydo$DOLowTempC)               
+suppressWarnings(buoydo$DOLowTempC <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoydo$DOLowTempC))==as.character(as.numeric("NA"))),NA,buoydo$DOLowTempC))
+
+
+# Here is the structure of the input data frame:
+str(buoydo)                            
+attach(buoydo)                            
+# The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
+
+summary(datetime)
+summary(location)
+summary(DOSat)
+summary(DOppm)
+summary(DOTempC)
+summary(upper_do_flag)
+summary(DOLowSat)
+summary(DOLowPPM)
+summary(DOLowTempC)
+summary(lower_do_flag) 
+# Get more details on character variables
+
+summary(as.factor(buoydo$location)) 
+summary(as.factor(buoydo$upper_do_flag)) 
+summary(as.factor(buoydo$lower_do_flag))
+detach(buoydo)               
+
+
+inUrl3  <- "https://pasta.lternet.edu/package/data/eml/edi/499/2/14340fa6419a6b4bc82cfe4713c25ea6" 
+infile3 <- tempfile(tmpdir = temp_dumpdir)
+try(download.file(inUrl3,infile3,method="curl"))
+if (is.na(file.size(infile3))) download.file(inUrl3,infile3,method="auto")
+
+
+buoyhobo <-read.csv(infile3,header=F 
+               ,skip=1
+               ,sep=","  
+               , col.names=c(
+                 "datetime",     
+                 "TempC_0p5m",     
+                 "TempC_1p5m",     
+                 "TempC_2p5m",     
+                 "TempC_3p5m",     
+                 "TempC_4p5m",     
+                 "TempC_5p5m",     
+                 "TempC_6p5m",     
+                 "TempC_7p5m",     
+                 "TempC_8p5m",     
+                 "location"    ), check.names=TRUE)
+
+unlink(infile3)
+
+# Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
+
+# attempting to convert buoyhobo$datetime dateTime string to R date structure (date or POSIXct)                                
+tmpDateFormat<-"%Y-%m-%d %H:%M:%S" 
+tmp3datetime<-as.POSIXct(buoyhobo$datetime,format=tmpDateFormat)
+# Keep the new dates only if they all converted correctly
+if(length(tmp3datetime) == length(tmp3datetime[!is.na(tmp3datetime)])){buoyhobo$datetime <- tmp3datetime } else {print("Date conversion failed for buoyhobo$datetime. Please inspect the data and do the date conversion yourself.")}                                                                    
+rm(tmpDateFormat,tmp3datetime) 
+if (class(buoyhobo$TempC_0p5m)=="factor") buoyhobo$TempC_0p5m <-as.numeric(levels(buoyhobo$TempC_0p5m))[as.integer(buoyhobo$TempC_0p5m) ]               
+if (class(buoyhobo$TempC_0p5m)=="character") buoyhobo$TempC_0p5m <-as.numeric(buoyhobo$TempC_0p5m)
+if (class(buoyhobo$TempC_1p5m)=="factor") buoyhobo$TempC_1p5m <-as.numeric(levels(buoyhobo$TempC_1p5m))[as.integer(buoyhobo$TempC_1p5m) ]               
+if (class(buoyhobo$TempC_1p5m)=="character") buoyhobo$TempC_1p5m <-as.numeric(buoyhobo$TempC_1p5m)
+if (class(buoyhobo$TempC_2p5m)=="factor") buoyhobo$TempC_2p5m <-as.numeric(levels(buoyhobo$TempC_2p5m))[as.integer(buoyhobo$TempC_2p5m) ]               
+if (class(buoyhobo$TempC_2p5m)=="character") buoyhobo$TempC_2p5m <-as.numeric(buoyhobo$TempC_2p5m)
+if (class(buoyhobo$TempC_3p5m)=="factor") buoyhobo$TempC_3p5m <-as.numeric(levels(buoyhobo$TempC_3p5m))[as.integer(buoyhobo$TempC_3p5m) ]               
+if (class(buoyhobo$TempC_3p5m)=="character") buoyhobo$TempC_3p5m <-as.numeric(buoyhobo$TempC_3p5m)
+if (class(buoyhobo$TempC_4p5m)=="factor") buoyhobo$TempC_4p5m <-as.numeric(levels(buoyhobo$TempC_4p5m))[as.integer(buoyhobo$TempC_4p5m) ]               
+if (class(buoyhobo$TempC_4p5m)=="character") buoyhobo$TempC_4p5m <-as.numeric(buoyhobo$TempC_4p5m)
+if (class(buoyhobo$TempC_5p5m)=="factor") buoyhobo$TempC_5p5m <-as.numeric(levels(buoyhobo$TempC_5p5m))[as.integer(buoyhobo$TempC_5p5m) ]               
+if (class(buoyhobo$TempC_5p5m)=="character") buoyhobo$TempC_5p5m <-as.numeric(buoyhobo$TempC_5p5m)
+if (class(buoyhobo$TempC_6p5m)=="factor") buoyhobo$TempC_6p5m <-as.numeric(levels(buoyhobo$TempC_6p5m))[as.integer(buoyhobo$TempC_6p5m) ]               
+if (class(buoyhobo$TempC_6p5m)=="character") buoyhobo$TempC_6p5m <-as.numeric(buoyhobo$TempC_6p5m)
+if (class(buoyhobo$TempC_7p5m)=="factor") buoyhobo$TempC_7p5m <-as.numeric(levels(buoyhobo$TempC_7p5m))[as.integer(buoyhobo$TempC_7p5m) ]               
+if (class(buoyhobo$TempC_7p5m)=="character") buoyhobo$TempC_7p5m <-as.numeric(buoyhobo$TempC_7p5m)
+if (class(buoyhobo$TempC_8p5m)=="factor") buoyhobo$TempC_8p5m <-as.numeric(levels(buoyhobo$TempC_8p5m))[as.integer(buoyhobo$TempC_8p5m) ]               
+if (class(buoyhobo$TempC_8p5m)=="character") buoyhobo$TempC_8p5m <-as.numeric(buoyhobo$TempC_8p5m)
+if (class(buoyhobo$location)!="factor") buoyhobo$location<- as.factor(buoyhobo$location)
+
+# Convert Missing Values to NA for non-dates
+
+buoyhobo$TempC_0p5m <- ifelse((trimws(as.character(buoyhobo$TempC_0p5m))==trimws("NA")),NA,buoyhobo$TempC_0p5m)               
+suppressWarnings(buoyhobo$TempC_0p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoyhobo$TempC_0p5m))==as.character(as.numeric("NA"))),NA,buoyhobo$TempC_0p5m))
+buoyhobo$TempC_1p5m <- ifelse((trimws(as.character(buoyhobo$TempC_1p5m))==trimws("NA")),NA,buoyhobo$TempC_1p5m)               
+suppressWarnings(buoyhobo$TempC_1p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoyhobo$TempC_1p5m))==as.character(as.numeric("NA"))),NA,buoyhobo$TempC_1p5m))
+buoyhobo$TempC_2p5m <- ifelse((trimws(as.character(buoyhobo$TempC_2p5m))==trimws("NA")),NA,buoyhobo$TempC_2p5m)               
+suppressWarnings(buoyhobo$TempC_2p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoyhobo$TempC_2p5m))==as.character(as.numeric("NA"))),NA,buoyhobo$TempC_2p5m))
+buoyhobo$TempC_3p5m <- ifelse((trimws(as.character(buoyhobo$TempC_3p5m))==trimws("NA")),NA,buoyhobo$TempC_3p5m)               
+suppressWarnings(buoyhobo$TempC_3p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoyhobo$TempC_3p5m))==as.character(as.numeric("NA"))),NA,buoyhobo$TempC_3p5m))
+buoyhobo$TempC_4p5m <- ifelse((trimws(as.character(buoyhobo$TempC_4p5m))==trimws("NA")),NA,buoyhobo$TempC_4p5m)               
+suppressWarnings(buoyhobo$TempC_4p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoyhobo$TempC_4p5m))==as.character(as.numeric("NA"))),NA,buoyhobo$TempC_4p5m))
+buoyhobo$TempC_5p5m <- ifelse((trimws(as.character(buoyhobo$TempC_5p5m))==trimws("NA")),NA,buoyhobo$TempC_5p5m)               
+suppressWarnings(buoyhobo$TempC_5p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoyhobo$TempC_5p5m))==as.character(as.numeric("NA"))),NA,buoyhobo$TempC_5p5m))
+buoyhobo$TempC_6p5m <- ifelse((trimws(as.character(buoyhobo$TempC_6p5m))==trimws("NA")),NA,buoyhobo$TempC_6p5m)               
+suppressWarnings(buoyhobo$TempC_6p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoyhobo$TempC_6p5m))==as.character(as.numeric("NA"))),NA,buoyhobo$TempC_6p5m))
+buoyhobo$TempC_7p5m <- ifelse((trimws(as.character(buoyhobo$TempC_7p5m))==trimws("NA")),NA,buoyhobo$TempC_7p5m)               
+suppressWarnings(buoyhobo$TempC_7p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoyhobo$TempC_7p5m))==as.character(as.numeric("NA"))),NA,buoyhobo$TempC_7p5m))
+buoyhobo$TempC_8p5m <- ifelse((trimws(as.character(buoyhobo$TempC_8p5m))==trimws("NA")),NA,buoyhobo$TempC_8p5m)               
+suppressWarnings(buoyhobo$TempC_8p5m <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoyhobo$TempC_8p5m))==as.character(as.numeric("NA"))),NA,buoyhobo$TempC_8p5m))
+
+
+# Here is the structure of the input data frame:
+str(buoyhobo)                            
+attach(buoyhobo)                            
+# The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
+
+summary(datetime)
+summary(TempC_0p5m)
+summary(TempC_1p5m)
+summary(TempC_2p5m)
+summary(TempC_3p5m)
+summary(TempC_4p5m)
+summary(TempC_5p5m)
+summary(TempC_6p5m)
+summary(TempC_7p5m)
+summary(TempC_8p5m)
+summary(location) 
+# Get more details on character variables
+
+summary(as.factor(buoyhobo$location))
+detach(buoyhobo)               
+
+
+inUrl4  <- "https://pasta.lternet.edu/package/data/eml/edi/499/2/938a361cbd4f373ba13dec92b6a66caa" 
+infile4 <- tempfile(tmpdir = temp_dumpdir)
+try(download.file(inUrl4,infile4,method="curl"))
+if (is.na(file.size(infile4))) download.file(inUrl4,infile4,method="auto")
+
+
+buoyhobodo <-read.csv(infile4,header=F 
+               ,skip=1
+               ,sep=","  
+               , col.names=c(
+                 "datetime",     
+                 "do_mgl",     
+                 "temp_degC",     
+                 "hobodo_flag",     
+                 "location"    ), check.names=TRUE)
+
+unlink(infile4)
+
+# Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
+
+# attempting to convert buoyhobodo$datetime dateTime string to R date structure (date or POSIXct)                                
+tmpDateFormat<-"%Y-%m-%d %H:%M:%S" 
+tmp4datetime<-as.POSIXct(buoyhobodo$datetime,format=tmpDateFormat)
+# Keep the new dates only if they all converted correctly
+if(length(tmp4datetime) == length(tmp4datetime[!is.na(tmp4datetime)])){buoyhobodo$datetime <- tmp4datetime } else {print("Date conversion failed for buoyhobodo$datetime. Please inspect the data and do the date conversion yourself.")}                                                                    
+rm(tmpDateFormat,tmp4datetime) 
+if (class(buoyhobodo$do_mgl)=="factor") buoyhobodo$do_mgl <-as.numeric(levels(buoyhobodo$do_mgl))[as.integer(buoyhobodo$do_mgl) ]               
+if (class(buoyhobodo$do_mgl)=="character") buoyhobodo$do_mgl <-as.numeric(buoyhobodo$do_mgl)
+if (class(buoyhobodo$temp_degC)=="factor") buoyhobodo$temp_degC <-as.numeric(levels(buoyhobodo$temp_degC))[as.integer(buoyhobodo$temp_degC) ]               
+if (class(buoyhobodo$temp_degC)=="character") buoyhobodo$temp_degC <-as.numeric(buoyhobodo$temp_degC)
+if (class(buoyhobodo$hobodo_flag)!="factor") buoyhobodo$hobodo_flag<- as.factor(buoyhobodo$hobodo_flag)
+if (class(buoyhobodo$location)!="factor") buoyhobodo$location<- as.factor(buoyhobodo$location)
+
+# Convert Missing Values to NA for non-dates
+
+buoyhobodo$do_mgl <- ifelse((trimws(as.character(buoyhobodo$do_mgl))==trimws("NA")),NA,buoyhobodo$do_mgl)               
+suppressWarnings(buoyhobodo$do_mgl <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoyhobodo$do_mgl))==as.character(as.numeric("NA"))),NA,buoyhobodo$do_mgl))
+buoyhobodo$temp_degC <- ifelse((trimws(as.character(buoyhobodo$temp_degC))==trimws("NA")),NA,buoyhobodo$temp_degC)               
+suppressWarnings(buoyhobodo$temp_degC <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(buoyhobodo$temp_degC))==as.character(as.numeric("NA"))),NA,buoyhobodo$temp_degC))
+
+
+# Here is the structure of the input data frame:
+str(buoyhobodo)                            
+attach(buoyhobodo)                            
+# The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
+
+summary(datetime)
+summary(do_mgl)
+summary(temp_degC)
+summary(hobodo_flag)
+summary(location) 
+# Get more details on character variables
+
+summary(as.factor(buoyhobodo$hobodo_flag)) 
+summary(as.factor(buoyhobodo$location))
+detach(buoyhobodo)               
+
+
+inUrl5  <- "https://pasta.lternet.edu/package/data/eml/edi/499/2/9cd342fb70af70d79bc3a258aedeed26" 
+infile5 <- tempfile(tmpdir = temp_dumpdir)
+try(download.file(inUrl5,infile5,method="curl"))
+if (is.na(file.size(infile5))) download.file(inUrl5,infile5,method="auto")
+
+
+buoy_loc <-read.csv(infile5,header=F 
+               ,skip=1
+               ,sep=","  
+               , col.names=c(
+                 "location",     
+                 "lat_dd",     
+                 "long_dd"    ), check.names=TRUE)
+
+unlink(infile5)
+
+# Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
+
+if (class(buoy_loc$location)!="factor") buoy_loc$location<- as.factor(buoy_loc$location)
+if (class(buoy_loc$lat_dd)=="factor") buoy_loc$lat_dd <-as.numeric(levels(buoy_loc$lat_dd))[as.integer(buoy_loc$lat_dd) ]               
+if (class(buoy_loc$lat_dd)=="character") buoy_loc$lat_dd <-as.numeric(buoy_loc$lat_dd)
+if (class(buoy_loc$long_dd)=="factor") buoy_loc$long_dd <-as.numeric(levels(buoy_loc$long_dd))[as.integer(buoy_loc$long_dd) ]               
+if (class(buoy_loc$long_dd)=="character") buoy_loc$long_dd <-as.numeric(buoy_loc$long_dd)
+
+# Convert Missing Values to NA for non-dates
+
+
+
+# Here is the structure of the input data frame:
+str(buoy_loc)                            
+attach(buoy_loc)                            
+# The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
+
+summary(location)
+summary(lat_dd)
+summary(long_dd) 
+# Get more details on character variables
+
+summary(as.factor(buoy_loc$location))
+detach(buoy_loc)               
+
+
+```
+
+### gloeo trap sensors
+
+```{r}
+# Package ID: edi.498.1 Cataloging System:https://pasta.edirepository.org.
+# Data set title: High-frequency temperature data from four near-shore sites, Lake Sunapee, NH, USA, 2006-2018.
+# Data set creator:  Kathryn Cottingham - Dartmouth College 
+# Data set creator:  Cayelan Carey - Virginia Tech 
+# Data set creator:  Kathleen Weathers - Cary Institute of Ecosystem Studies 
+# Contact:  Kathryn Cottingham -  Dartmouth College  - kathryn.l.cottingham@dartmouth.edu
+# Stylesheet v2.11 for metadata conversion into program: John H. Porter, Univ. Virginia, jporter@virginia.edu 
+
+inUrl1  <- "https://pasta.lternet.edu/package/data/eml/edi/498/1/f707d161d96899983f0f82845849427e" 
+infile1 <- tempfile(tmpdir = temp_dumpdir)
+try(download.file(inUrl1,infile1,method="curl"))
+if (is.na(file.size(infile1))) download.file(inUrl1,infile1,method="auto")
+
+                   
+ gloeo_depths <-read.csv(infile1,header=F 
+          ,skip=1
+            ,sep=","  
+        , col.names=c(
+                    "year",     
+                    "site",     
+                    "approx_depth_m"    ), check.names=TRUE)
+               
+unlink(infile1)
+		    
+# Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
+                
+if (class(gloeo_depths$site)!="factor") gloeo_depths$site<- as.factor(gloeo_depths$site)
+if (class(gloeo_depths$approx_depth_m)=="factor") gloeo_depths$approx_depth_m <-as.numeric(levels(gloeo_depths$approx_depth_m))[as.integer(gloeo_depths$approx_depth_m) ]               
+if (class(gloeo_depths$approx_depth_m)=="character") gloeo_depths$approx_depth_m <-as.numeric(gloeo_depths$approx_depth_m)
+                
+# Convert Missing Values to NA for non-dates
+                
+
+
+# Here is the structure of the input data frame:
+str(gloeo_depths)                            
+attach(gloeo_depths)                            
+# The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
+
+summary(year)
+summary(site)
+summary(approx_depth_m) 
+                # Get more details on character variables
+                 
+summary(as.factor(gloeo_depths$site))
+detach(gloeo_depths)               
+         
+
+inUrl2  <- "https://pasta.lternet.edu/package/data/eml/edi/498/1/074c7dcfa74cdafbc71ccee9c4b97293" 
+infile2 <- tempfile(tmpdir = temp_dumpdir)
+try(download.file(inUrl2,infile2,method="curl"))
+if (is.na(file.size(infile2))) download.file(inUrl2,infile2,method="auto")
+
+                   
+ gloeo_locs <-read.csv(infile2,header=F 
+          ,skip=1
+            ,sep=","  
+        , col.names=c(
+                    "site",     
+                    "lat_dd",     
+                    "long_dd"    ), check.names=TRUE)
+               
+unlink(infile2)
+		    
+# Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
+                
+if (class(gloeo_locs$site)!="factor") gloeo_locs$site<- as.factor(gloeo_locs$site)
+if (class(gloeo_locs$lat_dd)=="factor") gloeo_locs$lat_dd <-as.numeric(levels(gloeo_locs$lat_dd))[as.integer(gloeo_locs$lat_dd) ]               
+if (class(gloeo_locs$lat_dd)=="character") gloeo_locs$lat_dd <-as.numeric(gloeo_locs$lat_dd)
+if (class(gloeo_locs$long_dd)=="factor") gloeo_locs$long_dd <-as.numeric(levels(gloeo_locs$long_dd))[as.integer(gloeo_locs$long_dd) ]               
+if (class(gloeo_locs$long_dd)=="character") gloeo_locs$long_dd <-as.numeric(gloeo_locs$long_dd)
+                
+# Convert Missing Values to NA for non-dates
+                
+
+
+# Here is the structure of the input data frame:
+str(gloeo_locs)                            
+attach(gloeo_locs)                            
+# The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
+
+summary(site)
+summary(lat_dd)
+summary(long_dd) 
+                # Get more details on character variables
+                 
+summary(as.factor(gloeo_locs$site))
+detach(gloeo_locs)               
+         
+
+inUrl3  <- "https://pasta.lternet.edu/package/data/eml/edi/498/1/b4f60789ceb87db613924ca43a2f71ed" 
+infile3 <- tempfile(tmpdir = temp_dumpdir)
+try(download.file(inUrl3,infile3,method="curl"))
+if (is.na(file.size(infile3))) download.file(inUrl3,infile3,method="auto")
+
+                   
+ gloeo_temp <-read.csv(infile3,header=F 
+          ,skip=1
+            ,sep=","  
+        , col.names=c(
+                    "year",     
+                    "dayofyr",     
+                    "time",     
+                    "datetime",     
+                    "site",     
+                    "temp_degC"    ), check.names=TRUE)
+               
+unlink(infile3)
+		    
+# Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
+                                                   
+# attempting to convert gloeo_temp$datetime dateTime string to R date structure (date or POSIXct)                                
+tmpDateFormat<-"%Y-%m-%d %H:%M" 
+tmp3datetime<-as.POSIXct(gloeo_temp$datetime,format=tmpDateFormat)
+# Keep the new dates only if they all converted correctly
+if(length(tmp3datetime) == length(tmp3datetime[!is.na(tmp3datetime)])){gloeo_temp$datetime <- tmp3datetime } else {print("Date conversion failed for gloeo_temp$datetime. Please inspect the data and do the date conversion yourself.")}                                                                    
+rm(tmpDateFormat,tmp3datetime) 
+if (class(gloeo_temp$site)!="factor") gloeo_temp$site<- as.factor(gloeo_temp$site)
+if (class(gloeo_temp$temp_degC)=="factor") gloeo_temp$temp_degC <-as.numeric(levels(gloeo_temp$temp_degC))[as.integer(gloeo_temp$temp_degC) ]               
+if (class(gloeo_temp$temp_degC)=="character") gloeo_temp$temp_degC <-as.numeric(gloeo_temp$temp_degC)
+                
+# Convert Missing Values to NA for non-dates
+                
+gloeo_temp$temp_degC <- ifelse((trimws(as.character(gloeo_temp$temp_degC))==trimws("NA")),NA,gloeo_temp$temp_degC)               
+suppressWarnings(gloeo_temp$temp_degC <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(gloeo_temp$temp_degC))==as.character(as.numeric("NA"))),NA,gloeo_temp$temp_degC))
+
+
+# Here is the structure of the input data frame:
+str(gloeo_temp)                            
+attach(gloeo_temp)                            
+# The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
+
+summary(year)
+summary(dayofyr)
+summary(time)
+summary(datetime)
+summary(site)
+summary(temp_degC) 
+                # Get more details on character variables
+                 
+summary(as.factor(gloeo_temp$site))
+detach(gloeo_temp)               
+        
+```
+
+### 2018 mini buoys
+
+```{r}
+# Package ID: edi.395.1 Cataloging System:https://pasta.edirepository.org.
+# Data set title: Underwater temperature and light data from 3 mini-buoys in Lake Sunapee, NH, USA from June â October 2018.
+# Data set creator:  Nicole Ward - Virginia Tech 
+# Data set creator:  Jennifer Brentrup - Dartmouth College 
+# Data set creator:  Ava Johnson - Virginia Tech 
+# Data set creator:  Cayelan Carey - Virginia Tech 
+# Data set creator:  Kathleen Weathers - Cary Institute of Ecosystem Studies 
+# Data set creator:  June Fichter - Lake Sunapee Protective Association 
+# Contact:  Nicole Ward -  Virginia Tech  - nkward@vt.edu
+# Stylesheet v2.11 for metadata conversion into program: John H. Porter, Univ. Virginia, jporter@virginia.edu 
+
+inUrl1  <- "https://pasta.lternet.edu/package/data/eml/edi/395/1/38d468508e524aac464947d422c63365" 
+infile1 <- tempfile(tmpdir = temp_dumpdir)
+try(download.file(inUrl1,infile1,method="curl"))
+if (is.na(file.size(infile1))) download.file(inUrl1,infile1,method="auto")
+
+                   
+ gm_light <-read.csv(infile1,header=F 
+          ,skip=1
+            ,sep=","  
+        , col.names=c(
+                    "dateTime",     
+                    "light",     
+                    "Depth",     
+                    "SerialNum"    ), check.names=TRUE)
+               
+unlink(infile1)
+		    
+# Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
+                                                   
+# attempting to convert gm_light$dateTime dateTime string to R date structure (date or POSIXct)                                
+tmpDateFormat<-"%Y-%m-%d %H:%M:%S" 
+tmp1dateTime<-as.POSIXct(gm_light$dateTime,format=tmpDateFormat)
+# Keep the new dates only if they all converted correctly
+if(length(tmp1dateTime) == length(tmp1dateTime[!is.na(tmp1dateTime)])){gm_light$dateTime <- tmp1dateTime } else {print("Date conversion failed for gm_light$dateTime. Please inspect the data and do the date conversion yourself.")}                                                                    
+rm(tmpDateFormat,tmp1dateTime) 
+if (class(gm_light$light)=="factor") gm_light$light <-as.numeric(levels(gm_light$light))[as.integer(gm_light$light) ]               
+if (class(gm_light$light)=="character") gm_light$light <-as.numeric(gm_light$light)
+if (class(gm_light$Depth)=="factor") gm_light$Depth <-as.numeric(levels(gm_light$Depth))[as.integer(gm_light$Depth) ]               
+if (class(gm_light$Depth)=="character") gm_light$Depth <-as.numeric(gm_light$Depth)
+if (class(gm_light$SerialNum)=="factor") gm_light$SerialNum <-as.numeric(levels(gm_light$SerialNum))[as.integer(gm_light$SerialNum) ]               
+if (class(gm_light$SerialNum)=="character") gm_light$SerialNum <-as.numeric(gm_light$SerialNum)
+                
+# Convert Missing Values to NA for non-dates
+                
+gm_light$light <- ifelse((trimws(as.character(gm_light$light))==trimws("NA")),NA,gm_light$light)               
+suppressWarnings(gm_light$light <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(gm_light$light))==as.character(as.numeric("NA"))),NA,gm_light$light))
+
+
+# Here is the structure of the input data frame:
+str(gm_light)                            
+attach(gm_light)                            
+# The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
+
+summary(dateTime)
+summary(light)
+summary(Depth)
+summary(SerialNum) 
+                # Get more details on character variables
+                
+detach(gm_light)               
+         
+
+inUrl2  <- "https://pasta.lternet.edu/package/data/eml/edi/395/1/282a7528aadb842cbbd77fd64a52907f" 
+infile2 <- tempfile(tmpdir = temp_dumpdir)
+try(download.file(inUrl2,infile2,method="curl"))
+if (is.na(file.size(infile2))) download.file(inUrl2,infile2,method="auto")
+
+                   
+ gm_temp <-read.csv(infile2,header=F 
+          ,skip=1
+            ,sep=","  
+        , col.names=c(
+                    "dateTime",     
+                    "temp",     
+                    "Depth",     
+                    "SerialNum"    ), check.names=TRUE)
+               
+unlink(infile2)
+		    
+# Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
+                                                   
+# attempting to convert gm_temp$dateTime dateTime string to R date structure (date or POSIXct)                                
+tmpDateFormat<-"%Y-%m-%d %H:%M:%S" 
+tmp2dateTime<-as.POSIXct(gm_temp$dateTime,format=tmpDateFormat)
+# Keep the new dates only if they all converted correctly
+if(length(tmp2dateTime) == length(tmp2dateTime[!is.na(tmp2dateTime)])){gm_temp$dateTime <- tmp2dateTime } else {print("Date conversion failed for gm_temp$dateTime. Please inspect the data and do the date conversion yourself.")}                                                                    
+rm(tmpDateFormat,tmp2dateTime) 
+if (class(gm_temp$temp)=="factor") gm_temp$temp <-as.numeric(levels(gm_temp$temp))[as.integer(gm_temp$temp) ]               
+if (class(gm_temp$temp)=="character") gm_temp$temp <-as.numeric(gm_temp$temp)
+if (class(gm_temp$Depth)=="factor") gm_temp$Depth <-as.numeric(levels(gm_temp$Depth))[as.integer(gm_temp$Depth) ]               
+if (class(gm_temp$Depth)=="character") gm_temp$Depth <-as.numeric(gm_temp$Depth)
+if (class(gm_temp$SerialNum)=="factor") gm_temp$SerialNum <-as.numeric(levels(gm_temp$SerialNum))[as.integer(gm_temp$SerialNum) ]               
+if (class(gm_temp$SerialNum)=="character") gm_temp$SerialNum <-as.numeric(gm_temp$SerialNum)
+                
+# Convert Missing Values to NA for non-dates
+                
+gm_temp$temp <- ifelse((trimws(as.character(gm_temp$temp))==trimws("NA")),NA,gm_temp$temp)               
+suppressWarnings(gm_temp$temp <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(gm_temp$temp))==as.character(as.numeric("NA"))),NA,gm_temp$temp))
+
+
+# Here is the structure of the input data frame:
+str(gm_temp)                            
+attach(gm_temp)                            
+# The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
+
+summary(dateTime)
+summary(temp)
+summary(Depth)
+summary(SerialNum) 
+                # Get more details on character variables
+                
+detach(gm_temp)               
+         
+
+inUrl3  <- "https://pasta.lternet.edu/package/data/eml/edi/395/1/70d2fa66231822258c3f9a3ba98829b6" 
+infile3 <- tempfile(tmpdir = temp_dumpdir)
+try(download.file(inUrl3,infile3,method="curl"))
+if (is.na(file.size(infile3))) download.file(inUrl3,infile3,method="auto")
+
+                   
+ hc_light <-read.csv(infile3,header=F 
+          ,skip=1
+            ,sep=","  
+        , col.names=c(
+                    "dateTime",     
+                    "light",     
+                    "Depth",     
+                    "SerialNum"    ), check.names=TRUE)
+               
+unlink(infile3)
+		    
+# Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
+                                                   
+# attempting to convert hc_light$dateTime dateTime string to R date structure (date or POSIXct)                                
+tmpDateFormat<-"%Y-%m-%d %H:%M:%S" 
+tmp3dateTime<-as.POSIXct(hc_light$dateTime,format=tmpDateFormat)
+# Keep the new dates only if they all converted correctly
+if(length(tmp3dateTime) == length(tmp3dateTime[!is.na(tmp3dateTime)])){hc_light$dateTime <- tmp3dateTime } else {print("Date conversion failed for hc_light$dateTime. Please inspect the data and do the date conversion yourself.")}                                                                    
+rm(tmpDateFormat,tmp3dateTime) 
+if (class(hc_light$light)=="factor") hc_light$light <-as.numeric(levels(hc_light$light))[as.integer(hc_light$light) ]               
+if (class(hc_light$light)=="character") hc_light$light <-as.numeric(hc_light$light)
+if (class(hc_light$Depth)=="factor") hc_light$Depth <-as.numeric(levels(hc_light$Depth))[as.integer(hc_light$Depth) ]               
+if (class(hc_light$Depth)=="character") hc_light$Depth <-as.numeric(hc_light$Depth)
+if (class(hc_light$SerialNum)=="factor") hc_light$SerialNum <-as.numeric(levels(hc_light$SerialNum))[as.integer(hc_light$SerialNum) ]               
+if (class(hc_light$SerialNum)=="character") hc_light$SerialNum <-as.numeric(hc_light$SerialNum)
+                
+# Convert Missing Values to NA for non-dates
+                
+hc_light$light <- ifelse((trimws(as.character(hc_light$light))==trimws("NA")),NA,hc_light$light)               
+suppressWarnings(hc_light$light <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(hc_light$light))==as.character(as.numeric("NA"))),NA,hc_light$light))
+
+
+# Here is the structure of the input data frame:
+str(hc_light)                            
+attach(hc_light)                            
+# The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
+
+summary(dateTime)
+summary(light)
+summary(Depth)
+summary(SerialNum) 
+                # Get more details on character variables
+                
+detach(hc_light)               
+         
+
+inUrl4  <- "https://pasta.lternet.edu/package/data/eml/edi/395/1/14026c2023135291fb66f028de57c269" 
+infile4 <- tempfile(tmpdir = temp_dumpdir)
+try(download.file(inUrl4,infile4,method="curl"))
+if (is.na(file.size(infile4))) download.file(inUrl4,infile4,method="auto")
+
+                   
+ hc_temp <-read.csv(infile4,header=F 
+          ,skip=1
+            ,sep=","  
+        , col.names=c(
+                    "dateTime",     
+                    "temp",     
+                    "Depth",     
+                    "SerialNum"    ), check.names=TRUE)
+               
+unlink(infile4)
+		    
+# Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
+                                                   
+# attempting to convert hc_temp$dateTime dateTime string to R date structure (date or POSIXct)                                
+tmpDateFormat<-"%Y-%m-%d %H:%M:%S" 
+tmp4dateTime<-as.POSIXct(hc_temp$dateTime,format=tmpDateFormat)
+# Keep the new dates only if they all converted correctly
+if(length(tmp4dateTime) == length(tmp4dateTime[!is.na(tmp4dateTime)])){hc_temp$dateTime <- tmp4dateTime } else {print("Date conversion failed for hc_temp$dateTime. Please inspect the data and do the date conversion yourself.")}                                                                    
+rm(tmpDateFormat,tmp4dateTime) 
+if (class(hc_temp$temp)=="factor") hc_temp$temp <-as.numeric(levels(hc_temp$temp))[as.integer(hc_temp$temp) ]               
+if (class(hc_temp$temp)=="character") hc_temp$temp <-as.numeric(hc_temp$temp)
+if (class(hc_temp$Depth)=="factor") hc_temp$Depth <-as.numeric(levels(hc_temp$Depth))[as.integer(hc_temp$Depth) ]               
+if (class(hc_temp$Depth)=="character") hc_temp$Depth <-as.numeric(hc_temp$Depth)
+if (class(hc_temp$SerialNum)=="factor") hc_temp$SerialNum <-as.numeric(levels(hc_temp$SerialNum))[as.integer(hc_temp$SerialNum) ]               
+if (class(hc_temp$SerialNum)=="character") hc_temp$SerialNum <-as.numeric(hc_temp$SerialNum)
+                
+# Convert Missing Values to NA for non-dates
+                
+hc_temp$temp <- ifelse((trimws(as.character(hc_temp$temp))==trimws("NA")),NA,hc_temp$temp)               
+suppressWarnings(hc_temp$temp <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(hc_temp$temp))==as.character(as.numeric("NA"))),NA,hc_temp$temp))
+
+
+# Here is the structure of the input data frame:
+str(hc_temp)                            
+attach(hc_temp)                            
+# The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
+
+summary(dateTime)
+summary(temp)
+summary(Depth)
+summary(SerialNum) 
+                # Get more details on character variables
+                
+detach(hc_temp)               
+         
+
+inUrl5  <- "https://pasta.lternet.edu/package/data/eml/edi/395/1/19259608b0773cbd9926e06fd896a3a9" 
+infile5 <- tempfile(tmpdir = temp_dumpdir)
+try(download.file(inUrl5,infile5,method="curl"))
+if (is.na(file.size(infile5))) download.file(inUrl5,infile5,method="auto")
+
+                   
+ sb_light <-read.csv(infile5,header=F 
+          ,skip=1
+            ,sep=","  
+        , col.names=c(
+                    "dateTime",     
+                    "light",     
+                    "Depth",     
+                    "SerialNum"    ), check.names=TRUE)
+               
+unlink(infile5)
+		    
+# Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
+                                                   
+# attempting to convert sb_light$dateTime dateTime string to R date structure (date or POSIXct)                                
+tmpDateFormat<-"%Y-%m-%d %H:%M:%S" 
+tmp5dateTime<-as.POSIXct(sb_light$dateTime,format=tmpDateFormat)
+# Keep the new dates only if they all converted correctly
+if(length(tmp5dateTime) == length(tmp5dateTime[!is.na(tmp5dateTime)])){sb_light$dateTime <- tmp5dateTime } else {print("Date conversion failed for sb_light$dateTime. Please inspect the data and do the date conversion yourself.")}                                                                    
+rm(tmpDateFormat,tmp5dateTime) 
+if (class(sb_light$light)=="factor") sb_light$light <-as.numeric(levels(sb_light$light))[as.integer(sb_light$light) ]               
+if (class(sb_light$light)=="character") sb_light$light <-as.numeric(sb_light$light)
+if (class(sb_light$Depth)=="factor") sb_light$Depth <-as.numeric(levels(sb_light$Depth))[as.integer(sb_light$Depth) ]               
+if (class(sb_light$Depth)=="character") sb_light$Depth <-as.numeric(sb_light$Depth)
+if (class(sb_light$SerialNum)=="factor") sb_light$SerialNum <-as.numeric(levels(sb_light$SerialNum))[as.integer(sb_light$SerialNum) ]               
+if (class(sb_light$SerialNum)=="character") sb_light$SerialNum <-as.numeric(sb_light$SerialNum)
+                
+# Convert Missing Values to NA for non-dates
+                
+sb_light$light <- ifelse((trimws(as.character(sb_light$light))==trimws("NA")),NA,sb_light$light)               
+suppressWarnings(sb_light$light <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(sb_light$light))==as.character(as.numeric("NA"))),NA,sb_light$light))
+
+
+# Here is the structure of the input data frame:
+str(sb_light)                            
+attach(sb_light)                            
+# The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
+
+summary(dateTime)
+summary(light)
+summary(Depth)
+summary(SerialNum) 
+                # Get more details on character variables
+                
+detach(sb_light)               
+         
+
+inUrl6  <- "https://pasta.lternet.edu/package/data/eml/edi/395/1/211956b6a28568e287f3789f5f97bc83" 
+infile6 <- tempfile(tmpdir = temp_dumpdir)
+try(download.file(inUrl6,infile6,method="curl"))
+if (is.na(file.size(infile6))) download.file(inUrl6,infile6,method="auto")
+
+                   
+ sb_temp <-read.csv(infile6,header=F 
+          ,skip=1
+            ,sep=","  
+        , col.names=c(
+                    "dateTime",     
+                    "temp",     
+                    "Depth",     
+                    "SerialNum"    ), check.names=TRUE)
+               
+unlink(infile6)
+		    
+# Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
+                                                   
+# attempting to convert sb_temp$dateTime dateTime string to R date structure (date or POSIXct)                                
+tmpDateFormat<-"%Y-%m-%d %H:%M:%S" 
+tmp6dateTime<-as.POSIXct(sb_temp$dateTime,format=tmpDateFormat)
+# Keep the new dates only if they all converted correctly
+if(length(tmp6dateTime) == length(tmp6dateTime[!is.na(tmp6dateTime)])){sb_temp$dateTime <- tmp6dateTime } else {print("Date conversion failed for sb_temp$dateTime. Please inspect the data and do the date conversion yourself.")}                                                                    
+rm(tmpDateFormat,tmp6dateTime) 
+if (class(sb_temp$temp)=="factor") sb_temp$temp <-as.numeric(levels(sb_temp$temp))[as.integer(sb_temp$temp) ]               
+if (class(sb_temp$temp)=="character") sb_temp$temp <-as.numeric(sb_temp$temp)
+if (class(sb_temp$Depth)=="factor") sb_temp$Depth <-as.numeric(levels(sb_temp$Depth))[as.integer(sb_temp$Depth) ]               
+if (class(sb_temp$Depth)=="character") sb_temp$Depth <-as.numeric(sb_temp$Depth)
+if (class(sb_temp$SerialNum)=="factor") sb_temp$SerialNum <-as.numeric(levels(sb_temp$SerialNum))[as.integer(sb_temp$SerialNum) ]               
+if (class(sb_temp$SerialNum)=="character") sb_temp$SerialNum <-as.numeric(sb_temp$SerialNum)
+                
+# Convert Missing Values to NA for non-dates
+                
+sb_temp$temp <- ifelse((trimws(as.character(sb_temp$temp))==trimws("NA")),NA,sb_temp$temp)               
+suppressWarnings(sb_temp$temp <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(sb_temp$temp))==as.character(as.numeric("NA"))),NA,sb_temp$temp))
+
+
+# Here is the structure of the input data frame:
+str(sb_temp)                            
+attach(sb_temp)                            
+# The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
+
+summary(dateTime)
+summary(temp)
+summary(Depth)
+summary(SerialNum) 
+                # Get more details on character variables
+                
+detach(sb_temp)               
+        
+```
+
+### Sunapee LMP data
+
+```{r}
+infile1 <- tempfile(tmpdir = temp_dumpdir)
+inUrl1 <- 'https://raw.githubusercontent.com/Lake-Sunapee-Protective-Association/LMP/v2020.1/master%20files/LSPALMP_1986-2020_v2021-03-29.csv'
+
+try(download.file(inUrl1,
+              destfile = infile1,
+              method = 'curl'))
+if (is.na(file.size(infile1))) download.file(inUrl1,infile1,method="auto")
+
+LSPA_LMP <- read.csv(infile1, 
+         header = T,
+         sep = ',')
+
+infile2 <- tempfile(tmpdir = temp_dumpdir)
+inUrl2 <- 'https://raw.githubusercontent.com/Lake-Sunapee-Protective-Association/LMP/main/master%20files/station_location_details.csv'
+
+try(download.file(inUrl2,
+              destfile = infile2,
+              method = 'curl'))
+if (is.na(file.size(infile2))) download.file(inUrl2,infile2,method="auto")
+
+LSPA_LMP_locs <- read.csv(infile2, 
+         header = T,
+         sep = ',')
+
+```
+
+## Harmonize, Filter, Collate data
+
+### winter hobo data
+
+```{r}
+winterhobo_filter <- winterhobo %>% 
+  mutate(datetime = as.POSIXct(datetime, tz = 'UTC')) %>% 
+  select(datetime, location, TempC_1p5m) %>% 
+  rename(temp_degC = TempC_1p5m) %>% 
+  mutate(depth_m = 1.5,
+         source = 'edi.500.2') %>% 
+  left_join(., winterhobo_loc) %>% 
+  filter(!is.na(temp_degC))
+
+```
+
+### buoy data
+
+```{r}
+#filter buoy temp string
+buoytemp_filter <- buoytemp %>% 
+  select(datetime, TempC_0p5m:TempC_1p5m, temp_flag, location) %>% #only select 1.5 or closer to surface
+  pivot_longer(cols = c(TempC_0p5m:TempC_1p5m)) %>% 
+  mutate(depth_m = case_when(grepl('0p5m', name) ~ 0.5,
+                           grepl('0p75m', name) ~ 0.75,
+                           grepl('0p85m', name) ~ 0.85,
+                           grepl('1m', name) ~ 1.0,
+                           grepl('1p5m', name) ~ 1.5,
+                           TRUE ~ NA_real_))
+unique(buoytemp_filter$temp_flag)
+#flag definitions:
+# n noise in data stream
+# s	suspect readings
+# i	intermittent readings
+# d	depth likely incorrect/sensor hung up
+# a	sensor reporting on 20min intervals *this is irrelevant to this purpose
+# b	sensor may be in sediment *11m and 13m already removed, can ignore
+
+#recode suspect readings to NA
+buoytemp_filter <- buoytemp_filter %>% 
+  mutate(value = case_when(grepl('s;', temp_flag) ~ NA_real_,
+                           TRUE ~ value)) %>% 
+  filter(!is.na(value)) %>% 
+  mutate(datetime = as.POSIXct(datetime, tz = 'UTC')) %>% 
+  rename(temp_degC = value) %>% 
+  select(-name, -temp_flag)
+  
+#filter do string
+buoydo_filter <- buoydo %>% 
+  select(datetime, DOTempC, upper_do_flag, location) %>% 
+  rename(temp_degC = DOTempC) %>% 
+  mutate(depth_m = 1.5) %>% 
+  filter(!is.na(temp_degC))
+  
+unique(buoydo_filter$upper_do_flag)
+#flag definition
+# d	depth likely incorrect/sensor hung up
+# w	sensor cleaned, not calibrated
+# c	sensor calibrated
+# m	 miscalibrated - not to be used without correction
+# p	cleaning/calibration not documented - presumed from data
+# i	intermittent readings
+# x	do sensor likely uncalibrated, no documentation of calibration
+
+#only flag that might impact temp from this sensor is 'i'
+buoydo_filter <- buoydo_filter %>% 
+  mutate(temp_degC = case_when(grepl('i', upper_do_flag) ~ NA_real_,
+                               TRUE ~ temp_degC)) %>% 
+  filter(!is.na(temp_degC)) %>% 
+  mutate(datetime = as.POSIXct(datetime, tz = 'UTC')) %>% 
+  select(-upper_do_flag)
+
+#filter hobo temp string
+buoyhobo_filter <- buoyhobo %>% 
+  select(datetime, TempC_0p5m, TempC_1p5m, location) %>% 
+  pivot_longer(cols = c(TempC_0p5m, TempC_1p5m), values_to = 'temp_degC') %>% 
+  mutate(depth_m = case_when(grepl('0p5m', name) ~ 0.5,
+                           grepl('1p5m', name) ~ 1.5,
+                           TRUE ~ NA_real_)) %>% 
+  filter(!is.na(temp_degC))%>% 
+  mutate(datetime = as.POSIXct(datetime, tz = 'UTC')) %>% 
+  select(-name)
+
+#filter hobo do string
+buoyhobodo_filter <- buoyhobodo %>% 
+  select(datetime, location, temp_degC, hobodo_flag) %>% 
+  mutate(depth_m = 0.25) %>% 
+  filter(!is.na(temp_degC))
+
+unique(buoyhobodo_filter$hobodo_flag)
+# no applicable flags
+buoyhobodo_filter <- buoyhobodo_filter %>% 
+  select(-hobodo_flag)%>% 
+  mutate(datetime = as.POSIXct(datetime, tz = 'UTC')) 
+
+#join buoy data together
+buoy_filter <- full_join(buoydo_filter, buoyhobo_filter) %>% 
+  full_join(., buoyhobodo_filter) %>% 
+  full_join(., buoytemp_filter) %>% 
+  mutate(source = 'edi.499.2')
+
+#add location information
+buoy_filter <- buoy_filter %>% 
+  left_join(., buoy_loc)
+
+#filter for topmost temp reading per timestamp
+buoy_filter <- buoy_filter %>% 
+  mutate(datetime = as.POSIXct(datetime, tz='UTC')) %>% 
+  arrange(datetime, depth_m) %>% 
+  group_by(datetime, location, source, lat_dd, long_dd) %>% 
+  summarize(temp_degC = first(temp_degC),
+            depth_m = first(depth_m)) %>% 
+  ungroup()
+```
+
+### gloeo trap sensors
+
+DST is observed in this dataset. See if any measurements taken over period of DST
+```{r}
+#look for datetimes outside of dst
+gloeo_temp %>% 
+  group_by(year) %>% 
+  arrange(datetime) %>% 
+  summarise(firstdatetime = first(datetime),
+            lastdatetime = last(datetime))
+
+```
+
+There is no overlap with DST, just need to adjust time to no DST observed for integration with all other datasets
+
+```{r}
+
+gloeo_temp_dstadj <- gloeo_temp %>% 
+  mutate(datetime = as.POSIXct(datetime, tz = 'UTC')) %>% 
+  mutate(datetime_adj = datetime - lubridate::hours(1))
+
+```
+
+Now filter with new datetime as datetime no dst observed
+
+```{r}
+#remove unnecessary columns, rename adjusted time
+gloeo_temp_dstadj <- gloeo_temp_dstadj %>% 
+  select(-dayofyr, -time, -datetime) %>% 
+  rename(datetime = datetime_adj)
+
+#join with depth data
+gloeo_temp_dstadj <- full_join(gloeo_temp_dstadj, gloeo_depths)
+
+#where depth is na, fill in with 1.5 so data is included prior to 2011
+gloeo_temp_dstadj <- gloeo_temp_dstadj %>% 
+  mutate(depth_m = case_when(is.na(approx_depth_m) ~ 1.5,
+                             TRUE ~ approx_depth_m)) %>% 
+  select(-year, -approx_depth_m)
+
+#join with loc data
+gloeo_temp_dstadj <- full_join(gloeo_temp_dstadj, gloeo_locs)
+
+#add source info, rename site to location
+gloeo_temp_dstadj <- gloeo_temp_dstadj %>% 
+  mutate(source = 'edi.498.1') %>% 
+  rename(location = site)
+
+gloeo_temp_dstadj
+```
+
+### mini buoy data
+
+```{r}
+#add location info
+gm_temp <- gm_temp %>% 
+  mutate(location = 'GeorgesMills',
+         lat_dd = 43.4288,
+         long_dd = -72.0675)
+hc_temp <- hc_temp %>% 
+  mutate(location = 'HerrickCove',
+         lat_dd = 43.4096,
+         long_dd = -72.033)
+sb_temp <- sb_temp %>% 
+  mutate(location = 'StateBeach',
+         lat_dd = 43.3436,
+         long_dd = -72.0595)
+
+#join and filter for topmost sensor
+minibuoy_temp_filter <- full_join(gm_temp, hc_temp) %>% 
+  full_join(sb_temp) %>% 
+  rename(datetime = dateTime, 
+         depth_m = Depth) %>% 
+  filter(!is.na(temp)) %>% 
+  arrange(datetime, depth_m) %>% 
+  group_by(datetime, location, lat_dd, long_dd) %>% 
+  summarize(temp_degC = first(temp),
+            depth_m = first(depth_m)) %>% 
+  ungroup()
+
+#add source info
+minibuoy_temp_filter <- minibuoy_temp_filter %>% 
+  mutate(source = 'edi.395.1')
+
+# round to 2 digits after decimal
+minibuoy_temp_filter <- minibuoy_temp_filter %>% 
+  mutate(temp_degC = round(temp_degC, digits = 2))
+
+minibuoy_temp_filter
+  
+```
+
+### lspa lmp
+
+The LSPA data does not have time stamps. For the purposes of this analysis, we are going to state that the sample was measured at 11a no dst observed for potential inclusion in the LS LST analysis.
+
+```{r}
+#filter for temp only; 1.5m or closer to surface
+LSPA_LMP_filter <- LSPA_LMP %>% 
+  filter(parameter == 'temp_C',
+         depth_m <= 1.5)
+
+#look at flags
+unique(LSPA_LMP_filter$flag)
+unique(LSPA_LMP_filter$gen_flag)
+#no flags here
+
+#add time of 11a to date, rename/drop columns as necessary
+LSPA_LMP_filter <- LSPA_LMP_filter %>% 
+  rename(location = station, 
+         temp_degC = value) %>% 
+  select(-layer, -site_type, -parameter, -flag, -gen_flag, -org_sampid, -org_id) %>% 
+  mutate(datetime = as.POSIXct(paste(date, '11:00', sep = ' '), tz = 'UTC')) %>% 
+  select(-date) %>% 
+  arrange(datetime, depth_m) %>% 
+  group_by(location, datetime) %>% 
+  summarize(temp_degC = first(temp_degC),
+            depth_m = first(depth_m)) %>% 
+  ungroup()
+
+# add source
+LSPA_LMP_filter <- LSPA_LMP_filter %>% 
+  mutate(source = 'LSPA LMP')
+
+LSPA_LMP_filter
+
+#add location info
+LSPA_LMP_locs <- LSPA_LMP_locs %>% 
+  rename(location = station,
+         long_dd = lon_dd) %>% 
+  select(location, lat_dd, long_dd) 
+
+LSPA_LMP_filter <- left_join(LSPA_LMP_filter, LSPA_LMP_locs) %>% 
+  mutate(location = as.character(location))
+
+LSPA_LMP_filter
+```
+
+## Join all data together
+
+```{r}
+#join all and mark frequency
+all_temp <- full_join(winterhobo_filter, buoy_filter) %>% 
+  full_join(gloeo_temp_dstadj) %>% 
+  full_join(minibuoy_temp_filter) %>% 
+  mutate(frequency = 'sub-daily') %>% 
+  full_join(LSPA_LMP_filter) %>% 
+  mutate(frequency = case_when(is.na(frequency) ~ 'monthly',
+                               TRUE ~ frequency))
+
+#filter for may through nov (ice out season)
+all_temp_filtered <- all_temp %>% 
+  mutate(month = as.numeric(format(datetime, '%m'))) %>% 
+  filter(month >= 5 & month <= 11)
+
+#reorg columns
+all_temp_filtered <- all_temp_filtered %>% 
+  select(datetime, lat_dd, long_dd, location, depth_m, temp_degC, source, frequency, month)
+```
+
+## export data
+
+```{r}
+all_temp_filtered %>% 
+  mutate(datetime = as.character(datetime)) %>% 
+  write_csv(., paste0(dumpdir, 'all_temp_data_v2021Apr21.csv'))
+```
+
+
