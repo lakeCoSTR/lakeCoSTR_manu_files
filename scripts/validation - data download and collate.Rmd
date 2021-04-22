@@ -7,7 +7,10 @@ output: html_document
 
 R version: 4.0.4 RStudio Version: 1.4.1103
 
-updated 26Mar2019 to include 2018 buoy thermistor data (no upper do data in 2018) updated 05July2019 to include 17-18 winter data, 18-19 winter data, oct 18-may 19 data updated 26March2021 to pull from EDI and to filter for upper value at all locations updated 20April2021 to pull LSPA LMP from GitHub
+updated 26Mar2019 to include 2018 buoy thermistor data (no upper do data in 2018) 
+updated 05July2019 to include 17-18 winter data, 18-19 winter data, oct 18-may 19 data
+updated 26March2021 to pull from EDI and to filter for upper value at all locations 
+updated 20April2021 to pull LSPA LMP from GitHub
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -22,7 +25,7 @@ dumpdir = '~/GitHub/ids-ne-lakes/data/'
 
 ## Read in files from EDI and filter for desired data
 
-These scripts are copied directly from the EDI website.
+These code chunks in this section are copied directly from the EDI website except the LSPA LMP data.
 
 ### Winter Hobo files at the buoy site
 
@@ -1504,15 +1507,23 @@ LSPA_LMP_filter
 ## Join all data together
 
 ```{r}
+#join all and mark frequency
 all_temp <- full_join(winterhobo_filter, buoy_filter) %>% 
   full_join(gloeo_temp_dstadj) %>% 
   full_join(minibuoy_temp_filter) %>% 
-  full_join(LSPA_LMP_filter)
+  mutate(frequency = 'sub-daily') %>% 
+  full_join(LSPA_LMP_filter) %>% 
+  mutate(frequency = case_when(is.na(frequency) ~ 'monthly',
+                               TRUE ~ frequency))
 
 #filter for may through nov (ice out season)
 all_temp_filtered <- all_temp %>% 
   mutate(month = as.numeric(format(datetime, '%m'))) %>% 
   filter(month >= 5 & month <= 11)
+
+#reorg columns
+all_temp_filtered <- all_temp_filtered %>% 
+  select(datetime, lat_dd, long_dd, location, depth_m, temp_degC, source, frequency, month)
 ```
 
 ## export data
