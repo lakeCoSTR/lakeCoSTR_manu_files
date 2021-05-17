@@ -1,139 +1,93 @@
-import os, csv
-from datetime import datetime
+import os
+from datetime import datetime, timedelta
 import pytz
 from time import strftime
+import pandas as pd
 
-print "\nStart: ", strftime("%x %X"), "\n"
+print("\nStart: ", strftime("%x %X"), "\n")
 
-inspace = r'D:\Box Sync\IDS_Lutz\Bethel\dropbox_2019_May'
+inspace = r"D:\Box Sync\IDS_Lutz\Bethel\Manuscript"
 
-infile = r'sunapee_highfrequency_record_22Jul2019.csv'
-geefile = r'temp_stats_sunapee_gee.csv'
+infile = r'all_temp_data_v2021Apr21.csv'
+geefile = r'temp_stats_sunapee_1985_2020_05-11.csv'
 
-outfile = r'temp_sunapee_paired.csv'
+outfile = r'temp_sunapee_paired_2021_0428.csv'
 
-# available depths
-# [2.0, 0.5, 1.0, 1.5, 2.5, 3.0, 1.25]
+timewindow = 30  # number of minutes +/-
+max_depth = 1.5  # sensor depth in m
+
+"""
+End user-input
+
+Define functions
+"""
 
 os.chdir(inspace)
+min_ms = timewindow * 60 * 1000.0
+pd.options.mode.chained_assignment = None  # suppresses the false positive pandas "SettingWithCopyWarning"
 
-min20 = 20 * 60 * 1000.0
-day1 = 1 * 24 * 60 * 60 * 1000.0
-day2 = 2 * 24 * 60 * 60 * 1000.0
-day3 = 3 * 24 * 60 * 60 * 1000.0
-day4 = 4 * 24 * 60 * 60 * 1000.0
-day5 = 5 * 24 * 60 * 60 * 1000.0
-day6 = 6 * 24 * 60 * 60 * 1000.0
-day7 = 7 * 24 * 60 * 60 * 1000.0
-
-timezone = pytz.timezone("America/New_York")
+# timezone = pytz.timezone("America/New_York")
+timezone = pytz.timezone("US/Eastern")
+dst_transitions = timezone._utc_transition_times
 utc = pytz.timezone("UTC")
 epoch = timezone.localize(datetime.fromtimestamp(0))
 
 
-def convert_datetime(dt):
-    dto = datetime.strptime(dt, "%Y-%m-%d %H:%M:%S")
+# Our data does not observe DST, but pytz expects it, so we adjust the time
+def convert_datetime(dt, dst_obs=False, dtformat="%Y-%m-%d %H:%M:%S"):
+    '''converts string format insitu time to epoch ms'''
+    dto = datetime.strptime(dt, dtformat)
+
+    dst_dates = []
+    for each in dst_transitions:
+        if each.year == dto.year:
+            dst_dates.append(each)
+
+    if dst_dates[0] <= dto <= dst_dates[1]:
+        if not dst_obs:
+            dto = datetime.strptime(dt, dtformat) + timedelta(hours=1)
+
     aware = timezone.localize(dto)
-    return (aware - epoch).total_seconds() * 1000.0, dto.hour  # two things returned
+    return (aware - epoch).total_seconds() * 1000.0
 
 
-def _ss(data):
-    """Return sum of square deviations of sequence data"""
-    n = len(data)
-    c = sum(data) / (n * 1.0)
-    ss = sum((x - c) ** 2 for x in data)
-    return ss
+def getExceltime(t):
+    return (t / 1000.0 / 86400.0) + 25569
 
 
-def stdev(data, ddof=0):
-    """Calculates the population std dev by default; specifiy ddof=1 to compute the sample stddev"""
-    n = len(data)
-    if n < 2:
-        raise ValueError('variance requires at least two data points')
-    ss = _ss(data)
-    pvar = ss / (n - ddof)
-    return pvar ** 0.5
+"""
+Harmonize datasets
+"""
+colsToUse = ["datetime", "depth_m", "temp_degC", "source"]
+print(strftime("%x %X"), "importing insitu data...")
+insitu_csv = pd.read_csv(infile)  # , usecols=colsToUse)
+shallow = insitu_csv[(insitu_csv.depth_m <= max_depth)]  # filter dataframe by depth
+shallow["datetime_ms"] = shallow["datetime"].apply(convert_datetime)  # add a column to convert time
 
+gee_csv = pd.read_csv(geefile)
+# gee_csv.columns
 
-with open(infile, 'rb') as incsv, open(geefile, 'rb') as geecsv, open(outfile, 'wb') as outcsv:
-    reader = csv.reader(incsv)
-    geereader = csv.reader(geecsv)
-    writer = csv.writer(outcsv)
+gee_csv = gee_csv.drop([".geo"], axis=1)
 
-    geeheader = geereader.next()
-    header = reader.next()
-    newheader = geeheader[:-1] + ["excel_time_l", "excel_time_v", "days_removed", "avg_temp", "t_std_dev", "count",
-                                  "avg_depth", "d_std_dev"]
-    writer.writerow(newheader)
+for index, each in gee_csv.iterrows():
+    scene = gee_csv.loc[index, "system:index"].split("1_")[-1]
+    landsattime = gee_csv.loc[index, "landsat_time"]
+    # print(strftime("%x %X"), index, scene)
 
-    for each in geereader:
-        scene = each[0]
-        landsattime = float(each[3])
-        vaportime = float(each[7])
-        landsatexceltime = (landsattime / 1000.0 / 86400.0) + 25569
-        vaporexceltime = (vaportime / 1000.0 / 86400.0) + 25569
+    same_time = shallow[
+        (abs(landsattime - shallow.datetime_ms) <= min_ms)]  # continue to winnow down records to +- 20min
 
-        measurements = []
-        depth = []
+    gee_csv.loc[index, "scene"] = scene
+    gee_csv.loc[index, "avg_temp"] = same_time["temp_degC"].mean()
+    gee_csv.loc[index, "t_std_dev"] = same_time["temp_degC"].std()
+    gee_csv.loc[index, "avg_depth"] = same_time["depth_m"].mean()
+    gee_csv.loc[index, "d_std_dev"] = same_time["depth_m"].std()
+    gee_csv.loc[index, "count"] = same_time.shape[0]
 
-        newrow = each[:-1] + [landsatexceltime, vaporexceltime, "0"]
+    if same_time.shape[0] > 0:
+        same_time.to_csv(os.path.join(inspace, scene + ".csv"))
 
-        reader.next()
-        with open(scene+'.csv','wb') as copycsv:
-            copywriter = csv.writer(copycsv)
-            copywriter.writerow(header)
+print(strftime("%x %X"),"exporting harmonized csv...")
+gee_csv.to_csv(os.path.join(inspace, outfile))
 
-            for row in reader:
-
-                rowtime = row[0]
-                rowdepth = float(row[3])
-                temperature = float(row[4])
-                flag = row[5]
-                try:
-                    buff125 = int(row[6])
-                except:
-                    buff125 = row[6]
-                try:
-                    buff500 = int(row[7])
-                except:
-                    buff500 = row[7]
-
-                # if flag == "depth is within 0.5m" or rowdepth <= 1.5:
-                if rowdepth <= 1.5:
-
-                    ms, dayhour = convert_datetime(rowtime)
-
-                    if abs(landsattime - ms) <= min20:
-                        # newrow += ['0',ms]+row
-                        # writer.writerow(newrow)
-                        measurements.append(temperature)
-                        depth.append(rowdepth)
-                        copywriter.writerow(row)
-
-            print measurements,
-            # scratch = raw_input('\npress anything to continue')
-
-            count = len(measurements)
-
-            try:
-                t_avg = sum(measurements) / (count * 1.0)
-                d_avg = sum(depth) / (count * 1.0)
-                t_result = stdev(measurements)
-                d_result = stdev(depth)
-                print t_avg, t_result, '\n'
-            except ZeroDivisionError:
-                t_avg = 0
-                d_avg = 0
-                t_result = 0
-                d_result = 0
-                print t_avg, t_result, '\n'
-
-            newrow += [t_avg, t_result, count, d_avg, d_result]
-
-            writer.writerow(newrow)
-
-        incsv.seek(0)
-
-# read_time = (datetime.fromtimestamp(ms/1000.0))
-
-print "\nFinish: ", strftime("%x %X"), "\n"
+print("\nFinish: ", strftime("%x %X"), "\n")

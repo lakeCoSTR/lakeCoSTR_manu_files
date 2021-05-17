@@ -1,9 +1,12 @@
 ---
 title: "Sunapee Temp and LS LST"
 author: "B. Steele"
-date: "21April2021"
+date: "17May2021"
 output: html_document
 ---
+
+updated 17May2021 new *in situ* file 
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -11,49 +14,82 @@ knitr::opts_chunk$set(echo = TRUE)
 source('R_library.R')
 
 dir = '~/GitHub/ids-ne-lakes/'
+datadir = '~/GitHub/ids-ne-lakes/data/'
 figdir = '~/GitHub/ids-ne-lakes/figures/'
 
-insitu <- read_csv(paste0(dir, 'data/all_temp_data_v2021Apr21.csv'),
-                   col_types = c('')) %>% 
-  filter(location != 'in transit')
+```
 
-lst_insitu <- read_csv(paste0(dir, 'data/temp_sunapee_paired.csv'),
-                       col_types = c('')) %>% 
-  filter(count>0) %>% 
+Read in all data
+
+```{r}
+#load in all insitu data for historical trend analysis
+insitu <- read.csv(paste0(datadir, 'all_temp_data_v2021-05-17.csv')) %>% 
+  filter(!is.na(lat_dd)) %>% 
+  mutate(datetime = as.POSIXct(datetime, tz='Etc/GMT+5'))
+
+#read in all skin temp data for whole lake
+lst_all <- read_csv(paste0(datadir, 'LS_scene_temp_stats_v2021-05-17.csv'),
+                             col_types = c('')) %>% 
   mutate(date =as.Date(substrRight(`system:index`, 8), '%Y%m%d'),
          month = as.factor(format(date, '%m')),
          year = as.factor(format(date, '%Y')),
          doy = as.numeric(format(date, '%j')))
 
+lst_paired <- read_csv(paste0(datadir, 'temp_sunapee_paired_2021_0428.csv'),
+                             col_types = c('')) %>% 
+  mutate(date =as.Date(substrRight(`system:index`, 8), '%Y%m%d')) %>% 
+  select(date, avg_temp:count)
+
+# #read in all skin temp for individual locations
+# lst_all_zonedata <- read_csv(paste0(datadir, 'temp_zonal_stats_sunapee_1985_2020_05-11.csv'),
+#                        col_types = c('')) %>% 
+#   mutate(date =as.Date(substrRight(`uid`, 8), '%Y%m%d'),
+#          month = as.factor(format(date, '%m')),
+#          year = as.factor(format(date, '%Y')),
+#          doy = as.numeric(format(date, '%j')))
+
+#load in the matched insitu data .csvs
+
+#make a list of the file namesin the folder
+match_names <- list.files(paste0(datadir, 'match-files'))
+
+#iterate over the files into a dataframe
+for(i in 1:length(match_names)) {
+  data <- read_csv(paste0(datadir, 'match-files/', match_names[i]), 
+           col_types = c('')) %>% 
+    mutate(source = paste0(match_names[i]))
+  if (i == 1) {
+    match_details <- data
+  } else {
+  match_details <- full_join(match_details, data)
+  }
+}
+
+# add columns for match_details
+match_details <- match_details %>% 
+  mutate(date =as.Date(datetime),
+         month = as.factor(format(date, '%m')),
+         year = as.factor(format(date, '%Y')),
+         doy = as.numeric(format(date, '%j'))) %>% 
+  filter(frequency == 'sub-daily')
 ```
 
-## Summary Data Tables
 
+## Summary Data Tables for insitu database
 
 ```{r}
 
-#number of observations
+#number of observations for total DB
 insitu %>% 
-  group_by(frequency) %>% 
   summarize(nobs = length(datetime),
             ndays = length(unique(format(datetime, '%Y-%m-%d'))),
             year_start = min(as.numeric(format(datetime, '%Y'))),
             year_end = max(as.numeric(format(datetime, '%Y'))))
 
-#if only after buoy deploy
-insitu %>% 
-  filter(datetime>'2011-01-01') %>% 
-    group_by(frequency) %>% 
-  summarize(nobs = length(datetime),
-            ndays = length(unique(format(datetime, '%Y-%m-%d'))),
-            year_start = min(as.numeric(format(datetime, '%Y'))),
-            year_end = max(as.numeric(format(datetime, '%Y'))))
-
-#number of observations
+#number of observations between time of 10 and 12
 insitu %>% 
   mutate(hour = as.numeric(format(datetime, '%H'))) %>% 
   filter(hour >= 10 & hour < 12) %>% 
-  group_by(frequency) %>% 
   summarize(nobs = length(datetime),
             ndays = length(unique(format(datetime, '%Y-%m-%d'))),
             year_start = min(as.numeric(format(datetime, '%Y'))),
@@ -61,235 +97,582 @@ insitu %>%
 
 
 #number of sites
-hf_insitu <- insitu %>% 
-  filter(frequency == 'sub-daily')
-length(unique(hf_insitu$lat_dd))
-length(unique(hf_insitu$long_dd))
+length(unique(insitu$location))
+unique(insitu$location)
 
-
-#number of sites
-lf_insitu <- insitu %>% 
-  filter(frequency == 'monthly')
-length(unique(lf_insitu$lat_dd))
-length(unique(lf_insitu$long_dd))
 ```
-Table of mean temperature per month
+
+## Summary Data Tables for insitu-skin temp match
 
 ```{r}
-hf_meantemp_permonth_year <- hf_insitu %>% 
-  mutate(year = as.numeric(format(datetime, '%Y'))) %>% 
-  group_by(month, year, location) %>% 
-  summarize(mean_depth_m = mean(depth_m),
-            mean_temp_degC = mean(temp_degC))
 
-ggplot(hf_meantemp_permonth_year, aes(x = year, y = mean_temp_degC)) +
-  geom_point(aes(color = location, size = mean_depth_m)) +
-  labs(y = 'mean monthly temperature (degrees C)') +
-  facet_grid(month ~ ., scales = 'free_y') +
-  scale_color_manual(values = c("#000000", '#999999', "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")) +
-  final_theme
-ggsave(paste0(figdir, 'monthly_average_labels.png'), height = 6, width = 9, dpi = 200)
+#number of observations
+match_details %>% 
+  summarize(nobs = length(datetime),
+            ndays = length(unique(format(datetime, '%Y-%m-%d'))),
+            year_start = min(as.numeric(format(datetime, '%Y'))),
+            year_end = max(as.numeric(format(datetime, '%Y'))))
+
+
+length(unique(match_details$location))
+
+
 ```
+
+inter annual variation as seen at the buoy location
+```{r}
+
+buoy_data_summary_flyover <- insitu %>% 
+  filter(location == 'loon') %>% 
+  mutate(hour = as.numeric(format(datetime, '%H')),
+         year = as.factor(format(datetime, '%Y')),
+         day = as.factor(format(datetime, '%d'))) %>% 
+  filter(hour >=10 & hour <12)
+
+QC_check <- buoy_data_summary_flyover %>% 
+  group_by(month, year) %>% 
+  summarise(ndays = length(unique(day))) %>% 
+  filter(ndays >= 15)
+
+buoy_data_summary_flyover <- buoy_data_summary_flyover %>% 
+  right_join(., QC_check)
+
+ggplot(buoy_data_summary_flyover, aes(x = month, y = temp_degC, fill = year)) +
+  geom_boxplot(aes(group = paste(year, month))) +
+  final_theme +
+  scale_x_continuous(breaks = c(5, 6,7,8,9,10,11), labels = c('May', 'Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov')) +
+  scale_y_continuous(n.breaks = 8) +
+  labs(y = 'water temperature (deg C)')
+
+ggsave(paste0(figdir, 'water_temp_buoy_interannual.png'), width = 8, height = 4, units = 'in')
+
+```
+
+cross-site variability in 2018
+
+```{r}
+insitu_2018 <- insitu %>% 
+  mutate(year = as.numeric(format(datetime, '%Y'))) %>% 
+  filter(year == 2018)%>% 
+  mutate(hour = as.numeric(format(datetime, '%H')),
+         year = as.factor(format(datetime, '%Y')),
+         day = as.factor(format(datetime, '%d'))) %>% 
+  filter(hour >=10 & hour <12)
+
+QC_check_2018 <- insitu_2018 %>% 
+  group_by(month, year, location) %>% 
+  summarise(ndays = length(unique(day))) %>% 
+  filter(ndays >= 15)
+
+insitu_2018 <- insitu_2018 %>% 
+  right_join(., QC_check_2018) %>% 
+  mutate(location = as.factor(location)) %>% 
+  filter(month >=6 & month <10) #filter for months that have multiple locations
+
+unique(insitu_2018$location)
+
+ggplot(insitu_2018, aes(x = month, y = temp_degC, fill = location)) +
+  geom_boxplot(aes(group = paste(month, location))) +
+  final_theme +
+  scale_x_continuous(breaks = c(6,7,8,9), labels = c('Jun', 'Jul', 'Aug', 'Sept')) +
+  scale_y_continuous(n.breaks = 8) +
+  labs(y = 'water temperature (deg C)')
+
+ggsave(paste0(figdir, 'water_temp_2018_crosssite.png'), width = 8, height = 4, units = 'in')
+
+```
+
+
+
+```{r}
+
+lst_unimodal <- lst_all %>% 
+  mutate(skew = 3*(surface_temp_mean - surface_temp_median)/surface_temp_stdDev) %>% 
+  filter(skew < 1 & skew >-1) %>% 
+  filter(date != '2007-05-01' &
+           date != '2007-05-09' &
+           date != '2007-05-25' &
+           date != '2007-06-10' &
+           date != '2007-06-18' &
+           date != '2007-11-25' &
+           date != '2008-08-15' &
+           date != '2008-09-08' &
+           date != '2008-10-18' &
+           date != '2008-10-26' &
+           date != '2008-11-11' &
+           date != '2008-11-27' &
+           date != '2009-05-22' &
+           date != '2009-09-03' &
+           date != '2009-09-19' &
+           date != '2009-10-05' &
+           date != '2009-11-22' &
+           date != '2010-05-01' &
+           date != '2010-06-18' &
+           date != '2010-07-12' &
+           date != '2010-09-14' &
+           date != '2011-05-12' &
+           date != '2011-11-04' &
+           date != '2011-11-12' &
+           date != '2012-09-19' &
+           date != '2012-10-21' &
+           date != '2012-11-06' &
+           date != '2013-05-01' &
+           date != '2013-05-17' &
+           date != '2013-07-12' &
+           date != '2013-09-06' &
+           date != '2013-11-09' &
+           date != '2013-11-25' &
+           date != '2014-05-20' &
+           date != '2014-10-27' &
+           date != '2014-11-28' &
+           date != '2015-05-07' &
+           date != '2015-05-23' &
+           date != '2015-10-30' &
+           date != '2016-05-04' &
+           date != '2016-06-13' &
+           date != '2016-08-05' &
+           date != '2016-09-14' &
+           date != '2016-11-01' &
+           date != '2017-05-04' &
+           date != '2017-06-13' &
+           date != '2017-09-01' &
+           date != '2017-09-09' &
+           date != '2017-10-11' &
+           date != '2017-11-04' &
+           date != '2017-11-28' &
+           date != '2018-10-22' &
+           date != '2018-11-07' &
+           date != '2018-11-23' &
+           date != '2019-08-14' &
+           date != '2019-09-07' &
+           date != '2019-11-26' &
+           date != '2020-05-20' &
+           date != '2020-09-17' &
+           date != '2020-10-03' 
+           )
+
+#skin temp data
+lst_unimodal %>% 
+  mutate(year = as.numeric(format(date, '%Y')),
+         month = as.numeric(format(date, '%m')),
+         day = as.numeric(format(date, '%d'))) %>% 
+  filter(year >= 2007) %>% 
+  mutate(year = as.factor(year)) %>% 
+  filter(surface_temp_min > 0) %>% 
+  ggplot(., aes(x = month, y = surface_temp_median, color = year)) +
+  geom_point() +
+  geom_point() +
+  final_theme +
+  labs(x = 'day of year',
+       y = 'median whole-lake surface temperature (deg C)')
+ggsave(paste0(figdir, 'doy_median_hf.png'), height = 4, width = 6, units = 'in')
+
+
+```
+
+
+
+
+
+join doy for visualization
+```{r}
+#format to add data stream
+lf_insitu_aggregate_doy <- lf_insitu_aggregate_doy %>% 
+  mutate(data = 'low frequency')%>% 
+  rename(aggregated_temp_degC = med_temp_degC)
+hf_insitu_aggregate_doy <- hf_insitu_aggregate_doy %>% 
+  mutate(data = 'high frequency') %>% 
+  rename(aggregated_temp_degC = med_temp_degC)
+lst_aggregate_doy <- lst_all %>% 
+  select(doy, year, surface_temp_mean) %>%
+  rename(aggregated_temp_degC = surface_temp_mean) %>% 
+  mutate(year = as.numeric(as.character(year))) %>% 
+  mutate(data = 'LS skin temp')
+
+head(lf_insitu_aggregate_doy)
+head(hf_insitu_aggregate_doy)
+head(lst_aggregate_doy)
+
+all_data_aggregate_doy <- full_join(lf_insitu_aggregate_doy, hf_insitu_aggregate_doy) %>% 
+  full_join(., lst_aggregate_doy) 
+
+loess_alldata <- ggplot(all_data_aggregate_doy, aes(x = doy, y = aggregated_temp_degC, color = data)) +
+  geom_smooth(se = F) +
+  scale_color_colorblind() +
+  final_theme+
+  labs(x = 'day of year', 
+       y = NULL) +
+  theme(legend.position = 'bottom')
+
+point_alldata <- ggplot(all_data_aggregate_doy, aes(x = doy, y = aggregated_temp_degC, color = data)) +
+  geom_point() +
+  scale_color_colorblind() +
+  facet_grid(data ~ .) +
+  final_theme+
+  labs(x = NULL, 
+       y = NULL) +
+  theme(legend.position = 'none')
+
+plot_temp <- plot_grid(point_alldata, loess_alldata, 
+          labels = c('a', 'b'), 
+          label_x = -0.05,
+          nrow = 2,
+          rel_heights = c(1, 0.7)) 
+ylab_title <- ggdraw() +
+  draw_text('water temperature (deg C)', x = 0.3, y = 0.6, size = 16, hjust = 0.5, vjust = 0.5, angle = 90, face = 'bold')
+plot_grid(ylab_title, plot_temp, nrow = 1, rel_widths = c(0.1, 1)) # rel_heights values control title margins
+
+ggsave(paste0(figdir,'insitu_skin_aggregatedoy_loess.png'), height = 6, width = 8)
+
+
+all_data_aggregate_doy_2010 <- all_data_aggregate_doy %>% 
+  filter(year >= 2010)
+
+loess_alldata_2010 <- ggplot(all_data_aggregate_doy_2010, aes(x = doy, y = aggregated_temp_degC, color = data)) +
+  geom_smooth(se = F) +
+  scale_color_colorblind() +
+  final_theme+
+  labs(x = 'day of year', 
+       y = NULL) +
+  theme(legend.position = 'bottom')
+
+point_alldata_2010 <- ggplot(all_data_aggregate_doy_2010, aes(x = doy, y = aggregated_temp_degC, color = data)) +
+  geom_point() +
+  scale_color_colorblind() +
+  facet_grid(data ~ .) +
+  final_theme+
+  labs(x = NULL, 
+       y = NULL) +
+  theme(legend.position = 'none')
+
+plot_temp_2010 <- plot_grid(point_alldata_2010, loess_alldata_2010, 
+          labels = c('a', 'b'), 
+          label_x = -0.05,
+          nrow = 2,
+          rel_heights = c(1, 0.7)) 
+
+plot_grid(ylab_title, plot_temp_2010, nrow = 1, rel_widths = c(0.1, 1)) # rel_heights values control title margins
+
+ggsave(paste0(figdir,'insitu_skin_aggregatedoy_loess_2010.png'), height = 6, width = 8)
+
+
+all_data_aggregate_doy_2018 <- all_data_aggregate_doy %>% 
+  filter(year >= 2018)
+
+loess_alldata_2018 <- ggplot(all_data_aggregate_doy_2018, aes(x = doy, y = aggregated_temp_degC, color = data)) +
+  geom_smooth(se = F) +
+  scale_color_colorblind() +
+  final_theme+
+  labs(x = 'day of year', 
+       y = NULL) +
+  theme(legend.position = 'bottom')
+
+point_alldata_2018 <- ggplot(all_data_aggregate_doy_2018, aes(x = doy, y = aggregated_temp_degC, color = data)) +
+  geom_point() +
+  scale_color_colorblind() +
+  facet_grid(data ~ .) +
+  final_theme+
+  labs(x = NULL, 
+       y = NULL) +
+  theme(legend.position = 'none')
+
+plot_temp_2018 <- plot_grid(point_alldata_2018, loess_alldata_2018, 
+          labels = c('a', 'b'), 
+          label_x = -0.05,
+          nrow = 2,
+          rel_heights = c(1, 0.7)) 
+
+plot_grid(ylab_title, plot_temp_2018, nrow = 1, rel_widths = c(0.1, 1)) # rel_heights values control title margins
+
+ggsave(paste0(figdir,'insitu_skin_aggregatedoy_loess_2018.png'), height = 6, width = 8)
+```
+
+2018 data
+
+```{r}
+hf_insitu_2018 <- hf_insitu %>% 
+  mutate(year = as.numeric(format(datetime, '%Y')),
+         date = as.Date(datetime)) %>% 
+  filter(year == 2018 & (source == 'edi.395.1' | source == 'edi.500.2' | source == 'edi.499.2')) %>% 
+  mutate(hour = as.numeric(format(datetime, '%H'))) %>% 
+  filter(hour >= 10 & hour <= 12) %>% 
+  mutate(location = case_when(location == 'loon' ~ 'Loon',
+                              TRUE ~ location))
+
+lst_all_zonedata_2018 <- lst_all_zonedata %>% 
+    mutate(year = as.numeric(format(date, '%Y'))) %>% 
+filter(year == 2018) %>% 
+  filter(Name == 'Herrick Cove' | Name == 'State Beach' | Name == 'Loon' | Name == 'George\'s Mill') %>% 
+  select(Name, median, date, year, `system:index`) %>% 
+  rename(location = Name,
+         median_skin_temp_degC = median)%>% 
+  mutate(location = case_when(location == 'Herrick Cove' ~ 'HerrickCove',
+                              location == 'State Beach' ~ 'StateBeach',
+                              location == 'George\'s Mill' ~ 'GeorgesMills',
+                              TRUE ~ location))
+
+hf_lst_2018 <- full_join(hf_insitu_2018, lst_all_zonedata_2018) %>% 
+  mutate(doy = as.numeric(format(date, '%j')))
+
+ggplot(hf_lst_2018, aes(x = doy, y = temp_degC, color = location)) +
+  geom_point() +
+  geom_point(aes(x = doy, y = median_skin_temp_degC), shape = 3) +
+  scale_color_colorblind() +
+  final_theme +
+  labs(x = 'day of year', 
+       y = 'water temperature (deg C)')
+ggsave(paste0(figdir, '2018_insitu_lst.png'), height = 4, width = 6)
+
+
+match_details_2018 <- match_details %>% 
+  filter(year == '2018') %>% 
+  group_by(location, date, doy) %>% 
+  summarize(median_temp_degC = median(temp_degC)) %>% 
+  group_by(date, doy) %>% 
+  summarize(med_temp_degC = median(median_temp_degC),
+            mean_temp_degC = mean(median_temp_degC),
+            # stdev_temp_degC = stderr(median_temp_degC)*sqrt(length(median_temp_degC)),
+            n_locs = length(median_temp_degC)) %>% 
+  left_join(lst_all)
+
+ggplot(match_details_2018, aes(x = med_temp_degC, y = surface_temp_mean)) +
+  geom_point() +
+  geom_smooth(method = 'lm', se = F) +
+  final_theme
+  
+ggplot(match_details_2018, aes(x = mean_temp_degC, y = surface_temp_mean)) +
+  geom_point() +
+  geom_smooth(method = 'lm', se = F) +
+  final_theme 
+ggsave(paste0(figdir, 'wholelake_regression_2018means.png'), height = 4, width = 4)
+
+
+match_details_location_2018 <- match_details %>% 
+  filter(year == '2018') %>% 
+  group_by(location, date, doy) %>% 
+  summarize(median_temp_degC = median(temp_degC),
+            mean_temp_degC = mean(median_temp_degC)) %>% 
+  left_join()
+
+hf_lst_2018 %>% 
+  group_by(date, location) %>% 
+  summarize(med_insitu_temp_degC = median(temp_degC),
+            median_skin_temp_degC = first(median_skin_temp_degC)) %>% 
+ggplot(., aes(x =med_insitu_temp_degC, y = median_skin_temp_degC, color = location)) +
+  geom_point() +
+  scale_color_colorblind() +
+  final_theme +
+  geom_smooth(method = 'lm', se = F) +
+  final_theme +
+  theme(legend.position = 'bottom')
+ggsave(paste0(figdir, 'location_specific_regression_2018medians.png'), height = 5.5, width = 5)
+
+
+```
+
+
 
 ## Visualizations of *in-situ* temperature and Landsat LST predictions
 
 Here, we are visualizing the LS LST predictions made by Christina Herrick, UNH, for upcoming mansucripts
 
+pair qaqc skin temp with insitu as validation data
+```{r}
+validation <- lst_unimodal %>% 
+  left_join(., lst_paired) %>% 
+  filter(count >0)
+```
+
 #### predicted v observed
 ```{r}
-lst_insitu_ls <- lm(lst_insitu$surface_temp_mean ~ lst_insitu$avg_temp)
-summary(lst_insitu_ls)
+val_mean_ls <- lm(validation$surface_temp_mean ~ validation$avg_temp)
+summary(val_mean_ls)
 
-lst_insitu_dem <-deming::deming(lst_insitu$surface_temp_mean ~ lst_insitu$avg_temp)
-lst_insitu_dem
+val_mean_dem <-deming::deming(validation$surface_temp_mean ~ validation$avg_temp)
+val_mean_dem
 
-cor(lst_insitu$surface_temp_mean, lst_insitu$avg_temp)
+cor(validation$surface_temp_mean, validation$avg_temp)
 
-ggplot(lst_insitu, aes(x = avg_temp, y = surface_temp_mean)) +
+ggplot(validation, aes(x = avg_temp, y = surface_temp_mean)) +
   geom_point() +
-  geom_abline(intercept = lst_insitu_dem$coefficients[1], slope = lst_insitu_dem$coefficients[2], color = 'blue') +
-  geom_abline(intercept = lst_insitu_dem$ci[1,1], slope = lst_insitu_dem$ci[2,1], color = 'blue', linetype = 2) +
-  geom_abline(intercept = lst_insitu_dem$ci[1,2], slope = lst_insitu_dem$ci[2,2], color = 'blue', linetype = 2) +
+  geom_abline(intercept = val_mean_dem$coefficients[1], slope = val_mean_dem$coefficients[2], color = 'blue') +
+  geom_abline(intercept = val_mean_dem$ci[1,1], slope = val_mean_dem$ci[2,1], color = 'blue', linetype = 2) +
+  geom_abline(intercept = val_mean_dem$ci[1,2], slope = val_mean_dem$ci[2,2], color = 'blue', linetype = 2) +
   geom_abline(intercept = 0, slope = 1) +
+  coord_cartesian(xlim = c(2,27), 
+                  ylim = c(2,27)) +
   labs(y = 'satellite-derived mean LST (deg C)', 
        x = 'in-situ mean water temp (deg C)') +
   final_theme
-ggsave(paste0(dir, 'figures/predicted-observed_v02Mar2021.jpg'), height = 5, width = 5, units = 'in')
+ggsave(paste0(figdir, 'deming_reg_average_val_mean_v17May2021.jpg'), height = 5, width = 5, units = 'in')
 
-#and with error
-lst_insitu <- lst_insitu %>% 
-  mutate(insitu_se = t_std_dev/sqrt(count),
-         lst_se = surface_temp_stdDev/sqrt(pixel_count))
-#se too small to see
 
-ggplot(lst_insitu, aes(x = avg_temp, y = surface_temp_mean, color = cloud_cover)) +
-  geom_point()
 ```
 
 
 #### plot residuals by x
 ```{r}
-lst_insitu_dem_forresid = mcreg(x = lst_insitu$avg_temp, y = lst_insitu$surface_temp_mean, method.reg = 'Deming')
-lst_insitu$opt_resid = MCResult.getResiduals(lst_insitu_dem_forresid)$optimized
+lst_insitu_dem_forresid = mcreg(x = validation$avg_temp, y = validation$surface_temp_mean, method.reg = 'Deming')
+validation$opt_resid = MCResult.getResiduals(lst_insitu_dem_forresid)$optimized
 
-ggplot(lst_insitu, aes(sample = opt_resid)) +
+ggplot(validation, aes(sample = opt_resid)) +
   geom_qq() +
   geom_qq_line()
 
-ggplot(lst_insitu, aes (y = opt_resid, x = avg_temp)) +
+ggplot(validation, aes (y = opt_resid, x = avg_temp)) +
   geom_point() +
   labs(x = 'in-situ mean water temp (deg C)',
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme
-ggsave(paste0(dir, 'figures/optresid_x_v02Mar2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_x_v17May2021.jpg'), height = 5, width = 8, units = 'in')
 
-ggplot(lst_insitu, aes (y = opt_resid, x = avg_temp, color = month)) +
+ggplot(validation, aes (y = opt_resid, x = avg_temp, color = month)) +
   geom_point(size = 2) +
   labs(x = 'in-situ mean water temp (deg C)',
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme +
   scale_color_colorblind()
-ggsave(paste0(dir, 'figures/optresid_x_colorbymonth_v02Mar2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_x_colorbymonth_v17May2021.jpg'), height = 5, width = 8, units = 'in')
 ```
 
 #### residuals by cloud cover
 ```{r}
-ggplot(lst_insitu, aes (y = opt_resid, x = cloud_cover)) +
+ggplot(validation, aes (y = opt_resid, x = cloud_cover)) +
   geom_point() +
   labs(x = 'cloud cover (percent)',
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme
-ggsave(paste0(dir, 'figures/optresid_cloudcover_v02Mar2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_cloudcover_v17May2021.jpg'), height = 5, width = 8, units = 'in')
 
-ggplot(lst_insitu, aes (y = opt_resid, x = cloud_cover, color = month)) +
+ggplot(validation, aes (y = opt_resid, x = cloud_cover, color = month)) +
   geom_point(size = 2) +
   labs(x = 'cloud cover (percent)',
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme +
   scale_color_colorblind()
-ggsave(paste0(dir, 'figures/optresid_cloudcover_colorbymonth_v02Mar2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_cloudcover_colorbymonth_v17May2021.jpg'), height = 5, width = 8, units = 'in')
 
 ```
 
 #### residuals by pixel count
 ```{r}
-ggplot(lst_insitu, aes (y = opt_resid, x = pixel_count)) +
+ggplot(validation, aes (y = opt_resid, x = pixel_count)) +
   geom_point() +
   labs(x = 'pixel count',
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme
-ggsave(paste0(dir, 'figures/optresid_pixelcount_v02Mar2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_pixelcount_v17May2021.jpg'), height = 5, width = 8, units = 'in')
 
-ggplot(lst_insitu, aes (y = opt_resid, x = pixel_count, color = month)) +
+ggplot(validation, aes (y = opt_resid, x = pixel_count, color = month)) +
   geom_point(size = 2) +
   labs(x = 'pixel count',
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme +
   scale_color_colorblind()
-ggsave(paste0(dir, 'figures/optresid_pixelcount_colorbymonth_v02Mar2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_pixelcount_colorbymonth_v17May2021.jpg'), height = 5, width = 8, units = 'in')
 
 ```
 
 #### residuals by mean sample depth
 ```{r}
-ggplot(lst_insitu, aes (y = opt_resid, x = avg_depth)) +
+ggplot(validation, aes (y = opt_resid, x = avg_depth)) +
   geom_point() +
   labs(x = 'mean in-situ depth (m)',
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme
-ggsave(paste0(dir, 'figures/optresid_insitudepth_v02Mar2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_insitudepth_v17May2021.jpg'), height = 5, width = 8, units = 'in')
 
-ggplot(lst_insitu, aes (y = opt_resid, x = avg_depth, color = month)) +
+ggplot(validation, aes (y = opt_resid, x = avg_depth, color = month)) +
   geom_point(size = 2) +
   labs(x = 'mean in-situ depth (m)',
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme +
   scale_color_colorblind()
-ggsave(paste0(dir, 'figures/optresid_insitudepth_colorbymonth_v02Mar2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_insitudepth_colorbymonth_v17May2021.jpg'), height = 5, width = 8, units = 'in')
 
 ```
 
 #### residuals by month, year, doy
 ```{r}
-ggplot(lst_insitu, aes (y = opt_resid, x = month)) +
+ggplot(validation, aes (y = opt_resid, x = month)) +
   geom_point() +
   labs(x = 'month',
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme
-ggsave(paste0(dir, 'figures/optresid_month_v02Mar2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_month_v17May2021.jpg'), height = 5, width = 8, units = 'in')
 
-ggplot(lst_insitu, aes (y = opt_resid, x = month, color = pixel_count)) +
+ggplot(validation, aes (y = opt_resid, x = month, color = pixel_count)) +
   geom_point(size = 2) +
   labs(x = 'month',
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme 
-ggsave(paste0(dir, 'figures/optresid_month_bypixelcount_v02Mar2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_month_bypixelcount_v17May2021.jpg'), height = 5, width = 8, units = 'in')
 
-ggplot(lst_insitu, aes (y = opt_resid, x = month, color = cloud_cover)) +
+ggplot(validation, aes (y = opt_resid, x = month, color = cloud_cover)) +
   geom_point(size = 2) +
   labs(x = 'month',
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme 
-ggsave(paste0(dir, 'figures/optresid_month_bycloudcover_v02Mar2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_month_bycloudcover_v17May2021.jpg'), height = 5, width = 8, units = 'in')
 
-ggplot(lst_insitu, aes (y = opt_resid, x = year)) +
+ggplot(validation, aes (y = opt_resid, x = year)) +
   geom_point() +
   labs(x = 'year',
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme
-ggsave(paste0(dir, 'figures/optresid_year_v02Mar2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_year_v17May2021.jpg'), height = 5, width = 8, units = 'in')
 
-ggplot(lst_insitu, aes (y = opt_resid, x = year, color = pixel_count)) +
+ggplot(validation, aes (y = opt_resid, x = year, color = pixel_count)) +
   geom_point(size = 2) +
   labs(x = 'year',
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme 
-ggsave(paste0(dir, 'figures/optresid_year_bypixelcount_v02Mar2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_year_bypixelcount_v17May2021.jpg'), height = 5, width = 8, units = 'in')
 
-ggplot(lst_insitu, aes (y = opt_resid, x = year, color = cloud_cover)) +
+ggplot(validation, aes (y = opt_resid, x = year, color = cloud_cover)) +
   geom_point(size = 2) +
   labs(x = 'year',
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme 
-ggsave(paste0(dir, 'figures/optresid_year_bycloudcover_v02Mar2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_year_bycloudcover_v17May2021.jpg'), height = 5, width = 8, units = 'in')
 
-ggplot(lst_insitu, aes (y = opt_resid, x = doy)) +
+ggplot(validation, aes (y = opt_resid, x = doy)) +
   geom_point() +
   labs(x = 'doy',
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme
-ggsave(paste0(dir, 'figures/optresid_doy_v02Mar2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_doy_v17May2021.jpg'), height = 5, width = 8, units = 'in')
 
-ggplot(lst_insitu, aes (y = opt_resid, x = doy, color = pixel_count)) +
+ggplot(validation, aes (y = opt_resid, x = doy, color = pixel_count)) +
   geom_point(size = 2) +
   labs(x = 'doy',
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme 
-ggsave(paste0(dir, 'figures/optresid_doy_bypixelcount_v02Mar2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_doy_bypixelcount_v17May2021.jpg'), height = 5, width = 8, units = 'in')
 
-ggplot(lst_insitu, aes (y = opt_resid, x = doy, color = cloud_cover)) +
+ggplot(validation, aes (y = opt_resid, x = doy, color = cloud_cover)) +
   geom_point(size = 2) +
   labs(x = 'doy',
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme 
-ggsave(paste0(dir, 'figures/optresid_doy_bycloudcover_v02Mar2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_doy_bycloudcover_v17May2021.jpg'), height = 5, width = 8, units = 'in')
 
 
 ```
@@ -298,28 +681,27 @@ ggsave(paste0(dir, 'figures/optresid_doy_bycloudcover_v02Mar2021.jpg'), height =
 
 Because there seems to be some functional dependency between these three, let's show the correlation of the 3 of them
 ```{r}
-cor_pixel_doy = round(cor(x = lst_insitu$pixel_count, y = lst_insitu$doy), digits = 2)
-pixel_doy <- ggplot(lst_insitu, aes(x = pixel_count, y = doy)) +
+cor_pixel_doy = round(cor(x = validation$pixel_count, y = validation$doy), digits = 2)
+pixel_doy <- ggplot(validation, aes(x = pixel_count, y = doy)) +
   geom_point() +
-  geom_text(label = paste0('r = ', cor_pixel_doy), aes(y = 125, x = 8500)) +
+  annotate('text', label = paste0('r = ', cor_pixel_doy), y = 125, x = 8500) +
   labs(x = 'pixel count\ncontributing to mean LST', y='day of year') +
   final_theme+
   theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm"))
 
-cor_pixel_cloud = round(cor(x = lst_insitu$pixel_count, y = lst_insitu$cloud_cover), digits = 2)
-cor_pixel_cloud = '-0.50' #save as character for digit resolution
-pixel_cloud <- ggplot(lst_insitu, aes(x = pixel_count, y = cloud_cover)) +
+cor_pixel_cloud = round(cor(x = validation$pixel_count, y = validation$cloud_cover), digits = 2)
+pixel_cloud <- ggplot(validation, aes(x = pixel_count, y = cloud_cover)) +
   geom_point() +
-  geom_text(label = paste0('r = ', cor_pixel_cloud), aes(y = 0, x = 8500)) +
+  annotate('text', label = paste0('r = ', cor_pixel_cloud), y = 0, x = 8500) +
   labs(x = 'pixel count\ncontributing to mean LST', y='percent cloud cover\nin Landsat image') +
   final_theme+
   theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm"))
 
-cor_doy_cloud = round(cor(x = lst_insitu$doy, y = lst_insitu$cloud_cover), digits = 2)
-doy_cloud <- ggplot(lst_insitu, aes(x = doy, y = cloud_cover)) +
+cor_doy_cloud = round(cor(x = validation$doy, y = validation$cloud_cover), digits = 2)
+doy_cloud <- ggplot(validation, aes(x = doy, y = cloud_cover)) +
   geom_point() +
-    geom_text(label = paste0('r = ', cor_doy_cloud), aes(y = 0, x = 275)) +
-labs(x = 'day of year\n', y='percent cloud cover\nin Landsat image') +
+  annotate('text', label = paste0('r = ', cor_doy_cloud), y = 0, x = 275) +
+  labs(x = 'day of year\n', y='percent cloud cover\nin Landsat image') +
   final_theme+
   theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm"))
 

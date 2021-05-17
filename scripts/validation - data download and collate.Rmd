@@ -5,12 +5,13 @@ date: "4/20/2021"
 output: html_document
 ---
 
-R version: 4.0.4 RStudio Version: 1.4.1103
+R version: 4.0.5 RStudio Version: 1.4.1103
 
 updated 26Mar2019 to include 2018 buoy thermistor data (no upper do data in 2018) 
 updated 05July2019 to include 17-18 winter data, 18-19 winter data, oct 18-may 19 data
 updated 26March2021 to pull from EDI and to filter for upper value at all locations 
 updated 20April2021 to pull LSPA LMP from GitHub
+updated 17May2021 to remove monthly sampling (LSPA LMP)
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -898,8 +899,8 @@ detach(gloeo_temp)
 ### 2018 mini buoys
 
 ```{r}
-# Package ID: edi.395.1 Cataloging System:https://pasta.edirepository.org.
-# Data set title: Underwater temperature and light data from 3 mini-buoys in Lake Sunapee, NH, USA from June â October 2018.
+# Package ID: edi.395.2 Cataloging System:https://pasta.edirepository.org.
+# Data set title: Underwater temperature, light, and dissolved oxygen data from 3 mini-buoys in Lake Sunapee, NH, USA from June to October 2018.
 # Data set creator:  Nicole Ward - Virginia Tech 
 # Data set creator:  Jennifer Brentrup - Dartmouth College 
 # Data set creator:  Ava Johnson - Virginia Tech 
@@ -909,65 +910,66 @@ detach(gloeo_temp)
 # Contact:  Nicole Ward -  Virginia Tech  - nkward@vt.edu
 # Stylesheet v2.11 for metadata conversion into program: John H. Porter, Univ. Virginia, jporter@virginia.edu 
 
-inUrl1  <- "https://pasta.lternet.edu/package/data/eml/edi/395/1/38d468508e524aac464947d422c63365" 
-infile1 <- tempfile(tmpdir = temp_dumpdir)
-try(download.file(inUrl1,infile1,method="curl"))
-if (is.na(file.size(infile1))) download.file(inUrl1,infile1,method="auto")
+#light temp data (unneccessary for this analysis)
+# inUrl1  <- "https://pasta.lternet.edu/package/data/eml/edi/395/2/b286ca9092184005bbac6953f4b509e4" 
+# infile1 <- tempfile()
+# try(download.file(inUrl1,infile1,method="curl"))
+# if (is.na(file.size(infile1))) download.file(inUrl1,infile1,method="auto")
+# 
+#                    
+#  dt1 <-read.csv(infile1,header=F 
+#           ,skip=1
+#             ,sep=","  
+#         , col.names=c(
+#                     "dateTime",     
+#                     "light",     
+#                     "Depth",     
+#                     "SerialNum"    ), check.names=TRUE)
+#                
+# unlink(infile1)
+# 		    
+# # Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
+#                                                    
+# # attempting to convert dt1$dateTime dateTime string to R date structure (date or POSIXct)                                
+# tmpDateFormat<-"%Y-%m-%d %H:%M:%S" 
+# tmp1dateTime<-as.POSIXct(dt1$dateTime,format=tmpDateFormat)
+# # Keep the new dates only if they all converted correctly
+# if(length(tmp1dateTime) == length(tmp1dateTime[!is.na(tmp1dateTime)])){dt1$dateTime <- tmp1dateTime } else {print("Date conversion failed for dt1$dateTime. Please inspect the data and do the date conversion yourself.")}                                                                    
+# rm(tmpDateFormat,tmp1dateTime) 
+# if (class(dt1$light)=="factor") dt1$light <-as.numeric(levels(dt1$light))[as.integer(dt1$light) ]               
+# if (class(dt1$light)=="character") dt1$light <-as.numeric(dt1$light)
+# if (class(dt1$Depth)=="factor") dt1$Depth <-as.numeric(levels(dt1$Depth))[as.integer(dt1$Depth) ]               
+# if (class(dt1$Depth)=="character") dt1$Depth <-as.numeric(dt1$Depth)
+# if (class(dt1$SerialNum)=="factor") dt1$SerialNum <-as.numeric(levels(dt1$SerialNum))[as.integer(dt1$SerialNum) ]               
+# if (class(dt1$SerialNum)=="character") dt1$SerialNum <-as.numeric(dt1$SerialNum)
+#                 
+# # Convert Missing Values to NA for non-dates
+#                 
+# dt1$light <- ifelse((trimws(as.character(dt1$light))==trimws("NA")),NA,dt1$light)               
+# suppressWarnings(dt1$light <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(dt1$light))==as.character(as.numeric("NA"))),NA,dt1$light))
+# 
+# 
+# # Here is the structure of the input data frame:
+# str(dt1)                            
+# attach(dt1)                            
+# # The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
+# 
+# summary(dateTime)
+# summary(light)
+# summary(Depth)
+# summary(SerialNum) 
+#                 # Get more details on character variables
+#                 
+# detach(dt1)               
+#          
 
-                   
- gm_light <-read.csv(infile1,header=F 
-          ,skip=1
-            ,sep=","  
-        , col.names=c(
-                    "dateTime",     
-                    "light",     
-                    "Depth",     
-                    "SerialNum"    ), check.names=TRUE)
-               
-unlink(infile1)
-		    
-# Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
-                                                   
-# attempting to convert gm_light$dateTime dateTime string to R date structure (date or POSIXct)                                
-tmpDateFormat<-"%Y-%m-%d %H:%M:%S" 
-tmp1dateTime<-as.POSIXct(gm_light$dateTime,format=tmpDateFormat)
-# Keep the new dates only if they all converted correctly
-if(length(tmp1dateTime) == length(tmp1dateTime[!is.na(tmp1dateTime)])){gm_light$dateTime <- tmp1dateTime } else {print("Date conversion failed for gm_light$dateTime. Please inspect the data and do the date conversion yourself.")}                                                                    
-rm(tmpDateFormat,tmp1dateTime) 
-if (class(gm_light$light)=="factor") gm_light$light <-as.numeric(levels(gm_light$light))[as.integer(gm_light$light) ]               
-if (class(gm_light$light)=="character") gm_light$light <-as.numeric(gm_light$light)
-if (class(gm_light$Depth)=="factor") gm_light$Depth <-as.numeric(levels(gm_light$Depth))[as.integer(gm_light$Depth) ]               
-if (class(gm_light$Depth)=="character") gm_light$Depth <-as.numeric(gm_light$Depth)
-if (class(gm_light$SerialNum)=="factor") gm_light$SerialNum <-as.numeric(levels(gm_light$SerialNum))[as.integer(gm_light$SerialNum) ]               
-if (class(gm_light$SerialNum)=="character") gm_light$SerialNum <-as.numeric(gm_light$SerialNum)
-                
-# Convert Missing Values to NA for non-dates
-                
-gm_light$light <- ifelse((trimws(as.character(gm_light$light))==trimws("NA")),NA,gm_light$light)               
-suppressWarnings(gm_light$light <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(gm_light$light))==as.character(as.numeric("NA"))),NA,gm_light$light))
-
-
-# Here is the structure of the input data frame:
-str(gm_light)                            
-attach(gm_light)                            
-# The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
-
-summary(dateTime)
-summary(light)
-summary(Depth)
-summary(SerialNum) 
-                # Get more details on character variables
-                
-detach(gm_light)               
-         
-
-inUrl2  <- "https://pasta.lternet.edu/package/data/eml/edi/395/1/282a7528aadb842cbbd77fd64a52907f" 
-infile2 <- tempfile(tmpdir = temp_dumpdir)
+inUrl2  <- "https://pasta.lternet.edu/package/data/eml/edi/395/2/551bad10969f758453be2d3e1f540fac" 
+infile2 <- tempfile()
 try(download.file(inUrl2,infile2,method="curl"))
 if (is.na(file.size(infile2))) download.file(inUrl2,infile2,method="auto")
 
                    
- gm_temp <-read.csv(infile2,header=F 
+ GM_temp <-read.csv(infile2,header=F 
           ,skip=1
             ,sep=","  
         , col.names=c(
@@ -980,28 +982,28 @@ unlink(infile2)
 		    
 # Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
                                                    
-# attempting to convert gm_temp$dateTime dateTime string to R date structure (date or POSIXct)                                
+# attempting to convert GM_temp$dateTime dateTime string to R date structure (date or POSIXct)                                
 tmpDateFormat<-"%Y-%m-%d %H:%M:%S" 
-tmp2dateTime<-as.POSIXct(gm_temp$dateTime,format=tmpDateFormat)
+tmp2dateTime<-as.POSIXct(GM_temp$dateTime,format=tmpDateFormat)
 # Keep the new dates only if they all converted correctly
-if(length(tmp2dateTime) == length(tmp2dateTime[!is.na(tmp2dateTime)])){gm_temp$dateTime <- tmp2dateTime } else {print("Date conversion failed for gm_temp$dateTime. Please inspect the data and do the date conversion yourself.")}                                                                    
+if(length(tmp2dateTime) == length(tmp2dateTime[!is.na(tmp2dateTime)])){GM_temp$dateTime <- tmp2dateTime } else {print("Date conversion failed for GM_temp$dateTime. Please inspect the data and do the date conversion yourself.")}                                                                    
 rm(tmpDateFormat,tmp2dateTime) 
-if (class(gm_temp$temp)=="factor") gm_temp$temp <-as.numeric(levels(gm_temp$temp))[as.integer(gm_temp$temp) ]               
-if (class(gm_temp$temp)=="character") gm_temp$temp <-as.numeric(gm_temp$temp)
-if (class(gm_temp$Depth)=="factor") gm_temp$Depth <-as.numeric(levels(gm_temp$Depth))[as.integer(gm_temp$Depth) ]               
-if (class(gm_temp$Depth)=="character") gm_temp$Depth <-as.numeric(gm_temp$Depth)
-if (class(gm_temp$SerialNum)=="factor") gm_temp$SerialNum <-as.numeric(levels(gm_temp$SerialNum))[as.integer(gm_temp$SerialNum) ]               
-if (class(gm_temp$SerialNum)=="character") gm_temp$SerialNum <-as.numeric(gm_temp$SerialNum)
+if (class(GM_temp$temp)=="factor") GM_temp$temp <-as.numeric(levels(GM_temp$temp))[as.integer(GM_temp$temp) ]               
+if (class(GM_temp$temp)=="character") GM_temp$temp <-as.numeric(GM_temp$temp)
+if (class(GM_temp$Depth)=="factor") GM_temp$Depth <-as.numeric(levels(GM_temp$Depth))[as.integer(GM_temp$Depth) ]               
+if (class(GM_temp$Depth)=="character") GM_temp$Depth <-as.numeric(GM_temp$Depth)
+if (class(GM_temp$SerialNum)=="factor") GM_temp$SerialNum <-as.numeric(levels(GM_temp$SerialNum))[as.integer(GM_temp$SerialNum) ]               
+if (class(GM_temp$SerialNum)=="character") GM_temp$SerialNum <-as.numeric(GM_temp$SerialNum)
                 
 # Convert Missing Values to NA for non-dates
                 
-gm_temp$temp <- ifelse((trimws(as.character(gm_temp$temp))==trimws("NA")),NA,gm_temp$temp)               
-suppressWarnings(gm_temp$temp <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(gm_temp$temp))==as.character(as.numeric("NA"))),NA,gm_temp$temp))
+GM_temp$temp <- ifelse((trimws(as.character(GM_temp$temp))==trimws("NA")),NA,GM_temp$temp)               
+suppressWarnings(GM_temp$temp <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(GM_temp$temp))==as.character(as.numeric("NA"))),NA,GM_temp$temp))
 
 
 # Here is the structure of the input data frame:
-str(gm_temp)                            
-attach(gm_temp)                            
+str(GM_temp)                            
+attach(GM_temp)                            
 # The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
 
 summary(dateTime)
@@ -1010,172 +1012,172 @@ summary(Depth)
 summary(SerialNum) 
                 # Get more details on character variables
                 
-detach(gm_temp)               
+detach(GM_temp)               
          
 
-inUrl3  <- "https://pasta.lternet.edu/package/data/eml/edi/395/1/70d2fa66231822258c3f9a3ba98829b6" 
-infile3 <- tempfile(tmpdir = temp_dumpdir)
-try(download.file(inUrl3,infile3,method="curl"))
-if (is.na(file.size(infile3))) download.file(inUrl3,infile3,method="auto")
-
-                   
- hc_light <-read.csv(infile3,header=F 
-          ,skip=1
-            ,sep=","  
-        , col.names=c(
-                    "dateTime",     
-                    "light",     
-                    "Depth",     
-                    "SerialNum"    ), check.names=TRUE)
-               
-unlink(infile3)
-		    
-# Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
-                                                   
-# attempting to convert hc_light$dateTime dateTime string to R date structure (date or POSIXct)                                
-tmpDateFormat<-"%Y-%m-%d %H:%M:%S" 
-tmp3dateTime<-as.POSIXct(hc_light$dateTime,format=tmpDateFormat)
-# Keep the new dates only if they all converted correctly
-if(length(tmp3dateTime) == length(tmp3dateTime[!is.na(tmp3dateTime)])){hc_light$dateTime <- tmp3dateTime } else {print("Date conversion failed for hc_light$dateTime. Please inspect the data and do the date conversion yourself.")}                                                                    
-rm(tmpDateFormat,tmp3dateTime) 
-if (class(hc_light$light)=="factor") hc_light$light <-as.numeric(levels(hc_light$light))[as.integer(hc_light$light) ]               
-if (class(hc_light$light)=="character") hc_light$light <-as.numeric(hc_light$light)
-if (class(hc_light$Depth)=="factor") hc_light$Depth <-as.numeric(levels(hc_light$Depth))[as.integer(hc_light$Depth) ]               
-if (class(hc_light$Depth)=="character") hc_light$Depth <-as.numeric(hc_light$Depth)
-if (class(hc_light$SerialNum)=="factor") hc_light$SerialNum <-as.numeric(levels(hc_light$SerialNum))[as.integer(hc_light$SerialNum) ]               
-if (class(hc_light$SerialNum)=="character") hc_light$SerialNum <-as.numeric(hc_light$SerialNum)
-                
-# Convert Missing Values to NA for non-dates
-                
-hc_light$light <- ifelse((trimws(as.character(hc_light$light))==trimws("NA")),NA,hc_light$light)               
-suppressWarnings(hc_light$light <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(hc_light$light))==as.character(as.numeric("NA"))),NA,hc_light$light))
-
-
-# Here is the structure of the input data frame:
-str(hc_light)                            
-attach(hc_light)                            
-# The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
-
-summary(dateTime)
-summary(light)
-summary(Depth)
-summary(SerialNum) 
-                # Get more details on character variables
-                
-detach(hc_light)               
+#gm do/temp - these are below the cutoff, ignore
+# inUrl3  <- "https://pasta.lternet.edu/package/data/eml/edi/395/2/338028e83dc1258feb9accdc0f133609" 
+# infile3 <- tempfile()
+# try(download.file(inUrl3,infile3,method="curl"))
+# if (is.na(file.size(infile3))) download.file(inUrl3,infile3,method="auto")
+# 
+#                    
+#  GM_dotemp <-read.csv(infile3,header=F 
+#           ,skip=1
+#             ,sep=","  
+#         , col.names=c(
+#                     "dateTime",     
+#                     "temp",     
+#                     "DO_mgL"    ), check.names=TRUE)
+#                
+# unlink(infile3)
+# 		    
+# # Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
+#                                                    
+# # attempting to convert GM_dotemp$dateTime dateTime string to R date structure (date or POSIXct)                                
+# tmpDateFormat<-"%Y-%m-%d %H:%M:%S" 
+# tmp3dateTime<-as.POSIXct(GM_dotemp$dateTime,format=tmpDateFormat)
+# # Keep the new dates only if they all converted correctly
+# if(length(tmp3dateTime) == length(tmp3dateTime[!is.na(tmp3dateTime)])){GM_dotemp$dateTime <- tmp3dateTime } else {print("Date conversion failed for GM_dotemp$dateTime. Please inspect the data and do the date conversion yourself.")}                                                                    
+# rm(tmpDateFormat,tmp3dateTime) 
+# if (class(GM_dotemp$temp)=="factor") GM_dotemp$temp <-as.numeric(levels(GM_dotemp$temp))[as.integer(GM_dotemp$temp) ]               
+# if (class(GM_dotemp$temp)=="character") GM_dotemp$temp <-as.numeric(GM_dotemp$temp)
+# if (class(GM_dotemp$DO_mgL)=="factor") GM_dotemp$DO_mgL <-as.numeric(levels(GM_dotemp$DO_mgL))[as.integer(GM_dotemp$DO_mgL) ]               
+# if (class(GM_dotemp$DO_mgL)=="character") GM_dotemp$DO_mgL <-as.numeric(GM_dotemp$DO_mgL)
+#                 
+# # Convert Missing Values to NA for non-dates
+#                 
+# GM_dotemp$temp <- ifelse((trimws(as.character(GM_dotemp$temp))==trimws("NA")),NA,GM_dotemp$temp)               
+# suppressWarnings(GM_dotemp$temp <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(GM_dotemp$temp))==as.character(as.numeric("NA"))),NA,GM_dotemp$temp))
+# GM_dotemp$DO_mgL <- ifelse((trimws(as.character(GM_dotemp$DO_mgL))==trimws("NA")),NA,GM_dotemp$DO_mgL)               
+# suppressWarnings(GM_dotemp$DO_mgL <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(GM_dotemp$DO_mgL))==as.character(as.numeric("NA"))),NA,GM_dotemp$DO_mgL))
+# 
+# 
+# # Here is the structure of the input data frame:
+# str(GM_dotemp)                            
+# attach(GM_dotemp)                            
+# # The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
+# 
+# summary(dateTime)
+# summary(temp)
+# summary(DO_mgL) 
+#                 # Get more details on character variables
+#                 
+# detach(GM_dotemp)               
          
 
-inUrl4  <- "https://pasta.lternet.edu/package/data/eml/edi/395/1/14026c2023135291fb66f028de57c269" 
-infile4 <- tempfile(tmpdir = temp_dumpdir)
-try(download.file(inUrl4,infile4,method="curl"))
-if (is.na(file.size(infile4))) download.file(inUrl4,infile4,method="auto")
-
-                   
- hc_temp <-read.csv(infile4,header=F 
-          ,skip=1
-            ,sep=","  
-        , col.names=c(
-                    "dateTime",     
-                    "temp",     
-                    "Depth",     
-                    "SerialNum"    ), check.names=TRUE)
-               
-unlink(infile4)
-		    
-# Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
-                                                   
-# attempting to convert hc_temp$dateTime dateTime string to R date structure (date or POSIXct)                                
-tmpDateFormat<-"%Y-%m-%d %H:%M:%S" 
-tmp4dateTime<-as.POSIXct(hc_temp$dateTime,format=tmpDateFormat)
-# Keep the new dates only if they all converted correctly
-if(length(tmp4dateTime) == length(tmp4dateTime[!is.na(tmp4dateTime)])){hc_temp$dateTime <- tmp4dateTime } else {print("Date conversion failed for hc_temp$dateTime. Please inspect the data and do the date conversion yourself.")}                                                                    
-rm(tmpDateFormat,tmp4dateTime) 
-if (class(hc_temp$temp)=="factor") hc_temp$temp <-as.numeric(levels(hc_temp$temp))[as.integer(hc_temp$temp) ]               
-if (class(hc_temp$temp)=="character") hc_temp$temp <-as.numeric(hc_temp$temp)
-if (class(hc_temp$Depth)=="factor") hc_temp$Depth <-as.numeric(levels(hc_temp$Depth))[as.integer(hc_temp$Depth) ]               
-if (class(hc_temp$Depth)=="character") hc_temp$Depth <-as.numeric(hc_temp$Depth)
-if (class(hc_temp$SerialNum)=="factor") hc_temp$SerialNum <-as.numeric(levels(hc_temp$SerialNum))[as.integer(hc_temp$SerialNum) ]               
-if (class(hc_temp$SerialNum)=="character") hc_temp$SerialNum <-as.numeric(hc_temp$SerialNum)
-                
-# Convert Missing Values to NA for non-dates
-                
-hc_temp$temp <- ifelse((trimws(as.character(hc_temp$temp))==trimws("NA")),NA,hc_temp$temp)               
-suppressWarnings(hc_temp$temp <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(hc_temp$temp))==as.character(as.numeric("NA"))),NA,hc_temp$temp))
-
-
-# Here is the structure of the input data frame:
-str(hc_temp)                            
-attach(hc_temp)                            
-# The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
-
-summary(dateTime)
-summary(temp)
-summary(Depth)
-summary(SerialNum) 
-                # Get more details on character variables
-                
-detach(hc_temp)               
+#light data unnecessary for this analysis
+# inUrl4  <- "https://pasta.lternet.edu/package/data/eml/edi/395/2/29deae8080ab13be8db9cf578fdde170" 
+# infile4 <- tempfile()
+# try(download.file(inUrl4,infile4,method="curl"))
+# if (is.na(file.size(infile4))) download.file(inUrl4,infile4,method="auto")
+# 
+#                    
+#  dt4 <-read.csv(infile4,header=F 
+#           ,skip=1
+#             ,sep=","  
+#         , col.names=c(
+#                     "dateTime",     
+#                     "light",     
+#                     "Depth",     
+#                     "SerialNum"    ), check.names=TRUE)
+#                
+# unlink(infile4)
+# 		    
+# # Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
+#                                                    
+# # attempting to convert dt4$dateTime dateTime string to R date structure (date or POSIXct)                                
+# tmpDateFormat<-"%Y-%m-%d %H:%M:%S" 
+# tmp4dateTime<-as.POSIXct(dt4$dateTime,format=tmpDateFormat)
+# # Keep the new dates only if they all converted correctly
+# if(length(tmp4dateTime) == length(tmp4dateTime[!is.na(tmp4dateTime)])){dt4$dateTime <- tmp4dateTime } else {print("Date conversion failed for dt4$dateTime. Please inspect the data and do the date conversion yourself.")}                                                                    
+# rm(tmpDateFormat,tmp4dateTime) 
+# if (class(dt4$light)=="factor") dt4$light <-as.numeric(levels(dt4$light))[as.integer(dt4$light) ]               
+# if (class(dt4$light)=="character") dt4$light <-as.numeric(dt4$light)
+# if (class(dt4$Depth)=="factor") dt4$Depth <-as.numeric(levels(dt4$Depth))[as.integer(dt4$Depth) ]               
+# if (class(dt4$Depth)=="character") dt4$Depth <-as.numeric(dt4$Depth)
+# if (class(dt4$SerialNum)=="factor") dt4$SerialNum <-as.numeric(levels(dt4$SerialNum))[as.integer(dt4$SerialNum) ]               
+# if (class(dt4$SerialNum)=="character") dt4$SerialNum <-as.numeric(dt4$SerialNum)
+#                 
+# # Convert Missing Values to NA for non-dates
+#                 
+# dt4$light <- ifelse((trimws(as.character(dt4$light))==trimws("NA")),NA,dt4$light)               
+# suppressWarnings(dt4$light <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(dt4$light))==as.character(as.numeric("NA"))),NA,dt4$light))
+# 
+# 
+# # Here is the structure of the input data frame:
+# str(dt4)                            
+# attach(dt4)                            
+# # The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
+# 
+# summary(dateTime)
+# summary(light)
+# summary(Depth)
+# summary(SerialNum) 
+#                 # Get more details on character variables
+#                 
+# detach(dt4)               
          
 
-inUrl5  <- "https://pasta.lternet.edu/package/data/eml/edi/395/1/19259608b0773cbd9926e06fd896a3a9" 
-infile5 <- tempfile(tmpdir = temp_dumpdir)
-try(download.file(inUrl5,infile5,method="curl"))
-if (is.na(file.size(infile5))) download.file(inUrl5,infile5,method="auto")
-
-                   
- sb_light <-read.csv(infile5,header=F 
-          ,skip=1
-            ,sep=","  
-        , col.names=c(
-                    "dateTime",     
-                    "light",     
-                    "Depth",     
-                    "SerialNum"    ), check.names=TRUE)
-               
-unlink(infile5)
-		    
-# Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
-                                                   
-# attempting to convert sb_light$dateTime dateTime string to R date structure (date or POSIXct)                                
-tmpDateFormat<-"%Y-%m-%d %H:%M:%S" 
-tmp5dateTime<-as.POSIXct(sb_light$dateTime,format=tmpDateFormat)
-# Keep the new dates only if they all converted correctly
-if(length(tmp5dateTime) == length(tmp5dateTime[!is.na(tmp5dateTime)])){sb_light$dateTime <- tmp5dateTime } else {print("Date conversion failed for sb_light$dateTime. Please inspect the data and do the date conversion yourself.")}                                                                    
-rm(tmpDateFormat,tmp5dateTime) 
-if (class(sb_light$light)=="factor") sb_light$light <-as.numeric(levels(sb_light$light))[as.integer(sb_light$light) ]               
-if (class(sb_light$light)=="character") sb_light$light <-as.numeric(sb_light$light)
-if (class(sb_light$Depth)=="factor") sb_light$Depth <-as.numeric(levels(sb_light$Depth))[as.integer(sb_light$Depth) ]               
-if (class(sb_light$Depth)=="character") sb_light$Depth <-as.numeric(sb_light$Depth)
-if (class(sb_light$SerialNum)=="factor") sb_light$SerialNum <-as.numeric(levels(sb_light$SerialNum))[as.integer(sb_light$SerialNum) ]               
-if (class(sb_light$SerialNum)=="character") sb_light$SerialNum <-as.numeric(sb_light$SerialNum)
-                
-# Convert Missing Values to NA for non-dates
-                
-sb_light$light <- ifelse((trimws(as.character(sb_light$light))==trimws("NA")),NA,sb_light$light)               
-suppressWarnings(sb_light$light <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(sb_light$light))==as.character(as.numeric("NA"))),NA,sb_light$light))
-
-
-# Here is the structure of the input data frame:
-str(sb_light)                            
-attach(sb_light)                            
-# The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
-
-summary(dateTime)
-summary(light)
-summary(Depth)
-summary(SerialNum) 
-                # Get more details on character variables
-                
-detach(sb_light)               
+#do/temp - these are below the cutoff, ignore
+# inUrl5  <- "https://pasta.lternet.edu/package/data/eml/edi/395/2/71872c52d203a60ee72d61e457ad31f3" 
+# infile5 <- tempfile()
+# try(download.file(inUrl5,infile5,method="curl"))
+# if (is.na(file.size(infile5))) download.file(inUrl5,infile5,method="auto")
+# 
+#                    
+#  HC_dotemp <-read.csv(infile5,header=F 
+#           ,skip=1
+#             ,sep=","  
+#         , col.names=c(
+#                     "dateTime",     
+#                     "temp",     
+#                     "DO_mgL"    ), check.names=TRUE)
+#                
+# unlink(infile5)
+# 		    
+# # Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
+#                                                    
+# # attempting to convert HC_dotemp$dateTime dateTime string to R date structure (date or POSIXct)                                
+# tmpDateFormat<-"%Y-%m-%d %H:%M:%S" 
+# tmp5dateTime<-as.POSIXct(HC_dotemp$dateTime,format=tmpDateFormat)
+# # Keep the new dates only if they all converted correctly
+# if(length(tmp5dateTime) == length(tmp5dateTime[!is.na(tmp5dateTime)])){HC_dotemp$dateTime <- tmp5dateTime } else {print("Date conversion failed for HC_dotemp$dateTime. Please inspect the data and do the date conversion yourself.")}                                                                    
+# rm(tmpDateFormat,tmp5dateTime) 
+# if (class(HC_dotemp$temp)=="factor") HC_dotemp$temp <-as.numeric(levels(HC_dotemp$temp))[as.integer(HC_dotemp$temp) ]               
+# if (class(HC_dotemp$temp)=="character") HC_dotemp$temp <-as.numeric(HC_dotemp$temp)
+# if (class(HC_dotemp$DO_mgL)=="factor") HC_dotemp$DO_mgL <-as.numeric(levels(HC_dotemp$DO_mgL))[as.integer(HC_dotemp$DO_mgL) ]               
+# if (class(HC_dotemp$DO_mgL)=="character") HC_dotemp$DO_mgL <-as.numeric(HC_dotemp$DO_mgL)
+#                 
+# # Convert Missing Values to NA for non-dates
+#                 
+# HC_dotemp$temp <- ifelse((trimws(as.character(HC_dotemp$temp))==trimws("NA")),NA,HC_dotemp$temp)               
+# suppressWarnings(HC_dotemp$temp <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(HC_dotemp$temp))==as.character(as.numeric("NA"))),NA,HC_dotemp$temp))
+# HC_dotemp$DO_mgL <- ifelse((trimws(as.character(HC_dotemp$DO_mgL))==trimws("NA")),NA,HC_dotemp$DO_mgL)               
+# suppressWarnings(HC_dotemp$DO_mgL <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(HC_dotemp$DO_mgL))==as.character(as.numeric("NA"))),NA,HC_dotemp$DO_mgL))
+# 
+# 
+# # Here is the structure of the input data frame:
+# str(HC_dotemp)                            
+# attach(HC_dotemp)                            
+# # The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
+# 
+# summary(dateTime)
+# summary(temp)
+# summary(DO_mgL) 
+#                 # Get more details on character variables
+#                 
+# detach(HC_dotemp)               
          
 
-inUrl6  <- "https://pasta.lternet.edu/package/data/eml/edi/395/1/211956b6a28568e287f3789f5f97bc83" 
-infile6 <- tempfile(tmpdir = temp_dumpdir)
+
+inUrl6  <- "https://pasta.lternet.edu/package/data/eml/edi/395/2/fa1a9ddd31509aa2c5a559e20b75e015" 
+infile6 <- tempfile()
 try(download.file(inUrl6,infile6,method="curl"))
 if (is.na(file.size(infile6))) download.file(inUrl6,infile6,method="auto")
 
                    
- sb_temp <-read.csv(infile6,header=F 
+ HC_temp <-read.csv(infile6,header=F 
           ,skip=1
             ,sep=","  
         , col.names=c(
@@ -1188,28 +1190,28 @@ unlink(infile6)
 		    
 # Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
                                                    
-# attempting to convert sb_temp$dateTime dateTime string to R date structure (date or POSIXct)                                
+# attempting to convert HC_temp$dateTime dateTime string to R date structure (date or POSIXct)                                
 tmpDateFormat<-"%Y-%m-%d %H:%M:%S" 
-tmp6dateTime<-as.POSIXct(sb_temp$dateTime,format=tmpDateFormat)
+tmp6dateTime<-as.POSIXct(HC_temp$dateTime,format=tmpDateFormat)
 # Keep the new dates only if they all converted correctly
-if(length(tmp6dateTime) == length(tmp6dateTime[!is.na(tmp6dateTime)])){sb_temp$dateTime <- tmp6dateTime } else {print("Date conversion failed for sb_temp$dateTime. Please inspect the data and do the date conversion yourself.")}                                                                    
+if(length(tmp6dateTime) == length(tmp6dateTime[!is.na(tmp6dateTime)])){HC_temp$dateTime <- tmp6dateTime } else {print("Date conversion failed for HC_temp$dateTime. Please inspect the data and do the date conversion yourself.")}                                                                    
 rm(tmpDateFormat,tmp6dateTime) 
-if (class(sb_temp$temp)=="factor") sb_temp$temp <-as.numeric(levels(sb_temp$temp))[as.integer(sb_temp$temp) ]               
-if (class(sb_temp$temp)=="character") sb_temp$temp <-as.numeric(sb_temp$temp)
-if (class(sb_temp$Depth)=="factor") sb_temp$Depth <-as.numeric(levels(sb_temp$Depth))[as.integer(sb_temp$Depth) ]               
-if (class(sb_temp$Depth)=="character") sb_temp$Depth <-as.numeric(sb_temp$Depth)
-if (class(sb_temp$SerialNum)=="factor") sb_temp$SerialNum <-as.numeric(levels(sb_temp$SerialNum))[as.integer(sb_temp$SerialNum) ]               
-if (class(sb_temp$SerialNum)=="character") sb_temp$SerialNum <-as.numeric(sb_temp$SerialNum)
+if (class(HC_temp$temp)=="factor") HC_temp$temp <-as.numeric(levels(HC_temp$temp))[as.integer(HC_temp$temp) ]               
+if (class(HC_temp$temp)=="character") HC_temp$temp <-as.numeric(HC_temp$temp)
+if (class(HC_temp$Depth)=="factor") HC_temp$Depth <-as.numeric(levels(HC_temp$Depth))[as.integer(HC_temp$Depth) ]               
+if (class(HC_temp$Depth)=="character") HC_temp$Depth <-as.numeric(HC_temp$Depth)
+if (class(HC_temp$SerialNum)=="factor") HC_temp$SerialNum <-as.numeric(levels(HC_temp$SerialNum))[as.integer(HC_temp$SerialNum) ]               
+if (class(HC_temp$SerialNum)=="character") HC_temp$SerialNum <-as.numeric(HC_temp$SerialNum)
                 
 # Convert Missing Values to NA for non-dates
                 
-sb_temp$temp <- ifelse((trimws(as.character(sb_temp$temp))==trimws("NA")),NA,sb_temp$temp)               
-suppressWarnings(sb_temp$temp <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(sb_temp$temp))==as.character(as.numeric("NA"))),NA,sb_temp$temp))
+HC_temp$temp <- ifelse((trimws(as.character(HC_temp$temp))==trimws("NA")),NA,HC_temp$temp)               
+suppressWarnings(HC_temp$temp <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(HC_temp$temp))==as.character(as.numeric("NA"))),NA,HC_temp$temp))
 
 
 # Here is the structure of the input data frame:
-str(sb_temp)                            
-attach(sb_temp)                            
+str(HC_temp)                            
+attach(HC_temp)                            
 # The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
 
 summary(dateTime)
@@ -1218,38 +1220,114 @@ summary(Depth)
 summary(SerialNum) 
                 # Get more details on character variables
                 
-detach(sb_temp)               
+detach(HC_temp)               
+         
+#light data, not needed for this analysis
+# inUrl7  <- "https://pasta.lternet.edu/package/data/eml/edi/395/2/a60a9e344d94d4599940ac8a1c322327" 
+# infile7 <- tempfile()
+# try(download.file(inUrl7,infile7,method="curl"))
+# if (is.na(file.size(infile7))) download.file(inUrl7,infile7,method="auto")
+# 
+#                    
+#  dt7 <-read.csv(infile7,header=F 
+#           ,skip=1
+#             ,sep=","  
+#         , col.names=c(
+#                     "dateTime",     
+#                     "light",     
+#                     "Depth",     
+#                     "SerialNum"    ), check.names=TRUE)
+#                
+# unlink(infile7)
+# 		    
+# # Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
+#                                                    
+# # attempting to convert dt7$dateTime dateTime string to R date structure (date or POSIXct)                                
+# tmpDateFormat<-"%Y-%m-%d %H:%M:%S" 
+# tmp7dateTime<-as.POSIXct(dt7$dateTime,format=tmpDateFormat)
+# # Keep the new dates only if they all converted correctly
+# if(length(tmp7dateTime) == length(tmp7dateTime[!is.na(tmp7dateTime)])){dt7$dateTime <- tmp7dateTime } else {print("Date conversion failed for dt7$dateTime. Please inspect the data and do the date conversion yourself.")}                                                                    
+# rm(tmpDateFormat,tmp7dateTime) 
+# if (class(dt7$light)=="factor") dt7$light <-as.numeric(levels(dt7$light))[as.integer(dt7$light) ]               
+# if (class(dt7$light)=="character") dt7$light <-as.numeric(dt7$light)
+# if (class(dt7$Depth)=="factor") dt7$Depth <-as.numeric(levels(dt7$Depth))[as.integer(dt7$Depth) ]               
+# if (class(dt7$Depth)=="character") dt7$Depth <-as.numeric(dt7$Depth)
+# if (class(dt7$SerialNum)=="factor") dt7$SerialNum <-as.numeric(levels(dt7$SerialNum))[as.integer(dt7$SerialNum) ]               
+# if (class(dt7$SerialNum)=="character") dt7$SerialNum <-as.numeric(dt7$SerialNum)
+#                 
+# # Convert Missing Values to NA for non-dates
+#                 
+# dt7$light <- ifelse((trimws(as.character(dt7$light))==trimws("NA")),NA,dt7$light)               
+# suppressWarnings(dt7$light <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(dt7$light))==as.character(as.numeric("NA"))),NA,dt7$light))
+# 
+# 
+# # Here is the structure of the input data frame:
+# str(dt7)                            
+# attach(dt7)                            
+# # The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
+# 
+# summary(dateTime)
+# summary(light)
+# summary(Depth)
+# summary(SerialNum) 
+#                 # Get more details on character variables
+#                 
+# detach(dt7)               
+#          
+
+inUrl8  <- "https://pasta.lternet.edu/package/data/eml/edi/395/2/f07dc3a8ecb04f61747a82e7a1da5846" 
+infile8 <- tempfile()
+try(download.file(inUrl8,infile8,method="curl"))
+if (is.na(file.size(infile8))) download.file(inUrl8,infile8,method="auto")
+
+                   
+ SB_temp <-read.csv(infile8,header=F 
+          ,skip=1
+            ,sep=","  
+        , col.names=c(
+                    "dateTime",     
+                    "temp",     
+                    "Depth",     
+                    "SerialNum"    ), check.names=TRUE)
+               
+unlink(infile8)
+		    
+# Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
+                                                   
+# attempting to convert SB_temp$dateTime dateTime string to R date structure (date or POSIXct)                                
+tmpDateFormat<-"%Y-%m-%d %H:%M:%S" 
+tmp8dateTime<-as.POSIXct(SB_temp$dateTime,format=tmpDateFormat)
+# Keep the new dates only if they all converted correctly
+if(length(tmp8dateTime) == length(tmp8dateTime[!is.na(tmp8dateTime)])){SB_temp$dateTime <- tmp8dateTime } else {print("Date conversion failed for SB_temp$dateTime. Please inspect the data and do the date conversion yourself.")}                                                                    
+rm(tmpDateFormat,tmp8dateTime) 
+if (class(SB_temp$temp)=="factor") SB_temp$temp <-as.numeric(levels(SB_temp$temp))[as.integer(SB_temp$temp) ]               
+if (class(SB_temp$temp)=="character") SB_temp$temp <-as.numeric(SB_temp$temp)
+if (class(SB_temp$Depth)=="factor") SB_temp$Depth <-as.numeric(levels(SB_temp$Depth))[as.integer(SB_temp$Depth) ]               
+if (class(SB_temp$Depth)=="character") SB_temp$Depth <-as.numeric(SB_temp$Depth)
+if (class(SB_temp$SerialNum)=="factor") SB_temp$SerialNum <-as.numeric(levels(SB_temp$SerialNum))[as.integer(SB_temp$SerialNum) ]               
+if (class(SB_temp$SerialNum)=="character") SB_temp$SerialNum <-as.numeric(SB_temp$SerialNum)
+                
+# Convert Missing Values to NA for non-dates
+                
+SB_temp$temp <- ifelse((trimws(as.character(SB_temp$temp))==trimws("NA")),NA,SB_temp$temp)               
+suppressWarnings(SB_temp$temp <- ifelse(!is.na(as.numeric("NA")) & (trimws(as.character(SB_temp$temp))==as.character(as.numeric("NA"))),NA,SB_temp$temp))
+
+
+# Here is the structure of the input data frame:
+str(SB_temp)                            
+attach(SB_temp)                            
+# The analyses below are basic descriptions of the variables. After testing, they should be replaced.                 
+
+summary(dateTime)
+summary(temp)
+summary(Depth)
+summary(SerialNum) 
+                # Get more details on character variables
+                
+detach(SB_temp)               
         
 ```
 
-### Sunapee LMP data
-
-```{r}
-infile1 <- tempfile(tmpdir = temp_dumpdir)
-inUrl1 <- 'https://raw.githubusercontent.com/Lake-Sunapee-Protective-Association/LMP/v2020.1/master%20files/LSPALMP_1986-2020_v2021-03-29.csv'
-
-try(download.file(inUrl1,
-              destfile = infile1,
-              method = 'curl'))
-if (is.na(file.size(infile1))) download.file(inUrl1,infile1,method="auto")
-
-LSPA_LMP <- read.csv(infile1, 
-         header = T,
-         sep = ',')
-
-infile2 <- tempfile(tmpdir = temp_dumpdir)
-inUrl2 <- 'https://raw.githubusercontent.com/Lake-Sunapee-Protective-Association/LMP/main/master%20files/station_location_details.csv'
-
-try(download.file(inUrl2,
-              destfile = infile2,
-              method = 'curl'))
-if (is.na(file.size(infile2))) download.file(inUrl2,infile2,method="auto")
-
-LSPA_LMP_locs <- read.csv(infile2, 
-         header = T,
-         sep = ',')
-
-```
 
 ## Harmonize, Filter, Collate data
 
@@ -1421,22 +1499,24 @@ gloeo_temp_dstadj
 
 ```{r}
 #add location info
-gm_temp <- gm_temp %>% 
+GM_temp <- GM_temp %>% 
   mutate(location = 'GeorgesMills',
          lat_dd = 43.4288,
          long_dd = -72.0675)
-hc_temp <- hc_temp %>% 
+
+HC_temp <- HC_temp %>% 
   mutate(location = 'HerrickCove',
          lat_dd = 43.4096,
          long_dd = -72.033)
-sb_temp <- sb_temp %>% 
+
+SB_temp <- SB_temp %>% 
   mutate(location = 'StateBeach',
          lat_dd = 43.3436,
          long_dd = -72.0595)
 
 #join and filter for topmost sensor
-minibuoy_temp_filter <- full_join(gm_temp, hc_temp) %>% 
-  full_join(sb_temp) %>% 
+minibuoy_temp_filter <- full_join(GM_temp, HC_temp) %>% 
+  full_join(SB_temp) %>% 
   rename(datetime = dateTime, 
          depth_m = Depth) %>% 
   filter(!is.na(temp)) %>% 
@@ -1448,7 +1528,7 @@ minibuoy_temp_filter <- full_join(gm_temp, hc_temp) %>%
 
 #add source info
 minibuoy_temp_filter <- minibuoy_temp_filter %>% 
-  mutate(source = 'edi.395.1')
+  mutate(source = 'edi.395.2')
 
 # round to 2 digits after decimal
 minibuoy_temp_filter <- minibuoy_temp_filter %>% 
@@ -1458,51 +1538,6 @@ minibuoy_temp_filter
   
 ```
 
-### lspa lmp
-
-The LSPA data does not have time stamps. For the purposes of this analysis, we are going to state that the sample was measured at 11a no dst observed for potential inclusion in the LS LST analysis.
-
-```{r}
-#filter for temp only; 1.5m or closer to surface
-LSPA_LMP_filter <- LSPA_LMP %>% 
-  filter(parameter == 'temp_C',
-         depth_m <= 1.5)
-
-#look at flags
-unique(LSPA_LMP_filter$flag)
-unique(LSPA_LMP_filter$gen_flag)
-#no flags here
-
-#add time of 11a to date, rename/drop columns as necessary
-LSPA_LMP_filter <- LSPA_LMP_filter %>% 
-  rename(location = station, 
-         temp_degC = value) %>% 
-  select(-layer, -site_type, -parameter, -flag, -gen_flag, -org_sampid, -org_id) %>% 
-  mutate(datetime = as.POSIXct(paste(date, '11:00', sep = ' '), tz = 'UTC')) %>% 
-  select(-date) %>% 
-  arrange(datetime, depth_m) %>% 
-  group_by(location, datetime) %>% 
-  summarize(temp_degC = first(temp_degC),
-            depth_m = first(depth_m)) %>% 
-  ungroup()
-
-# add source
-LSPA_LMP_filter <- LSPA_LMP_filter %>% 
-  mutate(source = 'LSPA LMP')
-
-LSPA_LMP_filter
-
-#add location info
-LSPA_LMP_locs <- LSPA_LMP_locs %>% 
-  rename(location = station,
-         long_dd = lon_dd) %>% 
-  select(location, lat_dd, long_dd) 
-
-LSPA_LMP_filter <- left_join(LSPA_LMP_filter, LSPA_LMP_locs) %>% 
-  mutate(location = as.character(location))
-
-LSPA_LMP_filter
-```
 
 ## Join all data together
 
@@ -1510,11 +1545,7 @@ LSPA_LMP_filter
 #join all and mark frequency
 all_temp <- full_join(winterhobo_filter, buoy_filter) %>% 
   full_join(gloeo_temp_dstadj) %>% 
-  full_join(minibuoy_temp_filter) %>% 
-  mutate(frequency = 'sub-daily') %>% 
-  full_join(LSPA_LMP_filter) %>% 
-  mutate(frequency = case_when(is.na(frequency) ~ 'monthly',
-                               TRUE ~ frequency))
+  full_join(minibuoy_temp_filter)
 
 #filter for may through nov (ice out season)
 all_temp_filtered <- all_temp %>% 
@@ -1523,7 +1554,7 @@ all_temp_filtered <- all_temp %>%
 
 #reorg columns
 all_temp_filtered <- all_temp_filtered %>% 
-  select(datetime, lat_dd, long_dd, location, depth_m, temp_degC, source, frequency, month)
+  select(datetime, lat_dd, long_dd, location, depth_m, temp_degC, source, month)
 ```
 
 ## export data
@@ -1531,7 +1562,7 @@ all_temp_filtered <- all_temp_filtered %>%
 ```{r}
 all_temp_filtered %>% 
   mutate(datetime = as.character(datetime)) %>% 
-  write_csv(., paste0(dumpdir, 'all_temp_data_v2021Apr21.csv'))
+  write_csv(., paste0(dumpdir, 'all_temp_data_v', Sys.Date(), '.csv'))
 ```
 
 
