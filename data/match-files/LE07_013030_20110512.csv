@@ -1,0 +1,4 @@
+,datetime,lat_dd,long_dd,location,depth_m,temp_degC,source,frequency,month,datetime_ms
+113786,2011-05-12 10:30:00,43.3913,-72.0576,loon,1.5,9.62,edi.499.2,sub-daily,5,1305214200000.0
+113787,2011-05-12 10:40:00,43.3913,-72.0576,loon,0.5,9.61,edi.499.2,sub-daily,5,1305214800000.0
+113788,2011-05-12 10:50:00,43.3913,-72.0576,loon,0.5,9.42,edi.499.2,sub-daily,5,1305215400000.0

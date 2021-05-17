@@ -1,0 +1,5 @@
+,datetime,lat_dd,long_dd,location,depth_m,temp_degC,source,frequency,month,datetime_ms
+371712,2007-08-13 10:00:00,43.3948,-72.079,NorthSunapeeHarbor,1.5,23.31,edi.498.1,sub-daily,8,1187017200000.0
+406507,2007-08-13 10:00:00,43.3446,-72.0438,SouthOfTheFells,1.5,23.64,edi.498.1,sub-daily,8,1187017200000.0
+441302,2007-08-13 10:00:00,43.3235,-72.0411,Newbury,1.5,23.85,edi.498.1,sub-daily,8,1187017200000.0
+476097,2007-08-13 10:00:00,43.4096,-72.0365,HerrickCoveSouth,1.5,24.21,edi.498.1,sub-daily,8,1187017200000.0
