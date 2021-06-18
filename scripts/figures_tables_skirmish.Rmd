@@ -1,11 +1,12 @@
 ---
 title: "Sunapee Temp and LS LST"
 author: "B. Steele"
-date: "17May2021"
+date: "16June2021"
 output: html_document
 ---
 
 updated 17May2021 new *in situ* file 
+updated 16Jun2021 with output from Google Colab
 
 
 ```{r setup, include=FALSE}
@@ -22,36 +23,30 @@ figdir = '~/GitHub/ids-ne-lakes/figures/'
 Read in all data
 
 ```{r}
-#load in all insitu data for historical trend analysis
-insitu <- read.csv(paste0(datadir, 'all_temp_data_v2021-05-17.csv')) %>% 
+#load in all insitu data for historical data analysis
+insitu <- read.csv(paste0(datadir, 'insitu_temp_data_v2021-05-17.csv')) %>% 
   filter(!is.na(lat_dd)) %>% 
-  mutate(datetime = as.POSIXct(datetime, tz='Etc/GMT+5'))
+  mutate(datetime = as.POSIXct(datetime, tz='Etc/GMT+5')) %>% 
+  filter(format(datetime, '%m') < 11)
 
 #read in all skin temp data for whole lake
-lst_all <- read_csv(paste0(datadir, 'LS_scene_temp_stats_v2021-05-17.csv'),
+lst_all <- read_csv(paste0(datadir, 'colab-output/2021-06-08/sunapee_temp_stats.csv'),
                              col_types = c('')) %>% 
   mutate(date =as.Date(substrRight(`system:index`, 8), '%Y%m%d'),
          month = as.factor(format(date, '%m')),
          year = as.factor(format(date, '%Y')),
-         doy = as.numeric(format(date, '%j')))
+         doy = as.numeric(format(date, '%j'))) %>% 
+  filter(as.numeric(month) < 11)
 
-lst_paired <- read_csv(paste0(datadir, 'temp_sunapee_paired_2021_0428.csv'),
+lst_paired <- read_csv(paste0(datadir, 'colab-output/2021-06-08/sunapee_insitu_landsat_paired.csv'),
                              col_types = c('')) %>% 
   mutate(date =as.Date(substrRight(`system:index`, 8), '%Y%m%d')) %>% 
-  select(date, avg_temp:count)
-
-# #read in all skin temp for individual locations
-# lst_all_zonedata <- read_csv(paste0(datadir, 'temp_zonal_stats_sunapee_1985_2020_05-11.csv'),
-#                        col_types = c('')) %>% 
-#   mutate(date =as.Date(substrRight(`uid`, 8), '%Y%m%d'),
-#          month = as.factor(format(date, '%m')),
-#          year = as.factor(format(date, '%Y')),
-#          doy = as.numeric(format(date, '%j')))
+  filter(format(date, '%m') < 11)
 
 #load in the matched insitu data .csvs
 
 #make a list of the file namesin the folder
-match_names <- list.files(paste0(datadir, 'match-files'))
+match_names <- list.files(paste0(datadir, 'colab-output/2021-06-08/ancillary'))
 
 #iterate over the files into a dataframe
 for(i in 1:length(match_names)) {
@@ -71,7 +66,8 @@ match_details <- match_details %>%
          month = as.factor(format(date, '%m')),
          year = as.factor(format(date, '%Y')),
          doy = as.numeric(format(date, '%j'))) %>% 
-  filter(frequency == 'sub-daily')
+  filter(frequency == 'sub-daily') %>% 
+  filter(as.numeric(month) < 11)
 ```
 
 
@@ -84,7 +80,10 @@ insitu %>%
   summarize(nobs = length(datetime),
             ndays = length(unique(format(datetime, '%Y-%m-%d'))),
             year_start = min(as.numeric(format(datetime, '%Y'))),
-            year_end = max(as.numeric(format(datetime, '%Y'))))
+            year_end = max(as.numeric(format(datetime, '%Y'))), 
+            min_month = min(as.numeric(format(datetime, '%m'))),
+            max_month = max(as.numeric(format(datetime, '%m'))),
+            nsites = length(unique(location)))
 
 #number of observations between time of 10 and 12
 insitu %>% 
@@ -93,7 +92,10 @@ insitu %>%
   summarize(nobs = length(datetime),
             ndays = length(unique(format(datetime, '%Y-%m-%d'))),
             year_start = min(as.numeric(format(datetime, '%Y'))),
-            year_end = max(as.numeric(format(datetime, '%Y'))))
+            year_end = max(as.numeric(format(datetime, '%Y'))), 
+            min_month = min(as.numeric(format(datetime, '%m'))),
+            max_month = max(as.numeric(format(datetime, '%m'))),
+            nsites = length(unique(location)))
 
 
 #number of sites
@@ -171,12 +173,25 @@ insitu_2018 <- insitu_2018 %>%
 
 unique(insitu_2018$location)
 
-ggplot(insitu_2018, aes(x = month, y = temp_degC, fill = location)) +
-  geom_boxplot(aes(group = paste(month, location))) +
+insitu_2018 <- insitu_2018 %>% 
+  mutate(location_long = case_when(location == 'loon' ~ 'primary (GLEON) buoy',
+                              location == 'GeorgesMills' ~ 'Georges Mills buoy',
+                              location == 'HerrickCove' ~ 'Herrick Cove buoy',
+                              location == 'StateBeach' ~ 'State Beach buoy',
+                              location == 'HerrickCoveSouth' ~ 'Herrick Cove near-shore',
+                              location == 'Newbury' ~ 'Newbury near-shore',
+                              location == 'NorthSunapeeHarbor' ~ 'North Sunapee Harbor near-shore',
+                              location == 'SouthOfTheFells' ~ 'South of the Fells near-shore'))
+
+ggplot(insitu_2018, aes(x = month, y = temp_degC, fill = location_long)) +
+  geom_boxplot(aes(group = paste(month, location_long))) +
   final_theme +
   scale_x_continuous(breaks = c(6,7,8,9), labels = c('Jun', 'Jul', 'Aug', 'Sept')) +
   scale_y_continuous(n.breaks = 8) +
-  labs(y = 'water temperature (deg C)')
+  labs(y = 'water temperature (deg C)') +
+  labs(fill = 'location') +
+  theme(legend.spacing.y = unit(0.1, 'cm')) +
+  guides()
 
 ggsave(paste0(figdir, 'water_temp_2018_crosssite.png'), width = 8, height = 4, units = 'in')
 
@@ -187,69 +202,74 @@ ggsave(paste0(figdir, 'water_temp_2018_crosssite.png'), width = 8, height = 4, u
 ```{r}
 
 lst_unimodal <- lst_all %>% 
-  mutate(skew = 3*(surface_temp_mean - surface_temp_median)/surface_temp_stdDev) %>% 
-  filter(skew < 1 & skew >-1) %>% 
-  filter(date != '2007-05-01' &
-           date != '2007-05-09' &
-           date != '2007-05-25' &
-           date != '2007-06-10' &
-           date != '2007-06-18' &
-           date != '2007-11-25' &
-           date != '2008-08-15' &
-           date != '2008-09-08' &
-           date != '2008-10-18' &
-           date != '2008-10-26' &
-           date != '2008-11-11' &
-           date != '2008-11-27' &
-           date != '2009-05-22' &
-           date != '2009-09-03' &
-           date != '2009-09-19' &
-           date != '2009-10-05' &
-           date != '2009-11-22' &
-           date != '2010-05-01' &
-           date != '2010-06-18' &
-           date != '2010-07-12' &
-           date != '2010-09-14' &
-           date != '2011-05-12' &
-           date != '2011-11-04' &
-           date != '2011-11-12' &
-           date != '2012-09-19' &
-           date != '2012-10-21' &
-           date != '2012-11-06' &
-           date != '2013-05-01' &
-           date != '2013-05-17' &
-           date != '2013-07-12' &
-           date != '2013-09-06' &
-           date != '2013-11-09' &
-           date != '2013-11-25' &
-           date != '2014-05-20' &
-           date != '2014-10-27' &
-           date != '2014-11-28' &
-           date != '2015-05-07' &
-           date != '2015-05-23' &
-           date != '2015-10-30' &
-           date != '2016-05-04' &
-           date != '2016-06-13' &
-           date != '2016-08-05' &
-           date != '2016-09-14' &
-           date != '2016-11-01' &
-           date != '2017-05-04' &
-           date != '2017-06-13' &
-           date != '2017-09-01' &
-           date != '2017-09-09' &
-           date != '2017-10-11' &
-           date != '2017-11-04' &
-           date != '2017-11-28' &
-           date != '2018-10-22' &
-           date != '2018-11-07' &
-           date != '2018-11-23' &
-           date != '2019-08-14' &
-           date != '2019-09-07' &
-           date != '2019-11-26' &
-           date != '2020-05-20' &
-           date != '2020-09-17' &
-           date != '2020-10-03' 
-           )
+  filter(surface_temp_min>0)
+
+lst_unimodal <- lst_unimodal %>% 
+  filter(surface_temp_skew < 1 & surface_temp_skew >-1) 
+
+#visually non-unimodal
+# %>% 
+#   filter(date != '2007-05-01' &
+#            date != '2007-05-09' &
+#            date != '2007-05-25' &
+#            date != '2007-06-10' &
+#            date != '2007-06-18' &
+#            date != '2007-11-25' &
+#            date != '2008-08-15' &
+#            date != '2008-09-08' &
+#            date != '2008-10-18' &
+#            date != '2008-10-26' &
+#            date != '2008-11-11' &
+#            date != '2008-11-27' &
+#            date != '2009-05-22' &
+#            date != '2009-09-03' &
+#            date != '2009-09-19' &
+#            date != '2009-10-05' &
+#            date != '2009-11-22' &
+#            date != '2010-05-01' &
+#            date != '2010-06-18' &
+#            date != '2010-07-12' &
+#            date != '2010-09-14' &
+#            date != '2011-05-12' &
+#            date != '2011-11-04' &
+#            date != '2011-11-12' &
+#            date != '2012-09-19' &
+#            date != '2012-10-21' &
+#            date != '2012-11-06' &
+#            date != '2013-05-01' &
+#            date != '2013-05-17' &
+#            date != '2013-07-12' &
+#            date != '2013-09-06' &
+#            date != '2013-11-09' &
+#            date != '2013-11-25' &
+#            date != '2014-05-20' &
+#            date != '2014-10-27' &
+#            date != '2014-11-28' &
+#            date != '2015-05-07' &
+#            date != '2015-05-23' &
+#            date != '2015-10-30' &
+#            date != '2016-05-04' &
+#            date != '2016-06-13' &
+#            date != '2016-08-05' &
+#            date != '2016-09-14' &
+#            date != '2016-11-01' &
+#            date != '2017-05-04' &
+#            date != '2017-06-13' &
+#            date != '2017-09-01' &
+#            date != '2017-09-09' &
+#            date != '2017-10-11' &
+#            date != '2017-11-04' &
+#            date != '2017-11-28' &
+#            date != '2018-10-22' &
+#            date != '2018-11-07' &
+#            date != '2018-11-23' &
+#            date != '2019-08-14' &
+#            date != '2019-09-07' &
+#            date != '2019-11-26' &
+#            date != '2020-05-20' &
+#            date != '2020-09-17' &
+#            date != '2020-10-03' 
+#            )
 
 #skin temp data
 lst_unimodal %>% 
@@ -258,7 +278,6 @@ lst_unimodal %>%
          day = as.numeric(format(date, '%d'))) %>% 
   filter(year >= 2007) %>% 
   mutate(year = as.factor(year)) %>% 
-  filter(surface_temp_min > 0) %>% 
   ggplot(., aes(x = month, y = surface_temp_median, color = year)) +
   geom_point() +
   geom_point() +
@@ -271,6 +290,14 @@ ggsave(paste0(figdir, 'doy_median_hf.png'), height = 4, width = 6, units = 'in')
 ```
 
 
+
+2018 ananlysis
+```{r}
+ls2018 <- read.csv(file.path(datadir, 'temp_zonal_stats_sunapee_2018_06_16.csv'))
+locs2018 <- read.delim(file.path(datadir, 'in-situ locs/2018_hf_locs.txt'), sep = ',')
+ 
+
+```
 
 
 
