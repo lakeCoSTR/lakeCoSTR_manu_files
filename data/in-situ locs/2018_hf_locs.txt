@@ -1,0 +1,10 @@
+FID,OBJECTID,lat_dd,site,lon_dd,name
+0,1,43.428800000000003,georges mills,-72.067499999999995,Georges Mills buoy
+1,2,43.409599999999998,herrick cove,-72.033000000000001,Herrick Cove buoy
+2,3,43.343600000000002,state beach,-72.059500000000000,State Beach buoy
+3,4,43.409966670000003,Midge,-72.036833329999993,Herrick Cove near-shore
+4,5,43.323399999999999,Newbury,-72.041049999999998,Newbury near-shore
+5,6,43.396016670000002,Coffin,-72.078933329999998,North Sunapee Harbor near-shore
+6,7,43.344799999999999,Fichter,-72.043683329999993,South of the Fells near-shore
+7,8,43.391333299999999,loon island,-72.057666600000005,Primary (GLEON) buoy (summer location)
+8,9,43.385649999999998,harbor,-72.081213899999995,Primary (GLEON) buoy (winter location)
