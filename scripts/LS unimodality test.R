@@ -34,11 +34,15 @@ image_pixels <- temp_histo %>%
 temp_histo_all <- temp_histo %>% 
   filter(count > 0)
 
+write.csv(temp_histo_all, file.path(datadir, 'sunapee_histograms_0p1bin_reformatted.csv'))
+
 #make a list of all dates
 datelist <- unique(temp_histo_all$date)
 date_modal <- as.data.frame(datelist) %>% 
   rename(date = datelist) %>% 
   mutate(unimodal = '')
+
+
 
 #determine unimodality from density plot, if one derivative change, unimodal if more it's not.
 for(j in 1:length(datelist)) {

@@ -7,6 +7,7 @@ output: html_document
 
 updated 17May2021 new *in situ* file 
 updated 16Jun2021 with output from Google Colab
+updated 28Jun2021 with unimodal analysis
 
 
 ```{r setup, include=FALSE}
@@ -33,15 +34,20 @@ insitu <- read.csv(paste0(datadir, 'insitu_temp_data_v2021-05-17.csv')) %>%
 lst_all <- read_csv(paste0(datadir, 'colab-output/2021-06-08/sunapee_temp_stats.csv'),
                              col_types = c('')) %>% 
   mutate(date =as.Date(substrRight(`system:index`, 8), '%Y%m%d'),
-         month = as.factor(format(date, '%m')),
+         month = as.numeric(format(date, '%m')),
          year = as.factor(format(date, '%Y')),
-         doy = as.numeric(format(date, '%j'))) %>% 
-  filter(as.numeric(month) < 11)
+         doy = as.numeric(format(date, '%j')),
+         LSmission = case_when(grepl('LT04', `system:index`) ~ 'LS 4',
+                               grepl('LT05', `system:index`) ~ 'LS 5',
+                               grepl('LE07', `system:index`) ~ 'LS 7',
+                               grepl('LC08', `system:index`) ~ 'LS 8')) %>% 
+  filter(month < 11) %>%
+  mutate(month = as.factor(month))
 
 lst_paired <- read_csv(paste0(datadir, 'colab-output/2021-06-08/sunapee_insitu_landsat_paired.csv'),
                              col_types = c('')) %>% 
   mutate(date =as.Date(substrRight(`system:index`, 8), '%Y%m%d')) %>% 
-  filter(format(date, '%m') < 11)
+  filter(as.numeric(format(date, '%m')) < 11)
 
 #load in the matched insitu data .csvs
 
@@ -63,11 +69,20 @@ for(i in 1:length(match_names)) {
 # add columns for match_details
 match_details <- match_details %>% 
   mutate(date =as.Date(datetime),
-         month = as.factor(format(date, '%m')),
+         month = as.numeric(format(date, '%m')),
          year = as.factor(format(date, '%Y')),
          doy = as.numeric(format(date, '%j'))) %>% 
   filter(frequency == 'sub-daily') %>% 
-  filter(as.numeric(month) < 11)
+  filter(month < 11) %>%
+  mutate(month = as.factor(month))
+
+#read in the modal information
+modal_analysis <- read.csv(file.path(datadir, 'colab-output/2021-06-08/date_modalanalysis.csv')) %>% 
+  mutate(date = as.Date(date))
+
+#read in binned data
+lst_hist <- read.csv(file.path(datadir, 'colab-output/2021-06-08/sunapee_histograms_0p1bin_reformatted.csv')) %>% 
+  mutate(date = as.Date(date))
 ```
 
 
@@ -102,21 +117,74 @@ insitu %>%
 length(unique(insitu$location))
 unique(insitu$location)
 
+#document max spread for LST
+range_per_date <- insitu %>% 
+  mutate(hour = as.numeric(format(datetime, '%H')),
+         date = as.Date(datetime)) %>% 
+  filter(hour >= 10 & hour < 12) %>% 
+  group_by(date) %>% 
+  summarize(temp_range = max(temp_degC) - min(temp_degC),
+            n_locs = length(unique(location)))
+max_spread <- max(range_per_date$temp_range, na.rm = T)
+
+
+```
+
+## Summary of location/depth/measurement
+
+```{r}
+insitu %>% 
+  mutate(year = format(datetime, '%Y'),
+         month = as.numeric(format(datetime, '%m'))) %>% 
+  group_by(year, location) %>% 
+  summarise(min_depth_m = min(depth_m),
+            max_depth_m = max(depth_m),
+            min_month = min(month),
+            max_month = max(month)) %>% 
+  pivot_longer(!c(year, location), names_to = 'variable', values_to = 'value') %>% 
+  pivot_wider(id_cols = c(year, variable, value),
+              names_from = c(location, variable)) %>% 
+  write.csv(., file.path(datadir, 'insitu_data_extent_summary.csv'), row.names = F)
+
+```
+ 
+## Summary of lst data
+
+```{r}
+lst_filt_freeze <- lst_all %>% 
+  filter(surface_temp_min > 0) 
+
+lst_filt_mod <- lst_filt_freeze %>% 
+  left_join(., modal_analysis) %>% 
+  filter(unimodal == 'unimodal')
+
+lst_filt_mod <- lst_filt_mod %>% 
+  mutate(temp_spread = round(surface_temp_max, digits = 1) - round(surface_temp_min, digits = 1)) %>% 
+  filter(temp_spread < max_spread*1.1)
+
+lst_filt_mod %>% 
+  group_by(LSmission) %>% 
+  summarize(count = length(LSmission))
 ```
 
 ## Summary Data Tables for insitu-skin temp match
 
 ```{r}
+#inner join with unimodal data and 25% of lake
+match_details_filt <- match_details %>% 
+  mutate(date = as.Date(date)) %>% 
+  inner_join(., modal_analysis) %>% 
+  inner_join(., lst_filt_mod) %>% 
+  filter(unimodal == 'unimodal' & perc_lake > 25)
 
-#number of observations
-match_details %>% 
+#number of observations where there is a match with LS data
+match_details_filt %>% 
   summarize(nobs = length(datetime),
             ndays = length(unique(format(datetime, '%Y-%m-%d'))),
             year_start = min(as.numeric(format(datetime, '%Y'))),
             year_end = max(as.numeric(format(datetime, '%Y'))))
 
-
-length(unique(match_details$location))
+length(unique(match_details_filt$location))
 
 
 ```
@@ -174,7 +242,7 @@ insitu_2018 <- insitu_2018 %>%
 unique(insitu_2018$location)
 
 insitu_2018 <- insitu_2018 %>% 
-  mutate(location_long = case_when(location == 'loon' ~ 'primary (GLEON) buoy',
+  mutate(location_long = case_when(location == 'loon' ~ 'primary (LSPA/GLEON) buoy',
                               location == 'GeorgesMills' ~ 'Georges Mills buoy',
                               location == 'HerrickCove' ~ 'Herrick Cove buoy',
                               location == 'StateBeach' ~ 'State Beach buoy',
@@ -198,93 +266,239 @@ ggsave(paste0(figdir, 'water_temp_2018_crosssite.png'), width = 8, height = 4, u
 ```
 
 
+Look at seasonal patterns in lake temp derived from Landsat
 
 ```{r}
 
-lst_unimodal <- lst_all %>% 
-  filter(surface_temp_min>0)
+range(lst_filt_mod$surface_temp_skew)
 
-lst_unimodal <- lst_unimodal %>% 
-  filter(surface_temp_skew < 1 & surface_temp_skew >-1) 
+lst_neg_skew <- lst_filt_mod %>% 
+  filter(surface_temp_skew < -1)%>% 
+  mutate(skew = 'negative')
+neg_skew_summary <- lst_neg_skew %>% 
+  group_by(month) %>% 
+  summarise(neg_skew = length(month)) 
 
-#visually non-unimodal
-# %>% 
-#   filter(date != '2007-05-01' &
-#            date != '2007-05-09' &
-#            date != '2007-05-25' &
-#            date != '2007-06-10' &
-#            date != '2007-06-18' &
-#            date != '2007-11-25' &
-#            date != '2008-08-15' &
-#            date != '2008-09-08' &
-#            date != '2008-10-18' &
-#            date != '2008-10-26' &
-#            date != '2008-11-11' &
-#            date != '2008-11-27' &
-#            date != '2009-05-22' &
-#            date != '2009-09-03' &
-#            date != '2009-09-19' &
-#            date != '2009-10-05' &
-#            date != '2009-11-22' &
-#            date != '2010-05-01' &
-#            date != '2010-06-18' &
-#            date != '2010-07-12' &
-#            date != '2010-09-14' &
-#            date != '2011-05-12' &
-#            date != '2011-11-04' &
-#            date != '2011-11-12' &
-#            date != '2012-09-19' &
-#            date != '2012-10-21' &
-#            date != '2012-11-06' &
-#            date != '2013-05-01' &
-#            date != '2013-05-17' &
-#            date != '2013-07-12' &
-#            date != '2013-09-06' &
-#            date != '2013-11-09' &
-#            date != '2013-11-25' &
-#            date != '2014-05-20' &
-#            date != '2014-10-27' &
-#            date != '2014-11-28' &
-#            date != '2015-05-07' &
-#            date != '2015-05-23' &
-#            date != '2015-10-30' &
-#            date != '2016-05-04' &
-#            date != '2016-06-13' &
-#            date != '2016-08-05' &
-#            date != '2016-09-14' &
-#            date != '2016-11-01' &
-#            date != '2017-05-04' &
-#            date != '2017-06-13' &
-#            date != '2017-09-01' &
-#            date != '2017-09-09' &
-#            date != '2017-10-11' &
-#            date != '2017-11-04' &
-#            date != '2017-11-28' &
-#            date != '2018-10-22' &
-#            date != '2018-11-07' &
-#            date != '2018-11-23' &
-#            date != '2019-08-14' &
-#            date != '2019-09-07' &
-#            date != '2019-11-26' &
-#            date != '2020-05-20' &
-#            date != '2020-09-17' &
-#            date != '2020-10-03' 
-#            )
+lst_pos_skew <- lst_filt_mod %>% 
+  filter(surface_temp_skew > 1)%>% 
+  mutate(skew = 'positive')
+pos_skew_summary <- lst_pos_skew %>% 
+  group_by(month) %>% 
+  summarise(pos_skew = length(month)) 
 
-#skin temp data
-lst_unimodal %>% 
-  mutate(year = as.numeric(format(date, '%Y')),
-         month = as.numeric(format(date, '%m')),
-         day = as.numeric(format(date, '%d'))) %>% 
-  filter(year >= 2007) %>% 
-  mutate(year = as.factor(year)) %>% 
-  ggplot(., aes(x = month, y = surface_temp_median, color = year)) +
-  geom_point() +
-  geom_point() +
+lst_minor_skew <- lst_filt_mod %>% 
+  filter(surface_temp_skew >= -1 & surface_temp_skew <= 1)%>% 
+  mutate(skew = 'minor')
+minor_skew_summary <- lst_minor_skew %>% 
+  group_by(month) %>% 
+  summarise(skew_minor = length(month)) 
+
+skew_summary <- full_join(neg_skew_summary, minor_skew_summary) %>% 
+  full_join(., pos_skew_summary) %>% 
+  arrange(month)
+write.csv(skew_summary, file.path(datadir, 'skew_summary_countpermonth.csv'), row.names = F)
+
+neg_skew_lateseason_dates <- lst_filt_mod %>% 
+  mutate(month = as.numeric(format(date, '%m'))) %>% 
+  filter(month >= 9) %>% 
+  select(date, surface_temp_skew) %>% 
+  mutate(season = 'late season (Sept/Oct)')
+
+pos_skew_earlyseason_dates <- lst_filt_mod %>% 
+  mutate(month = as.numeric(format(date, '%m'))) %>% 
+  filter(month <= 6) %>% 
+  select(date, surface_temp_skew) %>% 
+  mutate(season = 'early season (May/Jun)')
+
+minor_skew_midseason_dates <- lst_filt_mod %>% 
+  mutate(month = as.numeric(format(date, '%m'))) %>% 
+  filter(month > 6 & month < 9) %>% 
+  select(date, surface_temp_skew) %>% 
+  mutate(season = 'mid season (Jul/Aug)')
+
+#get min and max from ls scenes
+lst_minmax <- lst_filt_mod %>% 
+  select(date, surface_temp_min, surface_temp_max, LSmission) %>% 
+  mutate(surface_temp_min = round(surface_temp_min, digits = 1),
+         surface_temp_max = round(surface_temp_max, digits = 1))
+
+#fix where min value reported is greater than the bin in lst_hist
+min_lst_hist <- lst_hist %>% 
+  group_by(date) %>% 
+  summarize(min_temp = min(temp_degC))
+
+lst_minmax <- full_join(lst_minmax, min_lst_hist) %>% 
+  mutate(min_temp_degC = case_when(min_temp < surface_temp_min ~ min_temp,
+                                   TRUE ~ surface_temp_min))
+
+# get histos for each
+lst_skew <- full_join(neg_skew_lateseason_dates, pos_skew_earlyseason_dates) %>% 
+  full_join(., minor_skew_midseason_dates) %>% 
+  left_join(., lst_hist) %>% 
+  left_join(., lst_minmax) %>% 
+  mutate(norm_temp = round((round(temp_degC, digits = 1) - min_temp_degC)/(surface_temp_max-min_temp_degC), digits = 1),
+         season = factor(season, levels = c('early season (May/Jun)', 'mid season (Jul/Aug)', 'late season (Sept/Oct)'))) 
+
+# #plot by normalized temperatuer
+# ggplot(lst_skew, aes(x = norm_temp, y = count, fill =LSmission)) +
+#   facet_grid(skew ~ LSmission) +
+#   geom_col(width = 0.05) +
+#   final_theme +
+#   labs(x = 'normalized surface temperature',
+#        y = 'number of pixels per scene') +
+#   scale_fill_colorblind()
+# 
+# ggsave(file.path(figdir, 'seasonal_skew.png'), height = 6, width = 10, units = 'in')
+
+lst_skew_mean <- lst_skew %>% 
+  group_by(LSmission, season, norm_temp) %>% 
+  summarize(mean_count = mean(count),
+            se_count = sd(count)/sqrt(n()))
+
+ggplot(lst_skew_mean, aes(x = norm_temp, y = mean_count, fill =LSmission)) +
+  facet_grid(season ~ LSmission) +
+  geom_col(width = 0.1) +
+  geom_errorbar(aes(ymin = mean_count - se_count, ymax = mean_count + se_count), color = '#069307') +
   final_theme +
-  labs(x = 'day of year',
-       y = 'median whole-lake surface temperature (deg C)')
-ggsave(paste0(figdir, 'doy_median_hf.png'), height = 4, width = 6, units = 'in')
+  labs(x = 'normalized surface temperature',
+       y = 'average number of pixels per scene') +
+  scale_fill_colorblind()
+ggsave(file.path(figdir, 'seasonal_skew_averagecount.png'), height = 6, width = 10, units = 'in')
+
+
+lst_skew_mean_eighties <- lst_skew %>% 
+  mutate(year = as.numeric(format(date, '%Y'))) %>% 
+  filter(year >= 1980 & year < 1990)%>% 
+  group_by(LSmission, season, norm_temp) %>% 
+  summarize(mean_count = mean(count),
+            se_count = sd(count)/sqrt(n())) %>% 
+  mutate(decade = '80s')
+ggplot(lst_skew_mean_eighties, aes(x = norm_temp, y = mean_count, fill =LSmission)) +
+  facet_grid(season ~ LSmission) +
+  geom_col(width = 0.1) +
+  geom_errorbar(aes(ymin = mean_count - se_count, ymax = mean_count + se_count), color = '#069307') +
+  final_theme +
+  labs(x = 'normalized surface temperature',
+       y = 'average number of pixels per scene') +
+  scale_fill_colorblind()
+ggsave(file.path(figdir, 'seasonal_skew_averagecount_80s.png'), height = 6, width = 10, units = 'in')
+
+
+lst_skew_mean_nineties <- lst_skew %>% 
+  mutate(year = as.numeric(format(date, '%Y'))) %>% 
+  filter(year >= 1990 & year < 2000)%>% 
+  group_by(LSmission, season, norm_temp) %>% 
+  summarize(mean_count = mean(count),
+            se_count = sd(count)/sqrt(n())) %>% 
+  mutate(decade = '90s')
+ggplot(lst_skew_mean_nineties, aes(x = norm_temp, y = mean_count, fill =LSmission)) +
+  facet_grid(season ~ LSmission) +
+  geom_col(width = 0.1) +
+  geom_errorbar(aes(ymin = mean_count - se_count, ymax = mean_count + se_count), color = '#069307') +
+  final_theme +
+  labs(x = 'normalized surface temperature',
+       y = 'average number of pixels per scene') +
+  scale_fill_colorblind()
+ggsave(file.path(figdir, 'seasonal_skew_averagecount_90s.png'), height = 6, width = 10, units = 'in')
+
+
+lst_skew_mean_aughts <- lst_skew %>% 
+  mutate(year = as.numeric(format(date, '%Y'))) %>% 
+  filter(year >= 2000 & year < 2010)%>% 
+  group_by(LSmission, season, norm_temp) %>% 
+  summarize(mean_count = mean(count),
+            se_count = sd(count)/sqrt(n())) %>% 
+  mutate(decade = '00s')
+ggplot(lst_skew_mean_aughts, aes(x = norm_temp, y = mean_count, fill =LSmission)) +
+  facet_grid(season ~ LSmission) +
+  geom_col(width = 0.1) +
+  geom_errorbar(aes(ymin = mean_count - se_count, ymax = mean_count + se_count), color = '#069307') +
+  final_theme +
+  labs(x = 'normalized surface temperature',
+       y = 'average number of pixels per scene') +
+  scale_fill_colorblind()
+ggsave(file.path(figdir, 'seasonal_skew_averagecount_00s.png'), height = 6, width = 10, units = 'in')
+
+lst_skew_mean_teens <- lst_skew %>% 
+  mutate(year = as.numeric(format(date, '%Y'))) %>% 
+  filter(year >= 2010 & year < 2020)%>% 
+  group_by(LSmission, season, norm_temp) %>% 
+  summarize(mean_count = mean(count),
+            se_count = sd(count)/sqrt(n())) %>% 
+  mutate(decade = '10s')
+ggplot(lst_skew_mean_teens, aes(x = norm_temp, y = mean_count, fill =LSmission)) +
+  facet_grid(season ~ LSmission) +
+  geom_col(width = 0.1) +
+  geom_errorbar(aes(ymin = mean_count - se_count, ymax = mean_count + se_count), color = '#069307') +
+  final_theme +
+  labs(x = 'normalized surface temperature',
+       y = 'average number of pixels per scene') +
+  scale_fill_colorblind()
+ggsave(file.path(figdir, 'seasonal_skew_averagecount_10s.png'), height = 6, width = 10, units = 'in')
+
+
+lst_decade_mean_summary <- lst_skew %>% 
+  mutate(year = as.numeric(format(date, '%Y'))) %>% 
+  mutate(decade = case_when( year >= 1980 & year < 1990 ~ '80s',
+                             year >= 1990 & year < 2000 ~ '90s',
+                             year >= 2000 & year < 2010 ~ '00s',
+                             year >= 2010 ~ '10s')) %>% 
+  mutate(decade = factor(decade, levels = c('80s', '90s', '00s', '10s'))) %>% 
+  group_by(season, norm_temp, decade) %>% 
+  summarize(mean_count = mean(count),
+            se_count = sd(count)/sqrt(n()))
+
+#table summary of skew per season over the decades
+
+decade_season_skew_summ <- lst_filt_mod %>% 
+    mutate(year = as.numeric(format(date, '%Y')),
+           month = as.numeric(format(date, '%m'))) %>% 
+  mutate(decade = case_when( year >= 1980 & year < 1990 ~ '80s',
+                             year >= 1990 & year < 2000 ~ '90s',
+                             year >= 2000 & year < 2010 ~ '00s',
+                             year >= 2010 ~ '10s'),
+         season = case_when(month <= 6 ~ 'early season (May/Jun)',
+                            month > 6 & month < 9 ~ 'mid season (Jul/Aug)',
+                            month >= 9 ~ 'late season (Sept/Oct)')) %>% 
+  mutate(decade = factor(decade, levels = c('80s', '90s', '00s', '10s')), 
+          season = factor(season, levels = c('early season (May/Jun)', 'mid season (Jul/Aug)', 'late season (Sept/Oct)'))) 
+
+ggplot(decade_season_skew_summ, aes(x = season, y = surface_temp_skew, color = decade)) +
+  geom_boxplot() +
+  geom_point(aes(color = decade), position = position_jitterdodge())
+
+ggplot(decade_season_skew_summ, aes(x = year, y = surface_temp_skew)) +
+  facet_grid(.~season) +
+  geom_point(aes(color = decade), position = position_jitterdodge())
+
+ggplot(decade_season_skew_summ, aes(x = year, y = surface_temp_skew)) +
+  facet_grid(.~season) +
+  geom_point(aes(color = decade), position = position_jitterdodge())
+
+ggplot(decade_season_skew_summ, aes(x = date, y = surface_temp_median)) +
+  facet_grid(.~season) +
+  geom_point() +
+  geom_smooth(method = 'lm', se = F) +
+  final_theme +
+  labs(x = NULL,
+       y = 'median Landsat-derived\nsurface tempearture (degrees C)')
+
+ggsave(file.path(figdir, 'LST_seasonal_trends.png'), height = 4, width = 10, units = 'in')
+  
+# #skin temp data
+# lst_unimodal %>% 
+#   mutate(year = as.numeric(format(date, '%Y')),
+#          month = as.numeric(format(date, '%m')),
+#          day = as.numeric(format(date, '%d'))) %>% 
+#   filter(year >= 2007) %>% 
+#   mutate(year = as.factor(year)) %>% 
+#   ggplot(., aes(x = month, y = surface_temp_median, color = year)) +
+#   geom_point() +
+#   geom_point() +
+#   final_theme +
+#   labs(x = 'day of year',
+#        y = 'median whole-lake surface temperature (deg C)')
+# ggsave(paste0(figdir, 'doy_median_hf.png'), height = 4, width = 6, units = 'in')
 
 
 ```
@@ -311,8 +525,8 @@ hf_insitu_aggregate_doy <- hf_insitu_aggregate_doy %>%
   mutate(data = 'high frequency') %>% 
   rename(aggregated_temp_degC = med_temp_degC)
 lst_aggregate_doy <- lst_all %>% 
-  select(doy, year, surface_temp_mean) %>%
-  rename(aggregated_temp_degC = surface_temp_mean) %>% 
+  select(doy, year, surface_temp_median) %>%
+  rename(aggregated_temp_degC = surface_temp_median) %>% 
   mutate(year = as.numeric(as.character(year))) %>% 
   mutate(data = 'LS skin temp')
 
@@ -462,12 +676,12 @@ match_details_2018 <- match_details %>%
             n_locs = length(median_temp_degC)) %>% 
   left_join(lst_all)
 
-ggplot(match_details_2018, aes(x = med_temp_degC, y = surface_temp_mean)) +
+ggplot(match_details_2018, aes(x = med_temp_degC, y = surface_temp_median)) +
   geom_point() +
   geom_smooth(method = 'lm', se = F) +
   final_theme
   
-ggplot(match_details_2018, aes(x = mean_temp_degC, y = surface_temp_mean)) +
+ggplot(match_details_2018, aes(x = mean_temp_degC, y = surface_temp_median)) +
   geom_point() +
   geom_smooth(method = 'lm', se = F) +
   final_theme 
@@ -505,33 +719,35 @@ Here, we are visualizing the LS LST predictions made by Christina Herrick, UNH, 
 
 pair qaqc skin temp with insitu as validation data
 ```{r}
-validation <- lst_unimodal %>% 
-  left_join(., lst_paired) %>% 
-  filter(count >0)
+lst_filt_mod_select <- lst_filt_mod %>% 
+  select(date:temp_spread)
+validation <- lst_paired %>% 
+  mutate(date = as.Date(substrRight(scene, 8), '%Y%m%d')) %>% 
+  inner_join(., lst_filt_mod_select)
 ```
 
 #### predicted v observed
 ```{r}
-val_mean_ls <- lm(validation$surface_temp_mean ~ validation$avg_temp)
+val_mean_ls <- lm(validation$surface_temp_median ~ validation$temp_med)
 summary(val_mean_ls)
 
-val_mean_dem <-deming::deming(validation$surface_temp_mean ~ validation$avg_temp)
+val_mean_dem <-deming::deming(validation$surface_temp_median ~ validation$temp_med)
 val_mean_dem
 
-cor(validation$surface_temp_mean, validation$avg_temp)
+cor(validation$surface_temp_median, validation$temp_med)
 
-ggplot(validation, aes(x = avg_temp, y = surface_temp_mean)) +
+ggplot(validation, aes(x = temp_med, y = surface_temp_median)) +
   geom_point() +
   geom_abline(intercept = val_mean_dem$coefficients[1], slope = val_mean_dem$coefficients[2], color = 'blue') +
   geom_abline(intercept = val_mean_dem$ci[1,1], slope = val_mean_dem$ci[2,1], color = 'blue', linetype = 2) +
   geom_abline(intercept = val_mean_dem$ci[1,2], slope = val_mean_dem$ci[2,2], color = 'blue', linetype = 2) +
   geom_abline(intercept = 0, slope = 1) +
-  coord_cartesian(xlim = c(2,27), 
-                  ylim = c(2,27)) +
-  labs(y = 'satellite-derived mean LST (deg C)', 
-       x = 'in-situ mean water temp (deg C)') +
+  coord_cartesian(xlim = c(7,27),
+                  ylim = c(7,27)) +
+  labs(y = 'satellite-derived median\nskin temperature (deg C)', 
+       x = expression(paste(italic('in-situ'), ' median water temp (deg C)'))) +
   final_theme
-ggsave(paste0(figdir, 'deming_reg_average_val_mean_v17May2021.jpg'), height = 5, width = 5, units = 'in')
+ggsave(paste0(figdir, 'deming_reg_median_v28June2021.jpg'), height = 5, width = 5, units = 'in')
 
 
 ```
@@ -539,29 +755,29 @@ ggsave(paste0(figdir, 'deming_reg_average_val_mean_v17May2021.jpg'), height = 5,
 
 #### plot residuals by x
 ```{r}
-lst_insitu_dem_forresid = mcreg(x = validation$avg_temp, y = validation$surface_temp_mean, method.reg = 'Deming')
+lst_insitu_dem_forresid = mcreg(x = validation$temp_med, y = validation$surface_temp_median, method.reg = 'Deming')
 validation$opt_resid = MCResult.getResiduals(lst_insitu_dem_forresid)$optimized
 
 ggplot(validation, aes(sample = opt_resid)) +
   geom_qq() +
   geom_qq_line()
 
-ggplot(validation, aes (y = opt_resid, x = avg_temp)) +
+ggplot(validation, aes (y = opt_resid, x = temp_med)) +
   geom_point() +
   labs(x = 'in-situ mean water temp (deg C)',
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme
-ggsave(paste0(dir, 'figures/optresid_x_v17May2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_x_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
 
-ggplot(validation, aes (y = opt_resid, x = avg_temp, color = month)) +
+ggplot(validation, aes (y = opt_resid, x = temp_med, color = month)) +
   geom_point(size = 2) +
   labs(x = 'in-situ mean water temp (deg C)',
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme +
   scale_color_colorblind()
-ggsave(paste0(dir, 'figures/optresid_x_colorbymonth_v17May2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_x_colorbymonth_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
 ```
 
 #### residuals by cloud cover
@@ -572,7 +788,7 @@ ggplot(validation, aes (y = opt_resid, x = cloud_cover)) +
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme
-ggsave(paste0(dir, 'figures/optresid_cloudcover_v17May2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_cloudcover_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
 
 ggplot(validation, aes (y = opt_resid, x = cloud_cover, color = month)) +
   geom_point(size = 2) +
@@ -581,7 +797,7 @@ ggplot(validation, aes (y = opt_resid, x = cloud_cover, color = month)) +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme +
   scale_color_colorblind()
-ggsave(paste0(dir, 'figures/optresid_cloudcover_colorbymonth_v17May2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_cloudcover_colorbymonth_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
 
 ```
 
@@ -593,7 +809,7 @@ ggplot(validation, aes (y = opt_resid, x = pixel_count)) +
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme
-ggsave(paste0(dir, 'figures/optresid_pixelcount_v17May2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_pixelcount_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
 
 ggplot(validation, aes (y = opt_resid, x = pixel_count, color = month)) +
   geom_point(size = 2) +
@@ -602,28 +818,28 @@ ggplot(validation, aes (y = opt_resid, x = pixel_count, color = month)) +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme +
   scale_color_colorblind()
-ggsave(paste0(dir, 'figures/optresid_pixelcount_colorbymonth_v17May2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_pixelcount_colorbymonth_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
 
 ```
 
 #### residuals by mean sample depth
 ```{r}
-ggplot(validation, aes (y = opt_resid, x = avg_depth)) +
+ggplot(validation, aes (y = opt_resid, x = depth_avg)) +
   geom_point() +
   labs(x = 'mean in-situ depth (m)',
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme
-ggsave(paste0(dir, 'figures/optresid_insitudepth_v17May2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_insitudepth_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
 
-ggplot(validation, aes (y = opt_resid, x = avg_depth, color = month)) +
+ggplot(validation, aes (y = opt_resid, x = depth_avg, color = month)) +
   geom_point(size = 2) +
   labs(x = 'mean in-situ depth (m)',
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme +
   scale_color_colorblind()
-ggsave(paste0(dir, 'figures/optresid_insitudepth_colorbymonth_v17May2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_insitudepth_colorbymonth_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
 
 ```
 
@@ -635,7 +851,7 @@ ggplot(validation, aes (y = opt_resid, x = month)) +
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme
-ggsave(paste0(dir, 'figures/optresid_month_v17May2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_month_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
 
 ggplot(validation, aes (y = opt_resid, x = month, color = pixel_count)) +
   geom_point(size = 2) +
@@ -643,7 +859,7 @@ ggplot(validation, aes (y = opt_resid, x = month, color = pixel_count)) +
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme 
-ggsave(paste0(dir, 'figures/optresid_month_bypixelcount_v17May2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_month_bypixelcount_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
 
 ggplot(validation, aes (y = opt_resid, x = month, color = cloud_cover)) +
   geom_point(size = 2) +
@@ -651,7 +867,7 @@ ggplot(validation, aes (y = opt_resid, x = month, color = cloud_cover)) +
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme 
-ggsave(paste0(dir, 'figures/optresid_month_bycloudcover_v17May2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_month_bycloudcover_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
 
 ggplot(validation, aes (y = opt_resid, x = year)) +
   geom_point() +
@@ -659,7 +875,7 @@ ggplot(validation, aes (y = opt_resid, x = year)) +
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme
-ggsave(paste0(dir, 'figures/optresid_year_v17May2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_year_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
 
 ggplot(validation, aes (y = opt_resid, x = year, color = pixel_count)) +
   geom_point(size = 2) +
@@ -667,7 +883,7 @@ ggplot(validation, aes (y = opt_resid, x = year, color = pixel_count)) +
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme 
-ggsave(paste0(dir, 'figures/optresid_year_bypixelcount_v17May2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_year_bypixelcount_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
 
 ggplot(validation, aes (y = opt_resid, x = year, color = cloud_cover)) +
   geom_point(size = 2) +
@@ -675,7 +891,7 @@ ggplot(validation, aes (y = opt_resid, x = year, color = cloud_cover)) +
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme 
-ggsave(paste0(dir, 'figures/optresid_year_bycloudcover_v17May2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_year_bycloudcover_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
 
 ggplot(validation, aes (y = opt_resid, x = doy)) +
   geom_point() +
@@ -683,7 +899,7 @@ ggplot(validation, aes (y = opt_resid, x = doy)) +
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme
-ggsave(paste0(dir, 'figures/optresid_doy_v17May2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_doy_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
 
 ggplot(validation, aes (y = opt_resid, x = doy, color = pixel_count)) +
   geom_point(size = 2) +
@@ -691,7 +907,7 @@ ggplot(validation, aes (y = opt_resid, x = doy, color = pixel_count)) +
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme 
-ggsave(paste0(dir, 'figures/optresid_doy_bypixelcount_v17May2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_doy_bypixelcount_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
 
 ggplot(validation, aes (y = opt_resid, x = doy, color = cloud_cover)) +
   geom_point(size = 2) +
@@ -699,7 +915,7 @@ ggplot(validation, aes (y = opt_resid, x = doy, color = cloud_cover)) +
        y = 'deming optimized residuals (deg C)') +
   geom_hline(yintercept = 0, color = 'black') +
   final_theme 
-ggsave(paste0(dir, 'figures/optresid_doy_bycloudcover_v17May2021.jpg'), height = 5, width = 8, units = 'in')
+ggsave(paste0(dir, 'figures/optresid_doy_bycloudcover_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
 
 
 ```
@@ -738,6 +954,11 @@ ggsave(paste0(dir, 'figures/correlation_plot.png'), width = 12, height = 4)
 
 ```
 
+# summary of validation and landsat rmse and bias
+```{r}
+
+```
+ 
 
 # summary stats tables of insitu data
 ```{r}
