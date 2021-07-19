@@ -6,6 +6,7 @@ library(ggthemes)
 library(reticulate)
 library(mcr)
 library(cowplot)
+library(Metrics)
 
 final_theme=theme_bw() +
   theme(axis.text=element_text(size=12),
