@@ -12,6 +12,8 @@ lmp_temp_deep <- lmp %>%
   filter(station == 200 | station ==210 | station == 220| station==230) %>% 
   filter(depth_m == 0.5)
 
+
+#### by site ####
 lmp_temp_summer_mean <- lmp_temp_deep %>% 
   mutate(month = as.numeric(format(as.Date(date), '%m')),
          year = as.numeric(format(as.Date(date), '%Y'))) %>% 
@@ -35,6 +37,15 @@ ggplot(lmp_temp_summer_mean, aes(x=year, y = is_summer_mean_temp_degC)) +
 landsat_station <- read.csv('data/temp_zonal_stats_sunapee_1985_2020_06_15.csv')
 landsat_station_deep <- landsat_station %>% 
   filter(WAYPOINT == 200 | WAYPOINT ==210 | WAYPOINT == 220| WAYPOINT==230)
+
+#filter data
+
+
+# apply calibration
+
+
+
+
 landsat_summer_mean <- landsat_station_deep %>% 
   mutate(date = as.Date(substr(uid, 15, 22), format = '%Y%m%d'),
            month = as.numeric(format(date, '%m')),
@@ -63,3 +74,5 @@ ggplot(ls_is_summer_mean, aes(x = ls_summer_mean_temp_degC, y = is_summer_mean_t
   geom_point() +
   facet_grid(station ~ .) +
   geom_smooth(method = 'lm', se=F)
+
+#### as whole-lake mean ####

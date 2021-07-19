@@ -44,6 +44,10 @@ lst_all <- read_csv(paste0(datadir, 'colab-output/2021-06-08/sunapee_temp_stats.
   filter(month < 11) %>%
   mutate(month = as.factor(month))
 
+lst_all %>% 
+  group_by(LSmission) %>% 
+  summarize(count = length(LSmission))
+
 lst_paired <- read_csv(paste0(datadir, 'colab-output/2021-06-08/sunapee_insitu_landsat_paired.csv'),
                              col_types = c('')) %>% 
   mutate(date =as.Date(substrRight(`system:index`, 8), '%Y%m%d')) %>% 
@@ -127,6 +131,12 @@ range_per_date <- insitu %>%
             n_locs = length(unique(location)))
 max_spread <- max(range_per_date$temp_range, na.rm = T)
 
+range_summary <- range_per_date %>% 
+  mutate(month = as.numeric(format(date, '%m'))) %>% 
+  group_by(month) %>% 
+  filter(n_locs >3) %>% 
+  summarise(min_range = min(temp_range, na.rm = T),
+            max_range = max(temp_range, na.rm = T))
 
 ```
 
@@ -148,7 +158,7 @@ insitu %>%
 
 ```
  
-## Summary of lst data
+## Filter out freezing temp images; non unimodal; max spread <110% observed; Summary of lst data
 
 ```{r}
 lst_filt_freeze <- lst_all %>% 
@@ -165,6 +175,17 @@ lst_filt_mod <- lst_filt_mod %>%
 lst_filt_mod %>% 
   group_by(LSmission) %>% 
   summarize(count = length(LSmission))
+
+colnames(lst_filt_mod)
+
+lst_filt_mod %>% 
+  select(date, LSmission, temp_spread, pct_lake, surface_temp_count:surface_temp_stdDev) %>% 
+  write.csv(file.path(datadir, 'LS_passQAQC_v19July2021.csv'), row.names = F)
+
+ggplot(lst_all, aes(x = pct_lake, y = (surface_temp_max-surface_temp_min))) +
+  geom_point(aes(color = month))
+ggplot(lst_filt_mod, aes(x = perc_lake, y = temp_spread)) +
+  geom_point(aes(color = month))
 ```
 
 ## Summary Data Tables for insitu-skin temp match
