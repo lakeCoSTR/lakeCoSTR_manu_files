@@ -1,0 +1,217 @@
+---
+title: "application - 2018 data"
+author: "B. Steele"
+date: "7/19/2021"
+output: html_document
+---
+
+Grabbed from figures_tables_skirmish.R
+
+Needs sourcing.
+
+#2018 analysis
+```{r}
+ls2018 <- read.csv(file.path(datadir, 'temp_zonal_stats_sunapee_2018_06_16.csv'))
+locs2018 <- read.delim(file.path(datadir, 'in-situ locs/2018_hf_locs.txt'), sep = ',')
+ 
+
+```
+
+
+
+join doy for visualization
+```{r}
+#format to add data stream
+lf_insitu_aggregate_doy <- lf_insitu_aggregate_doy %>% 
+  mutate(data = 'low frequency')%>% 
+  rename(aggregated_temp_degC = med_temp_degC)
+hf_insitu_aggregate_doy <- hf_insitu_aggregate_doy %>% 
+  mutate(data = 'high frequency') %>% 
+  rename(aggregated_temp_degC = med_temp_degC)
+lst_aggregate_doy <- lst_all %>% 
+  select(doy, year, surface_temp_median) %>%
+  rename(aggregated_temp_degC = surface_temp_median) %>% 
+  mutate(year = as.numeric(as.character(year))) %>% 
+  mutate(data = 'LS skin temp')
+
+head(lf_insitu_aggregate_doy)
+head(hf_insitu_aggregate_doy)
+head(lst_aggregate_doy)
+
+all_data_aggregate_doy <- full_join(lf_insitu_aggregate_doy, hf_insitu_aggregate_doy) %>% 
+  full_join(., lst_aggregate_doy) 
+
+loess_alldata <- ggplot(all_data_aggregate_doy, aes(x = doy, y = aggregated_temp_degC, color = data)) +
+  geom_smooth(se = F) +
+  scale_color_colorblind() +
+  final_theme+
+  labs(x = 'day of year', 
+       y = NULL) +
+  theme(legend.position = 'bottom')
+
+point_alldata <- ggplot(all_data_aggregate_doy, aes(x = doy, y = aggregated_temp_degC, color = data)) +
+  geom_point() +
+  scale_color_colorblind() +
+  facet_grid(data ~ .) +
+  final_theme+
+  labs(x = NULL, 
+       y = NULL) +
+  theme(legend.position = 'none')
+
+plot_temp <- plot_grid(point_alldata, loess_alldata, 
+          labels = c('a', 'b'), 
+          label_x = -0.05,
+          nrow = 2,
+          rel_heights = c(1, 0.7)) 
+ylab_title <- ggdraw() +
+  draw_text('water temperature (deg C)', x = 0.3, y = 0.6, size = 16, hjust = 0.5, vjust = 0.5, angle = 90, face = 'bold')
+plot_grid(ylab_title, plot_temp, nrow = 1, rel_widths = c(0.1, 1)) # rel_heights values control title margins
+
+ggsave(paste0(figdir,'insitu_skin_aggregatedoy_loess.png'), height = 6, width = 8)
+
+
+all_data_aggregate_doy_2010 <- all_data_aggregate_doy %>% 
+  filter(year >= 2010)
+
+loess_alldata_2010 <- ggplot(all_data_aggregate_doy_2010, aes(x = doy, y = aggregated_temp_degC, color = data)) +
+  geom_smooth(se = F) +
+  scale_color_colorblind() +
+  final_theme+
+  labs(x = 'day of year', 
+       y = NULL) +
+  theme(legend.position = 'bottom')
+
+point_alldata_2010 <- ggplot(all_data_aggregate_doy_2010, aes(x = doy, y = aggregated_temp_degC, color = data)) +
+  geom_point() +
+  scale_color_colorblind() +
+  facet_grid(data ~ .) +
+  final_theme+
+  labs(x = NULL, 
+       y = NULL) +
+  theme(legend.position = 'none')
+
+plot_temp_2010 <- plot_grid(point_alldata_2010, loess_alldata_2010, 
+          labels = c('a', 'b'), 
+          label_x = -0.05,
+          nrow = 2,
+          rel_heights = c(1, 0.7)) 
+
+plot_grid(ylab_title, plot_temp_2010, nrow = 1, rel_widths = c(0.1, 1)) # rel_heights values control title margins
+
+ggsave(paste0(figdir,'insitu_skin_aggregatedoy_loess_2010.png'), height = 6, width = 8)
+
+
+all_data_aggregate_doy_2018 <- all_data_aggregate_doy %>% 
+  filter(year >= 2018)
+
+loess_alldata_2018 <- ggplot(all_data_aggregate_doy_2018, aes(x = doy, y = aggregated_temp_degC, color = data)) +
+  geom_smooth(se = F) +
+  scale_color_colorblind() +
+  final_theme+
+  labs(x = 'day of year', 
+       y = NULL) +
+  theme(legend.position = 'bottom')
+
+point_alldata_2018 <- ggplot(all_data_aggregate_doy_2018, aes(x = doy, y = aggregated_temp_degC, color = data)) +
+  geom_point() +
+  scale_color_colorblind() +
+  facet_grid(data ~ .) +
+  final_theme+
+  labs(x = NULL, 
+       y = NULL) +
+  theme(legend.position = 'none')
+
+plot_temp_2018 <- plot_grid(point_alldata_2018, loess_alldata_2018, 
+          labels = c('a', 'b'), 
+          label_x = -0.05,
+          nrow = 2,
+          rel_heights = c(1, 0.7)) 
+
+plot_grid(ylab_title, plot_temp_2018, nrow = 1, rel_widths = c(0.1, 1)) # rel_heights values control title margins
+
+ggsave(paste0(figdir,'insitu_skin_aggregatedoy_loess_2018.png'), height = 6, width = 8)
+```
+
+2018 data
+
+```{r}
+hf_insitu_2018 <- hf_insitu %>% 
+  mutate(year = as.numeric(format(datetime, '%Y')),
+         date = as.Date(datetime)) %>% 
+  filter(year == 2018 & (source == 'edi.395.1' | source == 'edi.500.2' | source == 'edi.499.2')) %>% 
+  mutate(hour = as.numeric(format(datetime, '%H'))) %>% 
+  filter(hour >= 10 & hour <= 12) %>% 
+  mutate(location = case_when(location == 'loon' ~ 'Loon',
+                              TRUE ~ location))
+
+lst_all_zonedata_2018 <- lst_all_zonedata %>% 
+    mutate(year = as.numeric(format(date, '%Y'))) %>% 
+filter(year == 2018) %>% 
+  filter(Name == 'Herrick Cove' | Name == 'State Beach' | Name == 'Loon' | Name == 'George\'s Mill') %>% 
+  select(Name, median, date, year, `system:index`) %>% 
+  rename(location = Name,
+         median_skin_temp_degC = median)%>% 
+  mutate(location = case_when(location == 'Herrick Cove' ~ 'HerrickCove',
+                              location == 'State Beach' ~ 'StateBeach',
+                              location == 'George\'s Mill' ~ 'GeorgesMills',
+                              TRUE ~ location))
+
+hf_lst_2018 <- full_join(hf_insitu_2018, lst_all_zonedata_2018) %>% 
+  mutate(doy = as.numeric(format(date, '%j')))
+
+ggplot(hf_lst_2018, aes(x = doy, y = temp_degC, color = location)) +
+  geom_point() +
+  geom_point(aes(x = doy, y = median_skin_temp_degC), shape = 3) +
+  scale_color_colorblind() +
+  final_theme +
+  labs(x = 'day of year', 
+       y = 'water temperature (deg C)')
+ggsave(paste0(figdir, '2018_insitu_lst.png'), height = 4, width = 6)
+
+
+match_details_2018 <- match_details %>% 
+  filter(year == '2018') %>% 
+  group_by(location, date, doy) %>% 
+  summarize(median_temp_degC = median(temp_degC)) %>% 
+  group_by(date, doy) %>% 
+  summarize(med_temp_degC = median(median_temp_degC),
+            mean_temp_degC = mean(median_temp_degC),
+            # stdev_temp_degC = stderr(median_temp_degC)*sqrt(length(median_temp_degC)),
+            n_locs = length(median_temp_degC)) %>% 
+  left_join(lst_all)
+
+ggplot(match_details_2018, aes(x = med_temp_degC, y = surface_temp_median)) +
+  geom_point() +
+  geom_smooth(method = 'lm', se = F) +
+  final_theme
+  
+ggplot(match_details_2018, aes(x = mean_temp_degC, y = surface_temp_median)) +
+  geom_point() +
+  geom_smooth(method = 'lm', se = F) +
+  final_theme 
+ggsave(paste0(figdir, 'wholelake_regression_2018means.png'), height = 4, width = 4)
+
+
+match_details_location_2018 <- match_details %>% 
+  filter(year == '2018') %>% 
+  group_by(location, date, doy) %>% 
+  summarize(median_temp_degC = median(temp_degC),
+            mean_temp_degC = mean(median_temp_degC)) %>% 
+  left_join()
+
+hf_lst_2018 %>% 
+  group_by(date, location) %>% 
+  summarize(med_insitu_temp_degC = median(temp_degC),
+            median_skin_temp_degC = first(median_skin_temp_degC)) %>% 
+ggplot(., aes(x =med_insitu_temp_degC, y = median_skin_temp_degC, color = location)) +
+  geom_point() +
+  scale_color_colorblind() +
+  final_theme +
+  geom_smooth(method = 'lm', se = F) +
+  final_theme +
+  theme(legend.position = 'bottom')
+ggsave(paste0(figdir, 'location_specific_regression_2018medians.png'), height = 5.5, width = 5)
+
+
+```
+

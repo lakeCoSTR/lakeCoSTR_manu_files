@@ -8,6 +8,8 @@ output: html_document
 updated 17May2021 new *in situ* file 
 updated 16Jun2021 with output from Google Colab
 updated 28Jun2021 with unimodal analysis
+updated 19Jul2021 to export the scenes that passed QAQC
+
 
 
 ```{r setup, include=FALSE}
@@ -43,6 +45,10 @@ lst_all <- read_csv(paste0(datadir, 'colab-output/2021-06-08/sunapee_temp_stats.
                                grepl('LC08', `system:index`) ~ 'LS 8')) %>% 
   filter(month < 11) %>%
   mutate(month = as.factor(month))
+
+lst_all %>% 
+  group_by(LSmission) %>% 
+  summarize(count = length(LSmission))
 
 lst_paired <- read_csv(paste0(datadir, 'colab-output/2021-06-08/sunapee_insitu_landsat_paired.csv'),
                              col_types = c('')) %>% 
@@ -100,10 +106,10 @@ insitu %>%
             max_month = max(as.numeric(format(datetime, '%m'))),
             nsites = length(unique(location)))
 
-#number of observations between time of 10 and 12
+#number of observations between time of 9 and 11
 insitu %>% 
   mutate(hour = as.numeric(format(datetime, '%H'))) %>% 
-  filter(hour >= 10 & hour < 12) %>% 
+  filter(hour >= 9 & hour < 11) %>% 
   summarize(nobs = length(datetime),
             ndays = length(unique(format(datetime, '%Y-%m-%d'))),
             year_start = min(as.numeric(format(datetime, '%Y'))),
@@ -121,12 +127,20 @@ unique(insitu$location)
 range_per_date <- insitu %>% 
   mutate(hour = as.numeric(format(datetime, '%H')),
          date = as.Date(datetime)) %>% 
-  filter(hour >= 10 & hour < 12) %>% 
+  filter(hour >= 9 & hour < 11) %>% 
   group_by(date) %>% 
   summarize(temp_range = max(temp_degC) - min(temp_degC),
+            IQR = IQR(temp_degC, na.rm = T),
             n_locs = length(unique(location)))
 max_spread <- max(range_per_date$temp_range, na.rm = T)
+max_IQR <- max(range_per_date$IQR, na.rm = T)
 
+range_summary <- range_per_date %>% 
+  mutate(month = as.numeric(format(date, '%m'))) %>% 
+  group_by(month) %>% 
+  filter(n_locs >3) %>% 
+  summarise(min_range = min(temp_range, na.rm = T),
+            max_range = max(temp_range, na.rm = T))
 
 ```
 
@@ -148,7 +162,7 @@ insitu %>%
 
 ```
  
-## Summary of lst data
+## Filter out freezing temp images; non unimodal; max spread <110% observed; Summary of lst data
 
 ```{r}
 lst_filt_freeze <- lst_all %>% 
@@ -158,13 +172,31 @@ lst_filt_mod <- lst_filt_freeze %>%
   left_join(., modal_analysis) %>% 
   filter(unimodal == 'unimodal')
 
-lst_filt_mod <- lst_filt_mod %>% 
+lst_filt_maxrange <- lst_filt_mod %>% 
   mutate(temp_spread = round(surface_temp_max, digits = 1) - round(surface_temp_min, digits = 1)) %>% 
   filter(temp_spread < max_spread*1.1)
 
-lst_filt_mod %>% 
+lst_filt_maxIQR <- lst_filt_mod %>% 
+  mutate(IQR = round(surface_temp_p75, digits = 1) - round(surface_temp_p25, digits = 1))  %>% 
+  filter(IQR < IQR*1.1)
+
+lst_filt_maxrange %>% 
   group_by(LSmission) %>% 
   summarize(count = length(LSmission))
+
+colnames(lst_filt_maxrange)
+
+ggplot(lst_all, aes(x = pct_lake, y = (surface_temp_max-surface_temp_min))) +
+  geom_point(aes(color = month)) +
+  labs(y = 'temp_spread')+
+  final_theme
+ggsave(file.path(figdir, 'tempspread by pct lake by month summary.png'))
+
+ggplot(lst_filt_maxrange, aes(x = pct_lake, y = temp_spread)) +
+  geom_point(aes(color = month)) +
+  final_theme
+ggsave(file.path(figdir, 'filtered tempspread by pct lake by month summary.png'))
+
 ```
 
 ## Summary Data Tables for insitu-skin temp match
@@ -174,7 +206,7 @@ lst_filt_mod %>%
 match_details_filt <- match_details %>% 
   mutate(date = as.Date(date)) %>% 
   inner_join(., modal_analysis) %>% 
-  inner_join(., lst_filt_mod) %>% 
+  inner_join(., lst_filt_maxrange) %>% 
   filter(unimodal == 'unimodal' & perc_lake > 25)
 
 #number of observations where there is a match with LS data
@@ -197,7 +229,7 @@ buoy_data_summary_flyover <- insitu %>%
   mutate(hour = as.numeric(format(datetime, '%H')),
          year = as.factor(format(datetime, '%Y')),
          day = as.factor(format(datetime, '%d'))) %>% 
-  filter(hour >=10 & hour <12)
+  filter(hour >=9 & hour <11)
 
 QC_check <- buoy_data_summary_flyover %>% 
   group_by(month, year) %>% 
@@ -214,7 +246,7 @@ ggplot(buoy_data_summary_flyover, aes(x = month, y = temp_degC, fill = year)) +
   scale_y_continuous(n.breaks = 8) +
   labs(y = 'water temperature (deg C)')
 
-ggsave(paste0(figdir, 'water_temp_buoy_interannual.png'), width = 8, height = 4, units = 'in')
+ggsave(paste0(figdir, 'water_temp_buoy_interannual_v29June2021.png'), width = 8, height = 4, units = 'in')
 
 ```
 
@@ -227,7 +259,7 @@ insitu_2018 <- insitu %>%
   mutate(hour = as.numeric(format(datetime, '%H')),
          year = as.factor(format(datetime, '%Y')),
          day = as.factor(format(datetime, '%d'))) %>% 
-  filter(hour >=10 & hour <12)
+  filter(hour >=9 & hour <11)
 
 QC_check_2018 <- insitu_2018 %>% 
   group_by(month, year, location) %>% 
@@ -249,465 +281,21 @@ insitu_2018 <- insitu_2018 %>%
                               location == 'HerrickCoveSouth' ~ 'Herrick Cove near-shore',
                               location == 'Newbury' ~ 'Newbury near-shore',
                               location == 'NorthSunapeeHarbor' ~ 'North Sunapee Harbor near-shore',
-                              location == 'SouthOfTheFells' ~ 'South of the Fells near-shore'))
+                              location == 'SouthOfTheFells' ~ 'South of the Fells near-shore'),
+         location_long = factor(location_long, levels = c('primary (LSPA/GLEON) buoy','Georges Mills buoy','Herrick Cove buoy','State Beach buoy','Herrick Cove near-shore','Newbury near-shore','North Sunapee Harbor near-shore','South of the Fells near-shore'), ordered = T)) %>% 
+  arrange(location_long)
 
 ggplot(insitu_2018, aes(x = month, y = temp_degC, fill = location_long)) +
-  geom_boxplot(aes(group = paste(month, location_long))) +
-  final_theme +
+  geom_boxplot(aes(group = paste(location_long, month)))  +
   scale_x_continuous(breaks = c(6,7,8,9), labels = c('Jun', 'Jul', 'Aug', 'Sept')) +
   scale_y_continuous(n.breaks = 8) +
   labs(y = 'water temperature (deg C)') +
   labs(fill = 'location') +
   theme(legend.spacing.y = unit(0.1, 'cm')) +
-  guides()
-
-ggsave(paste0(figdir, 'water_temp_2018_crosssite.png'), width = 8, height = 4, units = 'in')
-
-```
-
-
-Look at seasonal patterns in lake temp derived from Landsat
-
-```{r}
-
-range(lst_filt_mod$surface_temp_skew)
-
-lst_neg_skew <- lst_filt_mod %>% 
-  filter(surface_temp_skew < -1)%>% 
-  mutate(skew = 'negative')
-neg_skew_summary <- lst_neg_skew %>% 
-  group_by(month) %>% 
-  summarise(neg_skew = length(month)) 
-
-lst_pos_skew <- lst_filt_mod %>% 
-  filter(surface_temp_skew > 1)%>% 
-  mutate(skew = 'positive')
-pos_skew_summary <- lst_pos_skew %>% 
-  group_by(month) %>% 
-  summarise(pos_skew = length(month)) 
-
-lst_minor_skew <- lst_filt_mod %>% 
-  filter(surface_temp_skew >= -1 & surface_temp_skew <= 1)%>% 
-  mutate(skew = 'minor')
-minor_skew_summary <- lst_minor_skew %>% 
-  group_by(month) %>% 
-  summarise(skew_minor = length(month)) 
-
-skew_summary <- full_join(neg_skew_summary, minor_skew_summary) %>% 
-  full_join(., pos_skew_summary) %>% 
-  arrange(month)
-write.csv(skew_summary, file.path(datadir, 'skew_summary_countpermonth.csv'), row.names = F)
-
-neg_skew_lateseason_dates <- lst_filt_mod %>% 
-  mutate(month = as.numeric(format(date, '%m'))) %>% 
-  filter(month >= 9) %>% 
-  select(date, surface_temp_skew) %>% 
-  mutate(season = 'late season (Sept/Oct)')
-
-pos_skew_earlyseason_dates <- lst_filt_mod %>% 
-  mutate(month = as.numeric(format(date, '%m'))) %>% 
-  filter(month <= 6) %>% 
-  select(date, surface_temp_skew) %>% 
-  mutate(season = 'early season (May/Jun)')
-
-minor_skew_midseason_dates <- lst_filt_mod %>% 
-  mutate(month = as.numeric(format(date, '%m'))) %>% 
-  filter(month > 6 & month < 9) %>% 
-  select(date, surface_temp_skew) %>% 
-  mutate(season = 'mid season (Jul/Aug)')
-
-#get min and max from ls scenes
-lst_minmax <- lst_filt_mod %>% 
-  select(date, surface_temp_min, surface_temp_max, LSmission) %>% 
-  mutate(surface_temp_min = round(surface_temp_min, digits = 1),
-         surface_temp_max = round(surface_temp_max, digits = 1))
-
-#fix where min value reported is greater than the bin in lst_hist
-min_lst_hist <- lst_hist %>% 
-  group_by(date) %>% 
-  summarize(min_temp = min(temp_degC))
-
-lst_minmax <- full_join(lst_minmax, min_lst_hist) %>% 
-  mutate(min_temp_degC = case_when(min_temp < surface_temp_min ~ min_temp,
-                                   TRUE ~ surface_temp_min))
-
-# get histos for each
-lst_skew <- full_join(neg_skew_lateseason_dates, pos_skew_earlyseason_dates) %>% 
-  full_join(., minor_skew_midseason_dates) %>% 
-  left_join(., lst_hist) %>% 
-  left_join(., lst_minmax) %>% 
-  mutate(norm_temp = round((round(temp_degC, digits = 1) - min_temp_degC)/(surface_temp_max-min_temp_degC), digits = 1),
-         season = factor(season, levels = c('early season (May/Jun)', 'mid season (Jul/Aug)', 'late season (Sept/Oct)'))) 
-
-# #plot by normalized temperatuer
-# ggplot(lst_skew, aes(x = norm_temp, y = count, fill =LSmission)) +
-#   facet_grid(skew ~ LSmission) +
-#   geom_col(width = 0.05) +
-#   final_theme +
-#   labs(x = 'normalized surface temperature',
-#        y = 'number of pixels per scene') +
-#   scale_fill_colorblind()
-# 
-# ggsave(file.path(figdir, 'seasonal_skew.png'), height = 6, width = 10, units = 'in')
-
-lst_skew_mean <- lst_skew %>% 
-  group_by(LSmission, season, norm_temp) %>% 
-  summarize(mean_count = mean(count),
-            se_count = sd(count)/sqrt(n()))
-
-ggplot(lst_skew_mean, aes(x = norm_temp, y = mean_count, fill =LSmission)) +
-  facet_grid(season ~ LSmission) +
-  geom_col(width = 0.1) +
-  geom_errorbar(aes(ymin = mean_count - se_count, ymax = mean_count + se_count), color = '#069307') +
-  final_theme +
-  labs(x = 'normalized surface temperature',
-       y = 'average number of pixels per scene') +
-  scale_fill_colorblind()
-ggsave(file.path(figdir, 'seasonal_skew_averagecount.png'), height = 6, width = 10, units = 'in')
-
-
-lst_skew_mean_eighties <- lst_skew %>% 
-  mutate(year = as.numeric(format(date, '%Y'))) %>% 
-  filter(year >= 1980 & year < 1990)%>% 
-  group_by(LSmission, season, norm_temp) %>% 
-  summarize(mean_count = mean(count),
-            se_count = sd(count)/sqrt(n())) %>% 
-  mutate(decade = '80s')
-ggplot(lst_skew_mean_eighties, aes(x = norm_temp, y = mean_count, fill =LSmission)) +
-  facet_grid(season ~ LSmission) +
-  geom_col(width = 0.1) +
-  geom_errorbar(aes(ymin = mean_count - se_count, ymax = mean_count + se_count), color = '#069307') +
-  final_theme +
-  labs(x = 'normalized surface temperature',
-       y = 'average number of pixels per scene') +
-  scale_fill_colorblind()
-ggsave(file.path(figdir, 'seasonal_skew_averagecount_80s.png'), height = 6, width = 10, units = 'in')
-
-
-lst_skew_mean_nineties <- lst_skew %>% 
-  mutate(year = as.numeric(format(date, '%Y'))) %>% 
-  filter(year >= 1990 & year < 2000)%>% 
-  group_by(LSmission, season, norm_temp) %>% 
-  summarize(mean_count = mean(count),
-            se_count = sd(count)/sqrt(n())) %>% 
-  mutate(decade = '90s')
-ggplot(lst_skew_mean_nineties, aes(x = norm_temp, y = mean_count, fill =LSmission)) +
-  facet_grid(season ~ LSmission) +
-  geom_col(width = 0.1) +
-  geom_errorbar(aes(ymin = mean_count - se_count, ymax = mean_count + se_count), color = '#069307') +
-  final_theme +
-  labs(x = 'normalized surface temperature',
-       y = 'average number of pixels per scene') +
-  scale_fill_colorblind()
-ggsave(file.path(figdir, 'seasonal_skew_averagecount_90s.png'), height = 6, width = 10, units = 'in')
-
-
-lst_skew_mean_aughts <- lst_skew %>% 
-  mutate(year = as.numeric(format(date, '%Y'))) %>% 
-  filter(year >= 2000 & year < 2010)%>% 
-  group_by(LSmission, season, norm_temp) %>% 
-  summarize(mean_count = mean(count),
-            se_count = sd(count)/sqrt(n())) %>% 
-  mutate(decade = '00s')
-ggplot(lst_skew_mean_aughts, aes(x = norm_temp, y = mean_count, fill =LSmission)) +
-  facet_grid(season ~ LSmission) +
-  geom_col(width = 0.1) +
-  geom_errorbar(aes(ymin = mean_count - se_count, ymax = mean_count + se_count), color = '#069307') +
-  final_theme +
-  labs(x = 'normalized surface temperature',
-       y = 'average number of pixels per scene') +
-  scale_fill_colorblind()
-ggsave(file.path(figdir, 'seasonal_skew_averagecount_00s.png'), height = 6, width = 10, units = 'in')
-
-lst_skew_mean_teens <- lst_skew %>% 
-  mutate(year = as.numeric(format(date, '%Y'))) %>% 
-  filter(year >= 2010 & year < 2020)%>% 
-  group_by(LSmission, season, norm_temp) %>% 
-  summarize(mean_count = mean(count),
-            se_count = sd(count)/sqrt(n())) %>% 
-  mutate(decade = '10s')
-ggplot(lst_skew_mean_teens, aes(x = norm_temp, y = mean_count, fill =LSmission)) +
-  facet_grid(season ~ LSmission) +
-  geom_col(width = 0.1) +
-  geom_errorbar(aes(ymin = mean_count - se_count, ymax = mean_count + se_count), color = '#069307') +
-  final_theme +
-  labs(x = 'normalized surface temperature',
-       y = 'average number of pixels per scene') +
-  scale_fill_colorblind()
-ggsave(file.path(figdir, 'seasonal_skew_averagecount_10s.png'), height = 6, width = 10, units = 'in')
-
-
-lst_decade_mean_summary <- lst_skew %>% 
-  mutate(year = as.numeric(format(date, '%Y'))) %>% 
-  mutate(decade = case_when( year >= 1980 & year < 1990 ~ '80s',
-                             year >= 1990 & year < 2000 ~ '90s',
-                             year >= 2000 & year < 2010 ~ '00s',
-                             year >= 2010 ~ '10s')) %>% 
-  mutate(decade = factor(decade, levels = c('80s', '90s', '00s', '10s'))) %>% 
-  group_by(season, norm_temp, decade) %>% 
-  summarize(mean_count = mean(count),
-            se_count = sd(count)/sqrt(n()))
-
-#table summary of skew per season over the decades
-
-decade_season_skew_summ <- lst_filt_mod %>% 
-    mutate(year = as.numeric(format(date, '%Y')),
-           month = as.numeric(format(date, '%m'))) %>% 
-  mutate(decade = case_when( year >= 1980 & year < 1990 ~ '80s',
-                             year >= 1990 & year < 2000 ~ '90s',
-                             year >= 2000 & year < 2010 ~ '00s',
-                             year >= 2010 ~ '10s'),
-         season = case_when(month <= 6 ~ 'early season (May/Jun)',
-                            month > 6 & month < 9 ~ 'mid season (Jul/Aug)',
-                            month >= 9 ~ 'late season (Sept/Oct)')) %>% 
-  mutate(decade = factor(decade, levels = c('80s', '90s', '00s', '10s')), 
-          season = factor(season, levels = c('early season (May/Jun)', 'mid season (Jul/Aug)', 'late season (Sept/Oct)'))) 
-
-ggplot(decade_season_skew_summ, aes(x = season, y = surface_temp_skew, color = decade)) +
-  geom_boxplot() +
-  geom_point(aes(color = decade), position = position_jitterdodge())
-
-ggplot(decade_season_skew_summ, aes(x = year, y = surface_temp_skew)) +
-  facet_grid(.~season) +
-  geom_point(aes(color = decade), position = position_jitterdodge())
-
-ggplot(decade_season_skew_summ, aes(x = year, y = surface_temp_skew)) +
-  facet_grid(.~season) +
-  geom_point(aes(color = decade), position = position_jitterdodge())
-
-ggplot(decade_season_skew_summ, aes(x = date, y = surface_temp_median)) +
-  facet_grid(.~season) +
-  geom_point() +
-  geom_smooth(method = 'lm', se = F) +
-  final_theme +
-  labs(x = NULL,
-       y = 'median Landsat-derived\nsurface tempearture (degrees C)')
-
-ggsave(file.path(figdir, 'LST_seasonal_trends.png'), height = 4, width = 10, units = 'in')
-  
-# #skin temp data
-# lst_unimodal %>% 
-#   mutate(year = as.numeric(format(date, '%Y')),
-#          month = as.numeric(format(date, '%m')),
-#          day = as.numeric(format(date, '%d'))) %>% 
-#   filter(year >= 2007) %>% 
-#   mutate(year = as.factor(year)) %>% 
-#   ggplot(., aes(x = month, y = surface_temp_median, color = year)) +
-#   geom_point() +
-#   geom_point() +
-#   final_theme +
-#   labs(x = 'day of year',
-#        y = 'median whole-lake surface temperature (deg C)')
-# ggsave(paste0(figdir, 'doy_median_hf.png'), height = 4, width = 6, units = 'in')
-
-
-```
-
-
-
-2018 ananlysis
-```{r}
-ls2018 <- read.csv(file.path(datadir, 'temp_zonal_stats_sunapee_2018_06_16.csv'))
-locs2018 <- read.delim(file.path(datadir, 'in-situ locs/2018_hf_locs.txt'), sep = ',')
- 
-
-```
-
-
-
-join doy for visualization
-```{r}
-#format to add data stream
-lf_insitu_aggregate_doy <- lf_insitu_aggregate_doy %>% 
-  mutate(data = 'low frequency')%>% 
-  rename(aggregated_temp_degC = med_temp_degC)
-hf_insitu_aggregate_doy <- hf_insitu_aggregate_doy %>% 
-  mutate(data = 'high frequency') %>% 
-  rename(aggregated_temp_degC = med_temp_degC)
-lst_aggregate_doy <- lst_all %>% 
-  select(doy, year, surface_temp_median) %>%
-  rename(aggregated_temp_degC = surface_temp_median) %>% 
-  mutate(year = as.numeric(as.character(year))) %>% 
-  mutate(data = 'LS skin temp')
-
-head(lf_insitu_aggregate_doy)
-head(hf_insitu_aggregate_doy)
-head(lst_aggregate_doy)
-
-all_data_aggregate_doy <- full_join(lf_insitu_aggregate_doy, hf_insitu_aggregate_doy) %>% 
-  full_join(., lst_aggregate_doy) 
-
-loess_alldata <- ggplot(all_data_aggregate_doy, aes(x = doy, y = aggregated_temp_degC, color = data)) +
-  geom_smooth(se = F) +
-  scale_color_colorblind() +
-  final_theme+
-  labs(x = 'day of year', 
-       y = NULL) +
-  theme(legend.position = 'bottom')
-
-point_alldata <- ggplot(all_data_aggregate_doy, aes(x = doy, y = aggregated_temp_degC, color = data)) +
-  geom_point() +
-  scale_color_colorblind() +
-  facet_grid(data ~ .) +
-  final_theme+
-  labs(x = NULL, 
-       y = NULL) +
-  theme(legend.position = 'none')
-
-plot_temp <- plot_grid(point_alldata, loess_alldata, 
-          labels = c('a', 'b'), 
-          label_x = -0.05,
-          nrow = 2,
-          rel_heights = c(1, 0.7)) 
-ylab_title <- ggdraw() +
-  draw_text('water temperature (deg C)', x = 0.3, y = 0.6, size = 16, hjust = 0.5, vjust = 0.5, angle = 90, face = 'bold')
-plot_grid(ylab_title, plot_temp, nrow = 1, rel_widths = c(0.1, 1)) # rel_heights values control title margins
-
-ggsave(paste0(figdir,'insitu_skin_aggregatedoy_loess.png'), height = 6, width = 8)
-
-
-all_data_aggregate_doy_2010 <- all_data_aggregate_doy %>% 
-  filter(year >= 2010)
-
-loess_alldata_2010 <- ggplot(all_data_aggregate_doy_2010, aes(x = doy, y = aggregated_temp_degC, color = data)) +
-  geom_smooth(se = F) +
-  scale_color_colorblind() +
-  final_theme+
-  labs(x = 'day of year', 
-       y = NULL) +
-  theme(legend.position = 'bottom')
-
-point_alldata_2010 <- ggplot(all_data_aggregate_doy_2010, aes(x = doy, y = aggregated_temp_degC, color = data)) +
-  geom_point() +
-  scale_color_colorblind() +
-  facet_grid(data ~ .) +
-  final_theme+
-  labs(x = NULL, 
-       y = NULL) +
-  theme(legend.position = 'none')
-
-plot_temp_2010 <- plot_grid(point_alldata_2010, loess_alldata_2010, 
-          labels = c('a', 'b'), 
-          label_x = -0.05,
-          nrow = 2,
-          rel_heights = c(1, 0.7)) 
-
-plot_grid(ylab_title, plot_temp_2010, nrow = 1, rel_widths = c(0.1, 1)) # rel_heights values control title margins
-
-ggsave(paste0(figdir,'insitu_skin_aggregatedoy_loess_2010.png'), height = 6, width = 8)
-
-
-all_data_aggregate_doy_2018 <- all_data_aggregate_doy %>% 
-  filter(year >= 2018)
-
-loess_alldata_2018 <- ggplot(all_data_aggregate_doy_2018, aes(x = doy, y = aggregated_temp_degC, color = data)) +
-  geom_smooth(se = F) +
-  scale_color_colorblind() +
-  final_theme+
-  labs(x = 'day of year', 
-       y = NULL) +
-  theme(legend.position = 'bottom')
-
-point_alldata_2018 <- ggplot(all_data_aggregate_doy_2018, aes(x = doy, y = aggregated_temp_degC, color = data)) +
-  geom_point() +
-  scale_color_colorblind() +
-  facet_grid(data ~ .) +
-  final_theme+
-  labs(x = NULL, 
-       y = NULL) +
-  theme(legend.position = 'none')
-
-plot_temp_2018 <- plot_grid(point_alldata_2018, loess_alldata_2018, 
-          labels = c('a', 'b'), 
-          label_x = -0.05,
-          nrow = 2,
-          rel_heights = c(1, 0.7)) 
-
-plot_grid(ylab_title, plot_temp_2018, nrow = 1, rel_widths = c(0.1, 1)) # rel_heights values control title margins
-
-ggsave(paste0(figdir,'insitu_skin_aggregatedoy_loess_2018.png'), height = 6, width = 8)
-```
-
-2018 data
-
-```{r}
-hf_insitu_2018 <- hf_insitu %>% 
-  mutate(year = as.numeric(format(datetime, '%Y')),
-         date = as.Date(datetime)) %>% 
-  filter(year == 2018 & (source == 'edi.395.1' | source == 'edi.500.2' | source == 'edi.499.2')) %>% 
-  mutate(hour = as.numeric(format(datetime, '%H'))) %>% 
-  filter(hour >= 10 & hour <= 12) %>% 
-  mutate(location = case_when(location == 'loon' ~ 'Loon',
-                              TRUE ~ location))
-
-lst_all_zonedata_2018 <- lst_all_zonedata %>% 
-    mutate(year = as.numeric(format(date, '%Y'))) %>% 
-filter(year == 2018) %>% 
-  filter(Name == 'Herrick Cove' | Name == 'State Beach' | Name == 'Loon' | Name == 'George\'s Mill') %>% 
-  select(Name, median, date, year, `system:index`) %>% 
-  rename(location = Name,
-         median_skin_temp_degC = median)%>% 
-  mutate(location = case_when(location == 'Herrick Cove' ~ 'HerrickCove',
-                              location == 'State Beach' ~ 'StateBeach',
-                              location == 'George\'s Mill' ~ 'GeorgesMills',
-                              TRUE ~ location))
-
-hf_lst_2018 <- full_join(hf_insitu_2018, lst_all_zonedata_2018) %>% 
-  mutate(doy = as.numeric(format(date, '%j')))
-
-ggplot(hf_lst_2018, aes(x = doy, y = temp_degC, color = location)) +
-  geom_point() +
-  geom_point(aes(x = doy, y = median_skin_temp_degC), shape = 3) +
-  scale_color_colorblind() +
-  final_theme +
-  labs(x = 'day of year', 
-       y = 'water temperature (deg C)')
-ggsave(paste0(figdir, '2018_insitu_lst.png'), height = 4, width = 6)
-
-
-match_details_2018 <- match_details %>% 
-  filter(year == '2018') %>% 
-  group_by(location, date, doy) %>% 
-  summarize(median_temp_degC = median(temp_degC)) %>% 
-  group_by(date, doy) %>% 
-  summarize(med_temp_degC = median(median_temp_degC),
-            mean_temp_degC = mean(median_temp_degC),
-            # stdev_temp_degC = stderr(median_temp_degC)*sqrt(length(median_temp_degC)),
-            n_locs = length(median_temp_degC)) %>% 
-  left_join(lst_all)
-
-ggplot(match_details_2018, aes(x = med_temp_degC, y = surface_temp_median)) +
-  geom_point() +
-  geom_smooth(method = 'lm', se = F) +
+  guides()+
   final_theme
-  
-ggplot(match_details_2018, aes(x = mean_temp_degC, y = surface_temp_median)) +
-  geom_point() +
-  geom_smooth(method = 'lm', se = F) +
-  final_theme 
-ggsave(paste0(figdir, 'wholelake_regression_2018means.png'), height = 4, width = 4)
 
-
-match_details_location_2018 <- match_details %>% 
-  filter(year == '2018') %>% 
-  group_by(location, date, doy) %>% 
-  summarize(median_temp_degC = median(temp_degC),
-            mean_temp_degC = mean(median_temp_degC)) %>% 
-  left_join()
-
-hf_lst_2018 %>% 
-  group_by(date, location) %>% 
-  summarize(med_insitu_temp_degC = median(temp_degC),
-            median_skin_temp_degC = first(median_skin_temp_degC)) %>% 
-ggplot(., aes(x =med_insitu_temp_degC, y = median_skin_temp_degC, color = location)) +
-  geom_point() +
-  scale_color_colorblind() +
-  final_theme +
-  geom_smooth(method = 'lm', se = F) +
-  final_theme +
-  theme(legend.position = 'bottom')
-ggsave(paste0(figdir, 'location_specific_regression_2018medians.png'), height = 5.5, width = 5)
-
+ggsave(paste0(figdir, 'water_temp_2018_crosssite_v29June2021.png'), width = 8, height = 4, units = 'in')
 
 ```
 
@@ -715,28 +303,35 @@ ggsave(paste0(figdir, 'location_specific_regression_2018medians.png'), height = 
 
 ## Visualizations of *in-situ* temperature and Landsat LST predictions
 
-Here, we are visualizing the LS LST predictions made by Christina Herrick, UNH, for upcoming mansucripts
 
 pair qaqc skin temp with insitu as validation data
 ```{r}
-lst_filt_mod_select <- lst_filt_mod %>% 
+lst_filt_mod_select_range <- lst_filt_maxrange %>% 
   select(date:temp_spread)
-validation <- lst_paired %>% 
+lst_filt_mod_select_IQR <- lst_filt_maxIQR %>% 
+  select(date:IQR)
+
+validation_range <- lst_paired %>% 
   mutate(date = as.Date(substrRight(scene, 8), '%Y%m%d')) %>% 
-  inner_join(., lst_filt_mod_select)
+  inner_join(., lst_filt_mod_select_range)
+
+validation_IQR <- lst_paired %>% 
+  mutate(date = as.Date(substrRight(scene, 8), '%Y%m%d')) %>% 
+  inner_join(., lst_filt_mod_select_IQR)
+
 ```
 
-#### predicted v observed
+#### predicted v observed by range
 ```{r}
-val_mean_ls <- lm(validation$surface_temp_median ~ validation$temp_med)
+val_mean_ls <- lm(validation_range$surface_temp_median ~ validation_range$temp_med)
 summary(val_mean_ls)
 
-val_mean_dem <-deming::deming(validation$surface_temp_median ~ validation$temp_med)
+val_mean_dem <-deming::deming(validation_range$surface_temp_median ~ validation_range$temp_med)
 val_mean_dem
 
-cor(validation$surface_temp_median, validation$temp_med)
+cor(validation_range$surface_temp_median, validation_range$temp_med)
 
-ggplot(validation, aes(x = temp_med, y = surface_temp_median)) +
+ggplot(validation_range, aes(x = temp_med, y = surface_temp_median)) +
   geom_point() +
   geom_abline(intercept = val_mean_dem$coefficients[1], slope = val_mean_dem$coefficients[2], color = 'blue') +
   geom_abline(intercept = val_mean_dem$ci[1,1], slope = val_mean_dem$ci[2,1], color = 'blue', linetype = 2) +
@@ -749,14 +344,203 @@ ggplot(validation, aes(x = temp_med, y = surface_temp_median)) +
   final_theme
 ggsave(paste0(figdir, 'deming_reg_median_v28June2021.jpg'), height = 5, width = 5, units = 'in')
 
+validation_range$pred_temp = val_mean_dem$coefficients[1] + val_mean_dem$coefficients[2]*validation_range$temp_med
 
+lst_insitu_dem_forresid = mcreg(x = validation_range$temp_med, y = validation_range$surface_temp_median, method.reg = 'Deming')
+validation_range$opt_resid = MCResult.getResiduals(lst_insitu_dem_forresid)$optimized
+
+#plot to make sure prediction is correct
+ggplot(validation_range, aes(x = temp_med, y = pred_temp))+
+  geom_point(color = 'blue') +
+  geom_point(aes(x = temp_med, y = surface_temp_median))
+```
+
+#### apply calibration of temp to LS-derived data ####
+```{r}
+lst_filt_maxrange <- lst_filt_maxrange %>% 
+  mutate(calib_med_temp_degC = (surface_temp_median-val_mean_dem$coefficients[1])/val_mean_dem$coefficients[2])
+
+lst_filt_maxrange %>% 
+  select(date, LSmission, temp_spread, pct_lake, surface_temp_count:surface_temp_stdDev, calib_med_temp_degC) %>% 
+  write.csv(file.path(datadir, 'LS_passQAQC_v19July2021.csv'), row.names = F)
+
+#plot to make sure calibration is correct
+lst_filt_mod_select_range_calib <- lst_filt_maxrange %>% 
+  select(date:temp_spread, calib_med_temp_degC)
+
+validation_range_calib <- lst_paired %>% 
+  mutate(date = as.Date(substrRight(scene, 8), '%Y%m%d')) %>% 
+  inner_join(., lst_filt_mod_select_range_calib)
+
+ggplot(validation_range_calib, aes(x = temp_med, y = surface_temp_median)) +
+  geom_point() +
+  geom_point(aes(x = temp_med, y = calib_med_temp_degC), color = 'red')+
+  geom_abline(intercept = val_mean_dem$coefficients[1], slope = val_mean_dem$coefficients[2], color = 'blue') +
+  geom_abline(intercept = val_mean_dem$ci[1,1], slope = val_mean_dem$ci[2,1], color = 'blue', linetype = 2) +
+  geom_abline(intercept = val_mean_dem$ci[1,2], slope = val_mean_dem$ci[2,2], color = 'blue', linetype = 2) +
+  geom_abline(intercept = 0, slope = 1) +
+  coord_cartesian(xlim = c(7,27),
+                  ylim = c(7,27)) +
+  labs(y = 'satellite-derived median\nskin temperature (deg C)', 
+       x = expression(paste(italic('in-situ'), ' median water temp (deg C)'))) +
+  final_theme
+
+
+```
+  
+
+
+#### predicted v observed by IQR
+```{r}
+val_mean_ls <- lm(validation_IQR$surface_temp_median ~ validation_IQR$temp_med)
+summary(val_mean_ls)
+
+val_mean_dem <-deming::deming(validation_IQR$surface_temp_median ~ validation_IQR$temp_med)
+val_mean_dem
+
+cor(validation_IQR$surface_temp_median, validation_IQR$temp_med)
+
+ggplot(validation_IQR, aes(x = temp_med, y = surface_temp_median)) +
+  geom_point() +
+  geom_abline(intercept = val_mean_dem$coefficients[1], slope = val_mean_dem$coefficients[2], color = 'blue') +
+  geom_abline(intercept = val_mean_dem$ci[1,1], slope = val_mean_dem$ci[2,1], color = 'blue', linetype = 2) +
+  geom_abline(intercept = val_mean_dem$ci[1,2], slope = val_mean_dem$ci[2,2], color = 'blue', linetype = 2) +
+  geom_abline(intercept = 0, slope = 1) +
+  coord_cartesian(xlim = c(7,27),
+                  ylim = c(7,27)) +
+  labs(y = 'satellite-derived median\nskin temperature (deg C)', 
+       x = expression(paste(italic('in-situ'), ' median water temp (deg C)'))) +
+  final_theme
+ggsave(paste0(figdir, 'deming_reg_median_IQR_v19Jul2021.jpg'), height = 5, width = 5, units = 'in')
+
+validation_IQR$pred_temp = val_mean_dem$coefficients[1] + val_mean_dem$coefficients[2]*validation_IQR$temp_med
+
+lst_insitu_dem_forresid = mcreg(x = validation_IQR$temp_med, y = validation_IQR$surface_temp_median, method.reg = 'Deming')
+validation_IQR$opt_resid = MCResult.getResiduals(lst_insitu_dem_forresid)$optimized
+
+#plot to make sure prediction is correct
+ggplot(validation_IQR, aes(x = temp_med, y = pred_temp))+
+  geom_point(color = 'blue') +
+  geom_point(aes(x = temp_med, y = surface_temp_median))
+```
+
+#### predicted v observed 50% cutoff
+```{r}
+validtion_50 <- validation %>% 
+  filter(perc_lake > 50)
+val_mean_ls_50 <- lm(validtion_50$surface_temp_median ~ validtion_50$temp_med)
+summary(val_mean_ls_50)
+
+val_mean_dem_50 <-deming::deming(validtion_50$surface_temp_median ~ validtion_50$temp_med)
+val_mean_dem_50
+
+cor(validtion_50$surface_temp_median, validtion_50$temp_med)
+
+ggplot(validtion_50, aes(x = temp_med, y = surface_temp_median)) +
+  geom_point() +
+  geom_abline(intercept = val_mean_dem_50$coefficients[1], slope = val_mean_dem_50$coefficients[2], color = 'blue') +
+  geom_abline(intercept = val_mean_dem_50$ci[1,1], slope = val_mean_dem_50$ci[2,1], color = 'blue', linetype = 2) +
+  geom_abline(intercept = val_mean_dem_50$ci[1,2], slope = val_mean_dem_50$ci[2,2], color = 'blue', linetype = 2) +
+  geom_abline(intercept = 0, slope = 1) +
+  coord_cartesian(xlim = c(7,27),
+                  ylim = c(7,27)) +
+  labs(y = 'satellite-derived median\nskin temperature (deg C)', 
+       x = expression(paste(italic('in-situ'), ' median water temp (deg C)'))) +
+  final_theme
+ggsave(paste0(figdir, 'deming_reg_median_50perc_v28June2021.jpg'), height = 5, width = 5, units = 'in')
+
+
+```
+#### predicted v observed 60% cutoff
+```{r}
+validtion_60 <- validation %>% 
+  filter(perc_lake > 60)
+val_mean_ls_60 <- lm(validtion_60$surface_temp_median ~ validtion_60$temp_med)
+summary(val_mean_ls_60)
+
+val_mean_dem_60 <-deming::deming(validtion_60$surface_temp_median ~ validtion_60$temp_med)
+val_mean_dem_60
+
+cor(validtion_60$surface_temp_median, validtion_60$temp_med)
+
+ggplot(validtion_60, aes(x = temp_med, y = surface_temp_median)) +
+  geom_point() +
+  geom_abline(intercept = val_mean_dem_60$coefficients[1], slope = val_mean_dem_60$coefficients[2], color = 'blue') +
+  geom_abline(intercept = val_mean_dem_60$ci[1,1], slope = val_mean_dem_60$ci[2,1], color = 'blue', linetype = 2) +
+  geom_abline(intercept = val_mean_dem_60$ci[1,2], slope = val_mean_dem_60$ci[2,2], color = 'blue', linetype = 2) +
+  geom_abline(intercept = 0, slope = 1) +
+  coord_cartesian(xlim = c(7,27),
+                  ylim = c(7,27)) +
+  labs(y = 'satellite-derived median\nskin temperature (deg C)', 
+       x = expression(paste(italic('in-situ'), ' median water temp (deg C)'))) +
+  final_theme
+ggsave(paste0(figdir, 'deming_reg_median_60perc_v28June2021.jpg'), height = 5, width = 5, units = 'in')
+
+
+```
+
+# MSE and bias by month using opt_resid
+```{r}
+
+# calculate mse with optomized residuals
+#all data
+validation_range %>% 
+  summarise(mse = round(sum((opt_resid^2))/n(), digits = 2),
+            rmse = round(sqrt(mse), digits = 2),
+            bias = round(sum(opt_resid)/n(), digits = 2),
+            mae = round(sum(abs(opt_resid))/n(), digits = 2),
+            n_obs = n()) %>% 
+    write.csv(., file.path(datadir, 'LS_deming_prediction_stats_v20Jul2021.csv'))
+
+#all data
+validation_range %>% 
+  group_by(LSmission) %>% 
+  summarise(mse = round(sum((opt_resid^2))/n(), digits = 2),
+            rmse = round(sqrt(mse), digits = 2),
+            bias = round(sum(opt_resid)/n(), digits = 2),
+            mae = round(sum(abs(opt_resid))/n(), digits = 2),
+            n_obs = n()) %>% 
+    write.csv(., file.path(datadir, 'LS_deming_prediction_bymission_stats_v20Jul2021.csv'))
+
+
+# by month
+validation_range %>% 
+  mutate(month = as.numeric(format(date, '%m'))) %>% 
+  group_by(month) %>% 
+  summarise(mse = round(sum((opt_resid^2))/n(), digits = 2),
+            rmse = round(sqrt(mse), digits = 2),
+            bias = round(sum(opt_resid)/n(), digits = 2),
+            mae = round(sum(abs(opt_resid))/n(), digits = 2),
+            n_obs = n()) %>% 
+  select(month, n_obs, mae, rmse, bias) %>% 
+  write.csv(., file.path(datadir, 'LS_deming_prediction_stats_allmissions_v29June2021.csv'))
+
+#by month and mission
+validation_range %>% 
+  mutate(month = as.numeric(format(date, '%m'))) %>% 
+  group_by(month, LSmission) %>% 
+  summarise(mse = round(sum((opt_resid^2))/n(), digits = 2),
+            rmse = round(sqrt(mse), digits = 2),
+            bias = round(sum(opt_resid)/n(), digits = 2),
+            mae = round(sum(abs(opt_resid))/n(), digits = 2),
+            n_obs = n())  %>% 
+  select(month, LSmission, n_obs, mae, rmse, bias) %>% 
+  pivot_longer(!c(month, LSmission), names_to = 'variable', values_to = 'values') %>% 
+  mutate(variable = factor(variable, levels = c('n_obs', 'mae', 'rmse', 'bias'))) %>% 
+  arrange(month, variable) %>% 
+  pivot_wider(id_cols = c(LSmission,  values, variable),
+              names_from = c(month, variable),
+              values_from = values) %>% 
+  arrange(LSmission) %>% 
+  write.csv(., file.path(datadir, 'LS_deming_prediction_stats_v29June2021.csv'))
 ```
 
 
 #### plot residuals by x
+
 ```{r}
 lst_insitu_dem_forresid = mcreg(x = validation$temp_med, y = validation$surface_temp_median, method.reg = 'Deming')
-validation$opt_resid = MCResult.getResiduals(lst_insitu_dem_forresid)$optimized
+
 
 ggplot(validation, aes(sample = opt_resid)) +
   geom_qq() +
@@ -954,30 +738,5 @@ ggsave(paste0(dir, 'figures/correlation_plot.png'), width = 12, height = 4)
 
 ```
 
-# summary of validation and landsat rmse and bias
-```{r}
-
-```
- 
-
-# summary stats tables of insitu data
-```{r}
-master_temp <- read_csv(paste0(dir, 'data/sunapee_highfrequency_record_22Jul2019.csv')) 
-
-filtered_temp <- master_temp %>% 
-  filter(depth_m <=1.5 & datetime > as.Date('2015-01-01')) %>% 
-  filter(!is.na(temp_degC)) %>% 
-  mutate(month = as.numeric(format(datetime, '%m'))) %>% 
-  filter(month >=5 & month <=10)
-
-summarized_temp <- filtered_temp %>% 
-  group_by(datetime, source, lat_dd, long_dd) %>% 
-  arrange(datetime, depth_m) %>% 
-  summarize(first_temp_degC = first(temp_degC),
-            first_depth_m = first(depth_m))
-
-write_csv(summarized_temp, paste0(dir, 'data/filtered_raw_temp_v25March2021.csv'))
-
-```
 
 

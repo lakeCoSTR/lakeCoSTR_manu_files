@@ -1,0 +1,299 @@
+---
+title: "skew_explore.R"
+author: "B. Steele"
+date: "7/19/2021"
+output: html_document
+---
+
+Needs sourcing. Grabbed from figures_tables_skirmish
+
+# Look at skew per season; normalized temperature
+
+```{r}
+
+range(lst_filt_mod$surface_temp_skew)
+
+lst_neg_skew <- lst_filt_mod %>% 
+  filter(surface_temp_skew < -1)%>% 
+  mutate(skew = 'negative')
+neg_skew_summary <- lst_neg_skew %>% 
+  group_by(month) %>% 
+  summarise(neg_skew = length(month)) 
+
+lst_pos_skew <- lst_filt_mod %>% 
+  filter(surface_temp_skew > 1)%>% 
+  mutate(skew = 'positive')
+pos_skew_summary <- lst_pos_skew %>% 
+  group_by(month) %>% 
+  summarise(pos_skew = length(month)) 
+
+lst_minor_skew <- lst_filt_mod %>% 
+  filter(surface_temp_skew >= -1 & surface_temp_skew <= 1)%>% 
+  mutate(skew = 'minor')
+minor_skew_summary <- lst_minor_skew %>% 
+  group_by(month) %>% 
+  summarise(skew_minor = length(month)) 
+
+skew_summary <- full_join(neg_skew_summary, minor_skew_summary) %>% 
+  full_join(., pos_skew_summary) %>% 
+  arrange(month)
+write.csv(skew_summary, file.path(datadir, 'skew_summary_countpermonth.csv'), row.names = F)
+
+neg_skew_lateseason_dates <- lst_filt_mod %>% 
+  mutate(month = as.numeric(format(date, '%m'))) %>% 
+  filter(month >= 9) %>% 
+  select(date, surface_temp_skew) %>% 
+  mutate(season = 'late season (Sept/Oct)')
+
+pos_skew_earlyseason_dates <- lst_filt_mod %>% 
+  mutate(month = as.numeric(format(date, '%m'))) %>% 
+  filter(month <= 6) %>% 
+  select(date, surface_temp_skew) %>% 
+  mutate(season = 'early season (May/Jun)')
+
+minor_skew_midseason_dates <- lst_filt_mod %>% 
+  mutate(month = as.numeric(format(date, '%m'))) %>% 
+  filter(month > 6 & month < 9) %>% 
+  select(date, surface_temp_skew) %>% 
+  mutate(season = 'mid season (Jul/Aug)')
+
+#get min and max from ls scenes
+lst_minmax <- lst_filt_mod %>% 
+  select(date, surface_temp_min, surface_temp_max, LSmission) %>% 
+  mutate(surface_temp_min = round(surface_temp_min, digits = 1),
+         surface_temp_max = round(surface_temp_max, digits = 1))
+
+#fix where min value reported is greater than the bin in lst_hist
+min_lst_hist <- lst_hist %>% 
+  group_by(date) %>% 
+  summarize(min_temp = min(temp_degC))
+
+lst_minmax <- full_join(lst_minmax, min_lst_hist) %>% 
+  mutate(min_temp_degC = case_when(min_temp < surface_temp_min ~ min_temp,
+                                   TRUE ~ surface_temp_min))
+
+# get histos for each
+lst_skew <- full_join(neg_skew_lateseason_dates, pos_skew_earlyseason_dates) %>% 
+  full_join(., minor_skew_midseason_dates) %>% 
+  left_join(., lst_hist) %>% 
+  left_join(., lst_minmax) %>% 
+  mutate(norm_temp = round((round(temp_degC, digits = 1) - min_temp_degC)/(surface_temp_max-min_temp_degC), digits = 1),
+         season = factor(season, levels = c('early season (May/Jun)', 'mid season (Jul/Aug)', 'late season (Sept/Oct)'))) 
+
+lst_skew_mean_bymission <- lst_skew %>% 
+  group_by(LSmission, season, norm_temp) %>% 
+  summarize(mean_count = mean(count),
+            se_count = sd(count)/sqrt(n()))
+
+ggplot(lst_skew_mean_bymission, aes(x = norm_temp, y = mean_count, fill =LSmission)) +
+  facet_grid(season ~ LSmission) +
+  geom_col(width = 0.1) +
+  geom_errorbar(aes(ymin = mean_count - se_count, ymax = mean_count + se_count), color = '#069307') +
+  final_theme +
+  labs(x = 'normalized surface temperature',
+       y = 'average number of pixels per scene') +
+  scale_fill_colorblind()
+ggsave(file.path(figdir, 'seasonal_skew_averagecount_bymission.png'), height = 6, width = 10, units = 'in')
+
+lst_skew_mean_byseason <- lst_skew %>% 
+  group_by(season, norm_temp) %>% 
+  summarize(mean_count = mean(count),
+            se_count = sd(count)/sqrt(n()))
+
+ggplot(lst_skew_mean_byseason, aes(x = norm_temp, y = mean_count)) +
+  facet_grid(season ~ .) +
+  geom_col(width = 0.1) +
+  geom_errorbar(aes(ymin = mean_count - se_count, ymax = mean_count + se_count)) +
+  final_theme +
+  labs(x = 'normalized surface temperature',
+       y = 'average number of pixels per scene') +
+  scale_fill_colorblind()
+ggsave(file.path(figdir, 'seasonal_skew_averagecount_byseason.png'), height = 6, width = 10, units = 'in')
+
+lst_skew_mean_bymonth <- lst_skew %>% 
+  mutate(month = as.numeric(format(as.Date(date), '%m'))) %>% 
+  group_by(month, norm_temp) %>% 
+  summarize(mean_count = mean(count),
+            se_count = sd(count)/sqrt(n()))
+
+ggplot(lst_skew_mean_bymonth, aes(x = norm_temp, y = mean_count)) +
+  facet_grid(month ~ .) +
+  geom_col(width = 0.1) +
+  geom_errorbar(aes(ymin = mean_count - se_count, ymax = mean_count + se_count)) +
+  final_theme +
+  labs(x = 'normalized surface temperature',
+       y = 'average number of pixels per scene') +
+  scale_fill_colorblind()
+ggsave(file.path(figdir, 'seasonal_skew_averagecount_bymonth.png'), height = 6, width = 4, units = 'in')
+
+
+
+  
+# #skin temp data
+# lst_unimodal %>% 
+#   mutate(year = as.numeric(format(date, '%Y')),
+#          month = as.numeric(format(date, '%m')),
+#          day = as.numeric(format(date, '%d'))) %>% 
+#   filter(year >= 2007) %>% 
+#   mutate(year = as.factor(year)) %>% 
+#   ggplot(., aes(x = month, y = surface_temp_median, color = year)) +
+#   geom_point() +
+#   geom_point() +
+#   final_theme +
+#   labs(x = 'day of year',
+#        y = 'median whole-lake surface temperature (deg C)')
+# ggsave(paste0(figdir, 'doy_median_hf.png'), height = 4, width = 6, units = 'in')
+
+
+```
+#Skew through decades by season
+```{r}
+
+lst_decade_mean_summary <- lst_skew %>% 
+  mutate(year = as.numeric(format(date, '%Y'))) %>% 
+  mutate(decade = case_when( year >= 1980 & year < 1990 ~ '80s',
+                             year >= 1990 & year < 2000 ~ '90s',
+                             year >= 2000 & year < 2010 ~ '00s',
+                             year >= 2010 ~ '10s')) %>% 
+  mutate(decade = factor(decade, levels = c('80s', '90s', '00s', '10s'))) %>% 
+  group_by(season, norm_temp, decade) %>% 
+  summarize(mean_count = mean(count),
+            se_count = sd(count)/sqrt(n()))
+
+
+ggplot(lst_decade_mean_summary, aes(x = norm_temp, y = mean_count)) +
+  facet_grid(decade ~ season) +
+  geom_col(width = 0.1) +
+  geom_errorbar(aes(ymin = mean_count - se_count, ymax = mean_count + se_count)) +
+  final_theme +
+  labs(x = 'normalized surface temperature',
+       y = 'average number of pixels per scene') +
+  scale_fill_colorblind()
+ggsave(file.path(figdir, 'seasonal_skew_averagecount_bydecade.png'), height = 6, width = 10, units = 'in')
+
+```
+
+#Skew through decades by season no LS8
+```{r}
+
+lst_decade_mean_summary_no8 <- lst_skew %>% 
+  filter(LSmission != 'LS 8') %>% 
+  mutate(year = as.numeric(format(date, '%Y'))) %>% 
+  mutate(decade = case_when( year >= 1980 & year < 1990 ~ '80s',
+                             year >= 1990 & year < 2000 ~ '90s',
+                             year >= 2000 & year < 2010 ~ '00s',
+                             year >= 2010 ~ '10s')) %>% 
+  mutate(decade = factor(decade, levels = c('80s', '90s', '00s', '10s'))) %>% 
+  group_by(season, norm_temp, decade) %>% 
+  summarize(mean_count = mean(count),
+            se_count = sd(count)/sqrt(n()))
+
+
+ggplot(lst_decade_mean_summary_no8, aes(x = norm_temp, y = mean_count)) +
+  facet_grid(decade ~ season) +
+  geom_col(width = 0.1) +
+  geom_errorbar(aes(ymin = mean_count - se_count, ymax = mean_count + se_count)) +
+  final_theme +
+  labs(x = 'normalized surface temperature',
+       y = 'average number of pixels per scene') +
+  scale_fill_colorblind()
+ggsave(file.path(figdir, 'seasonal_skew_averagecount_bydecade_no8.png'), height = 6, width = 10, units = 'in')
+
+```
+
+
+#Skew through decades by month
+```{r}
+
+lst_decade_month_mean_summary <- lst_skew %>% 
+  mutate(year = as.numeric(format(date, '%Y')),
+         month = as.numeric(format(date, '%m'))) %>% 
+  mutate(decade = case_when( year >= 1980 & year < 1990 ~ '80s',
+                             year >= 1990 & year < 2000 ~ '90s',
+                             year >= 2000 & year < 2010 ~ '00s',
+                             year >= 2010 ~ '10s')) %>% 
+  mutate(decade = factor(decade, levels = c('80s', '90s', '00s', '10s'))) %>% 
+  group_by(month, norm_temp, decade) %>% 
+  summarize(mean_count = mean(count),
+            se_count = sd(count)/sqrt(n()))
+
+
+ggplot(lst_decade_month_mean_summary, aes(x = norm_temp, y = mean_count)) +
+  facet_grid(decade ~ month) +
+  geom_col(width = 0.1) +
+  geom_errorbar(aes(ymin = mean_count - se_count, ymax = mean_count + se_count)) +
+  final_theme +
+  labs(x = 'normalized surface temperature',
+       y = 'average number of pixels per scene') +
+  scale_fill_colorblind()
+ggsave(file.path(figdir, 'monthly_skew_averagecount_bydecade.png'), height = 6, width = 10, units = 'in')
+
+```
+#Skew through decades by month no LS8
+```{r}
+
+lst_decade_month_mean_summary_no8 <- lst_skew %>% 
+  filter(LSmission != 'LS 8' ) %>% 
+  mutate(year = as.numeric(format(date, '%Y')),
+         month = as.numeric(format(date, '%m'))) %>% 
+  mutate(decade = case_when( year >= 1980 & year < 1990 ~ '80s',
+                             year >= 1990 & year < 2000 ~ '90s',
+                             year >= 2000 & year < 2010 ~ '00s',
+                             year >= 2010 ~ '10s')) %>% 
+  mutate(decade = factor(decade, levels = c('80s', '90s', '00s', '10s'))) %>% 
+  group_by(month, norm_temp, decade) %>% 
+  summarize(mean_count = mean(count),
+            se_count = sd(count)/sqrt(n()))
+
+
+ggplot(lst_decade_month_mean_summary_no8, aes(x = norm_temp, y = mean_count)) +
+  facet_grid(decade ~ month) +
+  geom_col(width = 0.1) +
+  geom_errorbar(aes(ymin = mean_count - se_count, ymax = mean_count + se_count)) +
+  final_theme +
+  labs(x = 'normalized surface temperature',
+       y = 'average number of pixels per scene') +
+  scale_fill_colorblind()
+ggsave(file.path(figdir, 'monthly_skew_averagecount_bydecade_no8.png'), height = 6, width = 10, units = 'in')
+
+```
+
+#seasonal skew and temperature
+```{r}
+#table summary of skew per season over the decades
+
+decade_season_skew_summ <- lst_filt_mod %>% 
+    mutate(year = as.numeric(format(date, '%Y')),
+           month = as.numeric(format(date, '%m'))) %>% 
+  mutate(decade = case_when( year >= 1980 & year < 1990 ~ '80s',
+                             year >= 1990 & year < 2000 ~ '90s',
+                             year >= 2000 & year < 2010 ~ '00s',
+                             year >= 2010 ~ '10s'),
+         season = case_when(month <= 6 ~ 'early season (May/Jun)',
+                            month > 6 & month < 9 ~ 'mid season (Jul/Aug)',
+                            month >= 9 ~ 'late season (Sept/Oct)')) %>% 
+  mutate(decade = factor(decade, levels = c('80s', '90s', '00s', '10s')), 
+          season = factor(season, levels = c('early season (May/Jun)', 'mid season (Jul/Aug)', 'late season (Sept/Oct)'))) 
+
+ggplot(decade_season_skew_summ, aes(x = season, y = surface_temp_skew, color = decade)) +
+  geom_boxplot() +
+  geom_point(aes(color = decade), position = position_jitterdodge())
+
+ggplot(decade_season_skew_summ, aes(x = year, y = surface_temp_skew)) +
+  facet_grid(.~season) +
+  geom_point(aes(color = decade), position = position_jitterdodge())
+
+ggplot(decade_season_skew_summ, aes(x = year, y = surface_temp_skew)) +
+  facet_grid(.~season) +
+  geom_point(aes(color = decade), position = position_jitterdodge())
+
+ggplot(decade_season_skew_summ, aes(x = date, y = surface_temp_median)) +
+  facet_grid(.~season) +
+  geom_point() +
+  geom_smooth(method = 'lm', se = F) +
+  final_theme +
+  labs(x = NULL,
+       y = 'median Landsat-derived\nsurface tempearture (degrees C)')
+
+ggsave(file.path(figdir, 'LST_seasonal_trends.png'), height = 4, width = 10, units = 'in')
+```
