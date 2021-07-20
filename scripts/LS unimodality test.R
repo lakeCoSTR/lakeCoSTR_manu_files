@@ -53,19 +53,19 @@ for(j in 1:length(datelist)) {
   for(i in 2:nrow(temp_histo_date)){
       temp_histo_date$diff[i] = temp_histo_date$count[i] - temp_histo_date$count[i-1]
   }
-      temp_histo_date <- temp_histo_date %>% 
-        filter(abs(diff) > 0.01*sun_n_pixels) #difference has to be more than 1% of pixels for a meaningful multimodality
       if (nrow(temp_histo_date)>2) {
         for(k in 2:nrow(temp_histo_date)){
           temp_histo_date$simple_change[k] = case_when(temp_histo_date$diff[k] >0 & temp_histo_date$diff[k-1]< 0 ~ 'y',
                                                    temp_histo_date$diff[k] <0 & temp_histo_date$diff[k-1]> 0 ~ 'y',
                                                    TRUE~ NA_character_)
         }
+        temp_histo_date <- temp_histo_date %>%
+          filter(abs(diff) > 0.01*sun_n_pixels) #difference has to be more than 1% of pixels for a meaningful multimodality
         n_change <- nrow(temp_histo_date %>% 
                            filter(simple_change == 'y'))
         date_modal$unimodal[j] = case_when(n_change > 1 ~ 'not unimodal',
                                      TRUE ~ 'unimodal')
-      } else{
+      } else{ # if there is no obvious maximum, then insert 'unk'
         date_modal$unimodal[j] = 'unk'
       }
      
