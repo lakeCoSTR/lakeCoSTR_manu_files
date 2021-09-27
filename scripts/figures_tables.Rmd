@@ -1,19 +1,15 @@
 ---
-title: "Sunapee Temp and LS LST"
+title: "Sunapee Temp and Landsat LST Figures and Tables"
 author: "B. Steele"
-date: "16June2021"
+date: "24Sept2021"
 output: html_document
 ---
 
-updated 17May2021 new *in situ* file 
-updated 16Jun2021 with output from Google Colab
-updated 28Jun2021 with unimodal analysis
-updated 19Jul2021 to export the scenes that passed QAQC
-updated 11Aug2021 with residuals for azimuth and sun angle, etc
+This script walks through the analyses and figures presented in the Herrick, et al, MS using all historical LS data for Lake Sunapee. 
 
 
 
-```{r setup, include=FALSE}
+```{r setup, include=TRUE}
 knitr::opts_chunk$set(echo = TRUE)
 
 source('R_library.R')
@@ -24,14 +20,15 @@ figdir = '~/GitHub/ids-ne-lakes/figures/'
 
 ```
 
+
 Read in all data
 
 ```{r}
-#load in all insitu data for historical data analysis
+#load in all high-frequency insitu data for historical data analysis
 insitu <- read.csv(paste0(datadir, 'insitu_temp_data_v2021-05-17.csv')) %>% 
   filter(!is.na(lat_dd)) %>% 
   mutate(datetime = as.POSIXct(datetime, tz='Etc/GMT+5')) %>% 
-  filter(format(datetime, '%m') < 11)
+  filter(as.numeric(format(datetime, '%m')) < 11 & as.numeric(format(datetime, '%m')) > 5)
 
 #read in all skin temp data for whole lake
 lst_all <- read_csv(paste0(datadir, 'colab-output/2021-06-08/sunapee_temp_stats.csv'),
@@ -44,7 +41,7 @@ lst_all <- read_csv(paste0(datadir, 'colab-output/2021-06-08/sunapee_temp_stats.
                                grepl('LT05', `system:index`) ~ 'LS 5',
                                grepl('LE07', `system:index`) ~ 'LS 7',
                                grepl('LC08', `system:index`) ~ 'LS 8')) %>% 
-  filter(month < 11) %>%
+  filter(month < 11 & month > 5) %>%
   mutate(month = as.factor(month))
 
 lst_all %>% 
@@ -54,11 +51,11 @@ lst_all %>%
 lst_paired <- read_csv(paste0(datadir, 'colab-output/2021-06-08/sunapee_insitu_landsat_paired.csv'),
                              col_types = c('')) %>% 
   mutate(date =as.Date(substrRight(`system:index`, 8), '%Y%m%d')) %>% 
-  filter(as.numeric(format(date, '%m')) < 11)
+  filter(as.numeric(format(date, '%m')) < 11 & as.numeric(format(date, '%m')) >5)
 
-#load in the matched insitu data .csvs
+#load in the matched high-frequency insitu data from the .csv's outputted in the Google Colab script
 
-#make a list of the file namesin the folder
+#make a list of the file names in the folder
 match_names <- list.files(paste0(datadir, 'colab-output/2021-06-08/ancillary'))
 
 #iterate over the files into a dataframe
@@ -80,7 +77,7 @@ match_details <- match_details %>%
          year = as.factor(format(date, '%Y')),
          doy = as.numeric(format(date, '%j'))) %>% 
   filter(frequency == 'sub-daily') %>% 
-  filter(month < 11) %>%
+  filter(month < 11 & month > 5) %>%
   mutate(month = as.factor(month))
 
 #read in the modal information
@@ -124,7 +121,7 @@ insitu %>%
 length(unique(insitu$location))
 unique(insitu$location)
 
-#document max spread for LST
+#document max spread and IQR for LST filtering
 range_per_date <- insitu %>% 
   mutate(hour = as.numeric(format(datetime, '%H')),
          date = as.Date(datetime)) %>% 
@@ -185,7 +182,9 @@ lst_filt_maxrange %>%
   group_by(LSmission) %>% 
   summarize(count = length(LSmission))
 
-colnames(lst_filt_maxrange)
+lst_filt_maxIQR %>% 
+  group_by(LSmission) %>% 
+  summarize(count = length(LSmission))
 
 ggplot(lst_all, aes(x = pct_lake, y = (surface_temp_max-surface_temp_min))) +
   geom_point(aes(color = month)) +
@@ -193,10 +192,21 @@ ggplot(lst_all, aes(x = pct_lake, y = (surface_temp_max-surface_temp_min))) +
   final_theme
 ggsave(file.path(figdir, 'tempspread by pct lake by month summary.png'))
 
+ggplot(lst_all, aes(x = pct_lake, y = (surface_temp_p75-surface_temp_p25))) +
+  geom_point(aes(color = month)) +
+  labs(y = 'temp_IQR')+
+  final_theme
+ggsave(file.path(figdir, 'temp IQR by pct lake by month summary.png'))
+
 ggplot(lst_filt_maxrange, aes(x = pct_lake, y = temp_spread)) +
   geom_point(aes(color = month)) +
   final_theme
 ggsave(file.path(figdir, 'filtered tempspread by pct lake by month summary.png'))
+
+ggplot(lst_filt_maxIQR, aes(x = pct_lake, y = IQR)) +
+  geom_point(aes(color = month)) +
+  final_theme
+ggsave(file.path(figdir, 'filtered temp IQR by pct lake by month summary.png'))
 
 ```
 
@@ -204,106 +214,38 @@ ggsave(file.path(figdir, 'filtered tempspread by pct lake by month summary.png')
 
 ```{r}
 #inner join with unimodal data and 25% of lake
-match_details_filt <- match_details %>% 
+match_details_filtrange <- match_details %>% 
   mutate(date = as.Date(date)) %>% 
   inner_join(., modal_analysis) %>% 
   inner_join(., lst_filt_maxrange) %>% 
   filter(unimodal == 'unimodal' & perc_lake > 25)
 
+match_details_filtIQR <- match_details %>% 
+  mutate(date = as.Date(date)) %>% 
+  inner_join(., modal_analysis) %>% 
+  inner_join(., lst_filt_maxIQR) %>% 
+  filter(unimodal == 'unimodal' & perc_lake > 25)
+
 #number of observations where there is a match with LS data
-match_details_filt %>% 
+match_details_filtrange %>% 
   summarize(nobs = length(datetime),
             ndays = length(unique(format(datetime, '%Y-%m-%d'))),
             year_start = min(as.numeric(format(datetime, '%Y'))),
             year_end = max(as.numeric(format(datetime, '%Y'))))
 
-length(unique(match_details_filt$location))
+length(unique(match_details_filtrange$location))
 
+match_details_filtIQR %>% 
+  summarize(nobs = length(datetime),
+            ndays = length(unique(format(datetime, '%Y-%m-%d'))),
+            year_start = min(as.numeric(format(datetime, '%Y'))),
+            year_end = max(as.numeric(format(datetime, '%Y'))))
 
-```
-
-inter annual variation as seen at the buoy location
-```{r}
-
-buoy_data_summary_flyover <- insitu %>% 
-  filter(location == 'loon') %>% 
-  mutate(hour = as.numeric(format(datetime, '%H')),
-         year = as.factor(format(datetime, '%Y')),
-         day = as.factor(format(datetime, '%d'))) %>% 
-  filter(hour >=9 & hour <11)
-
-QC_check <- buoy_data_summary_flyover %>% 
-  group_by(month, year) %>% 
-  summarise(ndays = length(unique(day))) %>% 
-  filter(ndays >= 15)
-
-buoy_data_summary_flyover <- buoy_data_summary_flyover %>% 
-  right_join(., QC_check)
-
-ggplot(buoy_data_summary_flyover, aes(x = month, y = temp_degC, fill = year)) +
-  geom_boxplot(aes(group = paste(year, month))) +
-  final_theme +
-  scale_x_continuous(breaks = c(5, 6,7,8,9,10,11), labels = c('May', 'Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov')) +
-  scale_y_continuous(n.breaks = 8) +
-  labs(y = 'water temperature (deg C)')
-
-ggsave(paste0(figdir, 'water_temp_buoy_interannual_v29June2021.png'), width = 8, height = 4, units = 'in')
+length(unique(match_details_filtIQR$location))
 
 ```
-
-cross-site variability in 2018
-
-```{r}
-insitu_2018 <- insitu %>% 
-  mutate(year = as.numeric(format(datetime, '%Y'))) %>% 
-  filter(year == 2018)%>% 
-  mutate(hour = as.numeric(format(datetime, '%H')),
-         year = as.factor(format(datetime, '%Y')),
-         day = as.factor(format(datetime, '%d'))) %>% 
-  filter(hour >=9 & hour <11)
-
-QC_check_2018 <- insitu_2018 %>% 
-  group_by(month, year, location) %>% 
-  summarise(ndays = length(unique(day))) %>% 
-  filter(ndays >= 15)
-
-insitu_2018 <- insitu_2018 %>% 
-  right_join(., QC_check_2018) %>% 
-  mutate(location = as.factor(location)) %>% 
-  filter(month >=6 & month <10) #filter for months that have multiple locations
-
-unique(insitu_2018$location)
-
-insitu_2018 <- insitu_2018 %>% 
-  mutate(location_long = case_when(location == 'loon' ~ 'primary (LSPA/GLEON) buoy',
-                              location == 'GeorgesMills' ~ 'Georges Mills buoy',
-                              location == 'HerrickCove' ~ 'Herrick Cove buoy',
-                              location == 'StateBeach' ~ 'State Beach buoy',
-                              location == 'HerrickCoveSouth' ~ 'Herrick Cove near-shore',
-                              location == 'Newbury' ~ 'Newbury near-shore',
-                              location == 'NorthSunapeeHarbor' ~ 'North Sunapee Harbor near-shore',
-                              location == 'SouthOfTheFells' ~ 'South of the Fells near-shore'),
-         location_long = factor(location_long, levels = c('primary (LSPA/GLEON) buoy','Georges Mills buoy','Herrick Cove buoy','State Beach buoy','Herrick Cove near-shore','Newbury near-shore','North Sunapee Harbor near-shore','South of the Fells near-shore'), ordered = T)) %>% 
-  arrange(location_long)
-
-ggplot(insitu_2018, aes(x = month, y = temp_degC, fill = location_long)) +
-  geom_boxplot(aes(group = paste(location_long, month)))  +
-  scale_x_continuous(breaks = c(6,7,8,9), labels = c('Jun', 'Jul', 'Aug', 'Sept')) +
-  scale_y_continuous(n.breaks = 8) +
-  labs(y = 'water temperature (deg C)') +
-  labs(fill = 'location') +
-  theme(legend.spacing.y = unit(0.1, 'cm')) +
-  guides()+
-  final_theme
-
-ggsave(paste0(figdir, 'water_temp_2018_crosssite_v29June2021.png'), width = 8, height = 4, units = 'in')
-
-```
-
-
 
 ## Visualizations of *in-situ* temperature and Landsat LST predictions
-
 
 pair qaqc skin temp with insitu as validation data
 ```{r}
@@ -343,7 +285,7 @@ ggplot(validation_range, aes(x = temp_med, y = surface_temp_median)) +
   labs(y = 'satellite-derived median\nskin temperature (deg C)', 
        x = expression(paste(italic('in-situ'), ' median water temp (deg C)'))) +
   final_theme
-ggsave(paste0(figdir, 'deming_reg_median_v28June2021.jpg'), height = 5, width = 5, units = 'in')
+ggsave(paste0(figdir, 'deming_reg_median_v24Sept2021.jpg'), height = 5, width = 5, units = 'in')
 
 validation_range$pred_temp = val_mean_dem$coefficients[1] + val_mean_dem$coefficients[2]*validation_range$temp_med
 
@@ -359,15 +301,15 @@ ggplot(validation_range, aes(x = temp_med, y = pred_temp))+
 #### apply calibration of temp to LS-derived data ####
 ```{r}
 lst_filt_maxrange <- lst_filt_maxrange %>% 
-  mutate(calib_med_temp_degC = (surface_temp_median-val_mean_dem$coefficients[1])/val_mean_dem$coefficients[2])
+  mutate(calib_range_med_temp_degC = (surface_temp_median-val_mean_dem$coefficients[1])/val_mean_dem$coefficients[2])
 
 lst_filt_maxrange %>% 
-  select(date, LSmission, temp_spread, pct_lake, surface_temp_count:surface_temp_stdDev, calib_med_temp_degC) %>% 
-  write.csv(file.path(datadir, 'LS_passQAQC_v19July2021.csv'), row.names = F)
+  select(date, LSmission, temp_spread, pct_lake, surface_temp_count:surface_temp_stdDev, calib_range_med_temp_degC) %>% 
+  write.csv(file.path(datadir, 'LS_passQAQC_v24Sept2021.csv'), row.names = F)
 
 #plot to make sure calibration is correct
 lst_filt_mod_select_range_calib <- lst_filt_maxrange %>% 
-  select(date:temp_spread, calib_med_temp_degC)
+  select(date:temp_spread, calib_range_med_temp_degC)
 
 validation_range_calib <- lst_paired %>% 
   mutate(date = as.Date(substrRight(scene, 8), '%Y%m%d')) %>% 
@@ -375,7 +317,7 @@ validation_range_calib <- lst_paired %>%
 
 ggplot(validation_range_calib, aes(x = temp_med, y = surface_temp_median)) +
   geom_point() +
-  geom_point(aes(x = temp_med, y = calib_med_temp_degC), color = 'red')+
+  geom_point(aes(x = temp_med, y = calib_range_med_temp_degC), color = 'red')+
   geom_abline(intercept = val_mean_dem$coefficients[1], slope = val_mean_dem$coefficients[2], color = 'blue') +
   geom_abline(intercept = val_mean_dem$ci[1,1], slope = val_mean_dem$ci[2,1], color = 'blue', linetype = 2) +
   geom_abline(intercept = val_mean_dem$ci[1,2], slope = val_mean_dem$ci[2,2], color = 'blue', linetype = 2) +
@@ -412,7 +354,7 @@ ggplot(validation_IQR, aes(x = temp_med, y = surface_temp_median)) +
   labs(y = 'satellite-derived median\nskin temperature (deg C)', 
        x = expression(paste(italic('in-situ'), ' median water temp (deg C)'))) +
   final_theme
-ggsave(paste0(figdir, 'deming_reg_median_IQR_v19Jul2021.jpg'), height = 5, width = 5, units = 'in')
+ggsave(paste0(figdir, 'deming_reg_median_IQR_v23Sept2021.jpg'), height = 5, width = 5, units = 'in')
 
 validation_IQR$pred_temp = val_mean_dem$coefficients[1] + val_mean_dem$coefficients[2]*validation_IQR$temp_med
 
@@ -425,7 +367,42 @@ ggplot(validation_IQR, aes(x = temp_med, y = pred_temp))+
   geom_point(aes(x = temp_med, y = surface_temp_median))
 ```
 
-#### predicted v observed 50% cutoff
+
+#### apply calibration of temp to LS-derived data - IQR ####
+```{r}
+lst_filt_maxIQR <- lst_filt_maxIQR %>% 
+  mutate(calib_IQR_med_temp_degC = (surface_temp_median-val_mean_dem$coefficients[1])/val_mean_dem$coefficients[2])
+
+lst_filt_maxIQR %>% 
+  select(date, LSmission, IQR, pct_lake, surface_temp_count:surface_temp_stdDev, calib_IQR_med_temp_degC) %>% 
+  write.csv(file.path(datadir, 'LS_IQR_passQAQC_v24Sept2021.csv'), row.names = F)
+
+#plot to make sure calibration is correct
+lst_filt_mod_select_IQR_calib <- lst_filt_maxIQR %>% 
+  select(date:IQR, calib_IQR_med_temp_degC)
+
+validation_IQR_calib <- lst_paired %>% 
+  mutate(date = as.Date(substrRight(scene, 8), '%Y%m%d')) %>% 
+  inner_join(., lst_filt_mod_select_IQR_calib)
+
+ggplot(validation_IQR_calib, aes(x = temp_med, y = surface_temp_median)) +
+  geom_point() +
+  geom_point(aes(x = temp_med, y = calib_IQR_med_temp_degC), color = 'red')+
+  geom_abline(intercept = val_mean_dem$coefficients[1], slope = val_mean_dem$coefficients[2], color = 'blue') +
+  geom_abline(intercept = val_mean_dem$ci[1,1], slope = val_mean_dem$ci[2,1], color = 'blue', linetype = 2) +
+  geom_abline(intercept = val_mean_dem$ci[1,2], slope = val_mean_dem$ci[2,2], color = 'blue', linetype = 2) +
+  geom_abline(intercept = 0, slope = 1) +
+  coord_cartesian(xlim = c(7,27),
+                  ylim = c(7,27)) +
+  labs(y = 'satellite-derived median\nskin temperature (deg C)', 
+       x = expression(paste(italic('in-situ'), ' median water temp (deg C)'))) +
+  final_theme
+
+
+```
+
+
+#### predicted v observed 50% cutoff for lake
 ```{r}
 validtion_50 <- validation_range %>% 
   filter(perc_lake > 50)
@@ -452,6 +429,7 @@ ggsave(paste0(figdir, 'deming_reg_median_50perc_v28June2021.jpg'), height = 5, w
 
 
 ```
+
 #### predicted v observed 60% cutoff
 ```{r}
 validtion_60 <- validation_range %>% 
@@ -479,6 +457,11 @@ ggsave(paste0(figdir, 'deming_reg_median_60perc_v28June2021.jpg'), height = 5, w
 
 
 ```
+
+# by cloud cover 50%
+
+
+
 
 # MSE and bias by month using opt_resid
 ```{r}
