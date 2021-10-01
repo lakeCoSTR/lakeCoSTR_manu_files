@@ -10,6 +10,7 @@ updated 16Jun2021 with output from Google Colab
 updated 28Jun2021 with unimodal analysis
 updated 19Jul2021 to export the scenes that passed QAQC
 updated 11Aug2021 with residuals for azimuth and sun angle, etc
+updated 30Sept2021 with C2 data for comparison
 
 
 
@@ -90,6 +91,33 @@ modal_analysis <- read.csv(file.path(datadir, 'colab-output/2021-06-08/date_moda
 #read in binned data
 lst_hist <- read.csv(file.path(datadir, 'colab-output/2021-06-08/sunapee_histograms_0p1bin_reformatted.csv')) %>% 
   mutate(date = as.Date(date))
+```
+
+## Collectoin 2 data
+```{r}
+C2 <- read_csv(file.path(datadir, 'colab-output/C2/sunapee_1985_2020_C2_stats.csv')) %>% 
+  mutate(date = as.Date(substrRight(`system:index`, 8), format = '%Y%m%d')) %>% 
+  mutate(LSmission = case_when(grepl('LT05', `system:index`) ~ 'LS 5',
+                                    grepl('LT04', `system:index`) ~ 'LS 4',
+                                    grepl('LE07', `system:index`) ~ 'LS 7',
+                                    grepl('LC08', `system:index`) ~ 'LS 8',
+                                    TRUE ~ NA_character_)) %>% 
+  mutate(pct_lake = (pixel_count/23598)*100) %>% 
+  select(date, LSmission, pct_lake, temp_max:temp_stdDev) %>% 
+  rename_at(vars('temp_max', 'temp_mean', 'temp_median', 'temp_min', 'temp_p25', 'temp_p75', 'temp_skew', 'temp_stdDev'),
+            ~ paste('surface', ., sep = '_'))  %>% 
+  mutate(month = as.numeric(format(date, '%m'))) %>% 
+  filter(month >5 & month<11)
+
+C2_paired <- lst_paired %>% 
+   mutate(LSmission = case_when(grepl('LT05', `system:index`) ~ 'LS 5',
+                                    grepl('LT04', `system:index`) ~ 'LS 4',
+                                    grepl('LE07', `system:index`) ~ 'LS 7',
+                                    grepl('LC08', `system:index`) ~ 'LS 8',
+                                    TRUE ~ NA_character_)) %>% 
+  select(-(X1:scene)) %>% 
+  inner_join(., C2)
+
 ```
 
 
@@ -197,6 +225,38 @@ ggplot(lst_filt_maxrange, aes(x = pct_lake, y = temp_spread)) +
   geom_point(aes(color = month)) +
   final_theme
 ggsave(file.path(figdir, 'filtered tempspread by pct lake by month summary.png'))
+
+```
+
+
+And for collection 2
+
+```{r}
+C2_filt_freeze <- C2 %>% 
+  filter(surface_temp_min > 0) 
+
+C2_filt_mod <- C2_filt_freeze %>% 
+  left_join(., modal_analysis) %>% 
+  filter(unimodal == 'unimodal')
+
+C2_filt_maxrange <- C2_filt_mod %>% 
+  mutate(temp_spread = round(surface_temp_max, digits = 1) - round(surface_temp_min, digits = 1)) %>% 
+  filter(temp_spread < max_spread*1.1)
+
+C2_filt_maxIQR <- C2_filt_mod %>% 
+  mutate(IQR = round(surface_temp_p75, digits = 1) - round(surface_temp_p25, digits = 1))  %>% 
+  filter(IQR < IQR*1.1)
+
+C2_filt_maxrange %>% 
+  group_by(LSmission) %>% 
+  summarize(count = length(LSmission))
+
+C2_filt_maxIQR %>% 
+  group_by(LSmission) %>% 
+  summarize(count = length(LSmission))
+
+colnames(C2_filt_maxrange)
+
 
 ```
 
@@ -316,6 +376,10 @@ validation_range <- lst_paired %>%
   mutate(date = as.Date(substrRight(scene, 8), '%Y%m%d')) %>% 
   inner_join(., lst_filt_mod_select_range)
 
+validation_C2 <- C2_filt_maxrange %>% 
+  select(date, LSmission) %>% 
+  inner_join(., C2_paired)
+
 validation_IQR <- lst_paired %>% 
   mutate(date = as.Date(substrRight(scene, 8), '%Y%m%d')) %>% 
   inner_join(., lst_filt_mod_select_IQR)
@@ -379,6 +443,75 @@ ggplot(validation_range_calib, aes(x = temp_med, y = surface_temp_median)) +
   geom_abline(intercept = val_mean_dem$coefficients[1], slope = val_mean_dem$coefficients[2], color = 'blue') +
   geom_abline(intercept = val_mean_dem$ci[1,1], slope = val_mean_dem$ci[2,1], color = 'blue', linetype = 2) +
   geom_abline(intercept = val_mean_dem$ci[1,2], slope = val_mean_dem$ci[2,2], color = 'blue', linetype = 2) +
+  geom_abline(intercept = 0, slope = 1) +
+  coord_cartesian(xlim = c(7,27),
+                  ylim = c(7,27)) +
+  labs(y = 'satellite-derived median\nskin temperature (deg C)', 
+       x = expression(paste(italic('in-situ'), ' median water temp (deg C)'))) +
+  final_theme
+
+
+```
+  
+
+
+#### predicted v observed by range C2
+```{r}
+val_C2_med_ls <- lm(validation_C2$surface_temp_median ~ validation_C2$temp_med)
+summary(val_C2_med_ls)
+
+val_C2_med_dem <-deming::deming(validation_C2$surface_temp_median ~ validation_C2$temp_med)
+val_C2_med_dem
+
+cor(validation_C2$surface_temp_median, validation_C2$temp_med)
+
+ggplot(validation_C2, aes(x = temp_med, y = surface_temp_median)) +
+  geom_point() +
+  geom_abline(intercept = val_C2_med_dem$coefficients[1], slope = val_C2_med_dem$coefficients[2], color = 'blue') +
+  geom_abline(intercept = val_C2_med_dem$ci[1,1], slope = val_C2_med_dem$ci[2,1], color = 'blue', linetype = 2) +
+  geom_abline(intercept = val_C2_med_dem$ci[1,2], slope = val_C2_med_dem$ci[2,2], color = 'blue', linetype = 2) +
+  geom_abline(intercept = 0, slope = 1) +
+  coord_cartesian(xlim = c(7,27),
+                  ylim = c(7,27)) +
+  labs(y = 'satellite-derived median\nskin temperature C2 (deg C)', 
+       x = expression(paste(italic('in-situ'), ' median water temp (deg C)'))) +
+  final_theme
+ggsave(paste0(figdir, 'deming_reg_C2_median_v30Sept2021.jpg'), height = 5, width = 5, units = 'in')
+
+validation_C2$pred_temp = val_C2_med_dem$coefficients[1] + val_C2_med_dem$coefficients[2]*validation_C2$temp_med
+
+lst_insitu_dem_forresid = mcreg(x = validation_C2$temp_med, y = validation_C2$surface_temp_median, method.reg = 'Deming')
+validation_C2$opt_resid = MCResult.getResiduals(lst_insitu_dem_forresid)$optimized
+
+#plot to make sure prediction is correct
+ggplot(validation_C2, aes(x = temp_med, y = pred_temp))+
+  geom_point(color = 'blue') +
+  geom_point(aes(x = temp_med, y = surface_temp_median))
+```
+
+#### apply calibration of temp to LS-derived data ####
+```{r}
+C2_filt_maxrange <- C2_filt_maxrange %>% 
+  mutate(calib_med_temp_degC = (surface_temp_median-val_C2_med_dem$coefficients[1])/val_C2_med_dem$coefficients[2])
+C2_filt_maxrange
+
+C2_filt_maxrange %>% 
+  select(date, LSmission, temp_spread, pct_lake, surface_temp_max:surface_temp_stdDev, calib_med_temp_degC) %>% 
+  write.csv(file.path(datadir, 'LS_C2_passQAQC_v31Sept_2021.csv'), row.names = F)
+
+#plot to make sure calibration is correct
+C2_filt_mod_select_range_calib <- C2_filt_maxrange %>% 
+  select(date:temp_spread, calib_med_temp_degC)
+
+validation_C2_calib <- C2_paired%>% 
+  inner_join(., C2_filt_mod_select_range_calib)
+
+ggplot(validation_C2_calib, aes(x = temp_med, y = surface_temp_median)) +
+  geom_point() +
+  geom_point(aes(x = temp_med, y = calib_med_temp_degC), color = 'red')+
+  geom_abline(intercept = val_C2_med_dem$coefficients[1], slope = val_C2_med_dem$coefficients[2], color = 'blue') +
+  geom_abline(intercept = val_C2_med_dem$ci[1,1], slope = val_C2_med_dem$ci[2,1], color = 'blue', linetype = 2) +
+  geom_abline(intercept = val_C2_med_dem$ci[1,2], slope = val_C2_med_dem$ci[2,2], color = 'blue', linetype = 2) +
   geom_abline(intercept = 0, slope = 1) +
   coord_cartesian(xlim = c(7,27),
                   ylim = c(7,27)) +
