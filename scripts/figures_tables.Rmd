@@ -27,11 +27,10 @@ figdir = '~/GitHub/ids-ne-lakes/figures/'
 #load in all high-frequency insitu data for historical data analysis
 insitu <- read.csv(paste0(datadir, 'insitu_temp_data_v2021-05-17.csv')) %>% 
   filter(!is.na(lat_dd)) %>% 
-  mutate(datetime = as.POSIXct(datetime, tz='Etc/GMT+5')) %>% 
-  filter(as.numeric(format(datetime, '%m')) < 11 & as.numeric(format(datetime, '%m')) > 5)
+  mutate(datetime = as.POSIXct(datetime, tz='Etc/GMT+5'))
 
 #read in all skin temp data for whole lake
-lst_all <- read_csv(paste0(datadir, 'colab-output/2021-06-08/sunapee_temp_stats.csv'),
+C2_lst_all <- read_csv(paste0(datadir, 'colab-output/C2/sunapee_1980_2020_C2_stats.csv'),
                              col_types = c('')) %>% 
   mutate(date =as.Date(substrRight(`system:index`, 8), '%Y%m%d'),
          month = as.numeric(format(date, '%m')),
@@ -41,55 +40,54 @@ lst_all <- read_csv(paste0(datadir, 'colab-output/2021-06-08/sunapee_temp_stats.
                                grepl('LT05', `system:index`) ~ 'LS 5',
                                grepl('LE07', `system:index`) ~ 'LS 7',
                                grepl('LC08', `system:index`) ~ 'LS 8')) %>% 
-  filter(month < 11 & month > 5) %>%
   rowid_to_column()
 
-lst_all %>% 
+C2_lst_all %>% 
   group_by(LSmission) %>% 
   summarize(count = length(LSmission))
 
-lst_paired <- read_csv(paste0(datadir, 'colab-output/2021-06-08/sunapee_insitu_landsat_paired.csv'),
+C2_lst_paired <- read_csv(paste0(datadir, 'colab-output/C2/sunapee_insitu_landsat_paired.csv'),
                              col_types = c('')) %>% 
   mutate(date =as.Date(substrRight(`system:index`, 8), '%Y%m%d')) %>% 
   filter(as.numeric(format(date, '%m')) < 11 & as.numeric(format(date, '%m')) >5)
 
-#load in the matched high-frequency insitu data from the .csv's outputted in the Google Colab script
-
-#make a list of the file names in the folder
-match_names <- list.files(paste0(datadir, 'colab-output/2021-06-08/ancillary'))
-
-#iterate over the files into a dataframe
-for(i in 1:length(match_names)) {
-  data <- read_csv(paste0(datadir, 'match-files/', match_names[i]), 
-           col_types = c('')) %>% 
-    mutate(source = paste0(match_names[i]))
-  if (i == 1) {
-    match_details <- data
-  } else {
-  match_details <- full_join(match_details, data)
-  }
-}
-
-# add columns for match_details
-match_details <- match_details %>% 
-  mutate(date =as.Date(datetime),
-         month = as.numeric(format(date, '%m')),
-         year = as.factor(format(date, '%Y')),
-         doy = as.numeric(format(date, '%j'))) %>% 
-  filter(frequency == 'sub-daily') %>% 
-  filter(month < 11 & month > 5) 
-
-#read in the modal information
-modal_analysis <- read.csv(file.path(datadir, 'colab-output/2021-06-08/date_modalanalysis.csv')) %>% 
-  mutate(date = as.Date(date),
-         month =  as.numeric(format(date, '%m'))) %>% 
-  filter(month < 11 & month > 5)
-
-#read in binned data
-lst_hist <- read.csv(file.path(datadir, 'colab-output/2021-06-08/sunapee_histograms_0p1bin_reformatted.csv')) %>% 
-  mutate(date = as.Date(date),
-         month =  as.numeric(format(date, '%m'))) %>% 
-  filter(month < 11 & month > 5)
+# # load in the matched high-frequency insitu data from the .csv's outputted in the Google Colab script
+# 
+# # make a list of the file names in the folder
+# match_names <- list.files(paste0(datadir, 'colab-output/2021-06-08/ancillary'))
+# 
+# #iterate over the files into a dataframe
+# for(i in 1:length(match_names)) {
+#   data <- read_csv(paste0(datadir, 'match-files/', match_names[i]),
+#            col_types = c('')) %>%
+#     mutate(source = paste0(match_names[i]))
+#   if (i == 1) {
+#     match_details <- data
+#   } else {
+#   match_details <- full_join(match_details, data)
+#   }
+# }
+# 
+# # add columns for match_details
+# match_details <- match_details %>%
+#   mutate(date =as.Date(datetime),
+#          month = as.numeric(format(date, '%m')),
+#          year = as.factor(format(date, '%Y')),
+#          doy = as.numeric(format(date, '%j'))) %>%
+#   filter(frequency == 'sub-daily') %>%
+#   filter(month < 11 & month > 5)
+# 
+# #read in the modal information
+# modal_analysis <- read.csv(file.path(datadir, 'colab-output/2021-06-08/date_modalanalysis.csv')) %>%
+#   mutate(date = as.Date(date),
+#          month =  as.numeric(format(date, '%m'))) %>%
+#   filter(month < 11 & month > 5)
+# 
+# #read in binned data
+# lst_hist <- read.csv(file.path(datadir, 'colab-output/2021-06-08/sunapee_histograms_0p1bin_reformatted.csv')) %>%
+#   mutate(date = as.Date(date),
+#          month =  as.numeric(format(date, '%m'))) %>%
+#   filter(month < 11 & month > 5)
 
 ```
 
