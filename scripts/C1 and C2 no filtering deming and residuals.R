@@ -1,4 +1,4 @@
-# this script compares the C1 SC algorhim with the C2 surface temp data
+# this script compares the C1 SC algorithm with the C2 surface temp data
 
 #load libraries and functions from R_library.R
 source('R_library.R')
@@ -6,6 +6,7 @@ source('R_library.R')
 #point to directories
 C1_datadir <- '~/GitHub/ids-ne-lakes/data/colab-output/2021-06-08/'
 C2_datadir <- '~/GitHub/ids-ne-lakes/data/colab-output/C2/'
+fig_dir <- '~/GitHub/ids-ne-lakes/figures/'
 
 # read in C1 single-channel and C2 surface temperature data
 C1SC <- read_csv(file.path(C1_datadir, 'sunapee_insitu_landsat_paired.csv')) %>% 
@@ -68,43 +69,78 @@ all_surface_temp <- full_join(C1SC, C2ST) %>%
   mutate(collection = as.factor(collection))
 
 # Plot comparison
-ggplot(all_surface_temp, aes(x = temp_med, y = surface_temp_median, color = collection)) +
-  geom_point(size = 3) +
-  geom_line(aes(group = date)) +
-  geom_abline(slope = 1, intercept = 0, linetype = 2) +
+dem_regression_both <- ggplot(all_surface_temp, aes(x = temp_med, y = surface_temp_median, color = collection)) +
+  geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
+  geom_point() +
+  #add 1:1 line
+  #add deming regression and prediction intervals for C2
+  geom_abline(intercept = C2_deming$coefficients[1], slope = C2_deming$coefficients[2], color = '#E69F00', size = 0.75) +
+  geom_abline(intercept = C2_deming$ci[1,1], slope = C2_deming$ci[2,1], color = '#E69F00', linetype = 3, size = 0.75) +
+  geom_abline(intercept = C2_deming$ci[1,2], slope = C2_deming$ci[2,2], color = '#E69F00', linetype = 3, size = 0.75) +
+  #add deming regression and prediction intervals for C1
+  geom_abline(intercept = C1_deming$coefficients[1], slope = C1_deming$coefficients[2], size = 0.75) +
+  geom_abline(intercept = C1_deming$ci[1,1], slope = C1_deming$ci[2,1], linetype = 3, size = 0.75) +
+  geom_abline(intercept = C1_deming$ci[1,2], slope = C1_deming$ci[2,2], linetype = 3, size = 0.75) +
+  labs(x = NULL,
+       y = 'median Landsat-derived\nsurface temperature (deg C)') +
   final_theme +
-  coord_cartesian(xlim = c(0, 30),
-                  ylim = c(0, 30)) +
+  theme(legend.position = 'bottom') +
+  coord_cartesian(xlim = c(0, 27),
+                  ylim = c(0, 27)) +
   scale_color_colorblind()
+dem_regression_both
+
+#grab legend from this plot
+legend = get_legend(dem_regression_both)
+
+#remove legend for viz
+dem_regression_both <- dem_regression_both +
+  theme(legend.position = 'none')
+dem_regression_both
 
 #residuals
 
 # by LS surface temp
-ggplot(all_surface_temp, aes(x = surface_temp_median, y = opt_resid, color = collection)) +
+resid_by_insitu <- ggplot(all_surface_temp, aes(x = temp_med, y = opt_resid, color = collection)) +
   geom_point() +
-  # geom_line(aes(group = date)) +
+  labs(x = expression(bold(paste(italic('in-situ'), ' median water temp (deg C)'))),
+        y = 'Deming-optimized residual\n(deg C)') +
   geom_abline(intercept =  0, slope = 0) +
-  coord_cartesian(ylim = c(-6, 6)) +
+  coord_cartesian(ylim = c(-6, 6),
+                  xlim = c(0, 27)) +
   final_theme +
-  scale_color_colorblind()
+  scale_color_colorblind() +
+  theme(legend.position = 'none')
 
-# by month
-ggplot(all_surface_temp, aes(x = month, y = opt_resid, color = collection)) +
-  geom_point() +
-  # geom_line(aes(group = date)) +
-  geom_abline(intercept =  0, slope = 0) +
-  coord_cartesian(ylim = c(-6, 6)) +
-  final_theme +
-  scale_color_colorblind()
+plots <- plot_grid(dem_regression_both, resid_by_insitu,
+          ncol = 1,
+          labels = c('a', 'b'),
+          rel_heights = c(4.5, 5))
+plots_leg <- plot_grid(plots, legend, 
+                       ncol = 1,
+                       rel_heights = c(7, 0.25)) 
+plots_leg
+
+plot_filename <- paste0(fig_dir, 'C1 and C2 deming and residuals v', Sys.Date(), '.jpg')
+
+ggsave(plot_filename, 
+       dpi = 300,
+       height = 8,
+       width = 4,
+       units = 'in')
 
 # by doy
-ggplot(all_surface_temp, aes(x = doy, y = opt_resid, color = collection)) +
+ggplot(all_surface_temp, aes(x = as.numeric(doy), y = opt_resid, color = collection)) +
   geom_point() +
   # geom_line(aes(group = date)) +
+  labs(x = 'day of year',
+       y = 'Deming-optimized residual\n(deg C)') +
   geom_abline(intercept =  0, slope = 0) +
   coord_cartesian(ylim = c(-6, 6)) +
   final_theme +
   scale_color_colorblind()
+
+# by pixel count
 
 # by cloud cover
 ggplot(all_surface_temp, aes(x = cloud_cover, y = opt_resid, color = collection)) +
@@ -112,6 +148,8 @@ ggplot(all_surface_temp, aes(x = cloud_cover, y = opt_resid, color = collection)
   # geom_line(aes(group = date)) +
   geom_abline(intercept =  0, slope = 0) +
   coord_cartesian(ylim = c(-6, 6)) +
+  labs(x = 'cloud cover (percent)',
+       y = 'Deming-optimized residual\n(deg C)') +
   final_theme +
   scale_color_colorblind()
 
@@ -121,6 +159,8 @@ ggplot(all_surface_temp, aes(x = sunelev, y = opt_resid, color = collection)) +
   # geom_line(aes(group = date)) +
   geom_abline(intercept =  0, slope = 0) +
   coord_cartesian(ylim = c(-6, 6)) +
+  labs(x = 'sun elevation (UNITS)',
+       y = 'Deming-optimized residual\n(deg C)') +
   final_theme +
   scale_color_colorblind()
 
@@ -130,6 +170,8 @@ ggplot(all_surface_temp, aes(x = earthsun_d, y = opt_resid, color = collection))
   # geom_line(aes(group = date)) +
   geom_abline(intercept =  0, slope = 0) +
   coord_cartesian(ylim = c(-6, 6)) +
+  labs(x = 'earth sun distance (UNITS)',
+       y = 'Deming-optimized residual\n(deg C)') +
   final_theme +
   scale_color_colorblind()
 
@@ -139,6 +181,8 @@ ggplot(all_surface_temp, aes(x = sunazi, y = opt_resid, color = collection)) +
   # geom_line(aes(group = date)) +
   geom_abline(intercept =  0, slope = 0) +
   coord_cartesian(ylim = c(-6, 6)) +
+  labs(x = 'sun azimuth (degrees)',
+       y = 'Deming-optimized residual\n(deg C)') +
   final_theme +
   scale_color_colorblind()
 
