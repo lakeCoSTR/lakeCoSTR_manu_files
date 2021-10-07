@@ -59,6 +59,9 @@ C2ST <- C1SC_temp %>%
   filter(!is.na(pixel_count)) 
 head(C2ST)
 
+#save temp paired data
+write_csv(C2ST, file.path(datadir, 'temporary_sunapee_stats_paired_C2.csv'))
+
 # deming regression for C2
 C2_deming = deming::deming(C2ST$surface_temp_median ~ C2ST$temp_med)
 C2_deming_forresid = mcreg(x = C2ST$temp_med, y = C2ST$surface_temp_median, method.reg = 'Deming')
