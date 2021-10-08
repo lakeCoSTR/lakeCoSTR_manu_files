@@ -48,7 +48,7 @@ C2_lst_all %>%
 
 # REPLACE WITH REAL FILE LATER
 C2_lst_paired <- read_csv(paste0(datadir, 'colab-output/C2/temporary_sunapee_stats_paired_C2.csv'),
-                             col_types = c(''))
+                             col_types = c('')) 
 
 ```
 
@@ -158,32 +158,32 @@ C2_lst_filt_maxIQR %>%
   group_by(LSmission) %>% 
   summarize(count = length(LSmission))
 
-ggplot(C2_lst_all_val, aes(x = pct_lake, y = (temp_max-temp_min))) +
-  geom_point(aes(color = month)) +
-  labs(y = 'temp_spread')+
-  geom_abline(intercept = 1.1 * max_spread, slope = 0, lty = 2) +
-  final_theme
-ggsave(file.path(figdir, 'C2 tempspread by pct lake by month summary.png'))
-
-ggplot(C2_lst_all_val, aes(x = pct_lake, y = (temp_p75-temp_p25))) +
-  geom_point(aes(color = month)) +
-  labs(y = 'temp_IQR')+
-    geom_abline(intercept = 1.1 * max_IQR, slope = 0, lty = 2) +
-final_theme
-ggsave(file.path(figdir, 'C2 temp IQR by pct lake by month summary.png'))
-
-ggplot(C2_lst_filt_maxrange, aes(x = pct_lake, y = temp_spread)) +
-  geom_point(aes(color = month)) +
-  final_theme
-ggsave(file.path(figdir, 'C2 filtered tempspread by pct lake by month summary.png'))
-
-ggplot(C2_lst_filt_maxIQR, aes(x = pct_lake, y = IQR)) +
-  geom_point(aes(color = month)) +
-  final_theme
-ggsave(file.path(figdir, 'C2 filtered temp IQR by pct lake by month summary.png'))
+# ggplot(C2_lst_all_val, aes(x = pct_lake, y = (temp_max-temp_min))) +
+#   geom_point(aes(color = month)) +
+#   labs(y = 'temp_spread')+
+#   geom_abline(intercept = 1.1 * max_spread, slope = 0, lty = 2) +
+#   final_theme
+# ggsave(file.path(figdir, 'C2 tempspread by pct lake by month summary.png'))
+# 
+# ggplot(C2_lst_all_val, aes(x = pct_lake, y = (temp_p75-temp_p25))) +
+#   geom_point(aes(color = month)) +
+#   labs(y = 'temp_IQR')+
+#     geom_abline(intercept = 1.1 * max_IQR, slope = 0, lty = 2) +
+# final_theme
+# ggsave(file.path(figdir, 'C2 temp IQR by pct lake by month summary.png'))
+# 
+# ggplot(C2_lst_filt_maxrange, aes(x = pct_lake, y = temp_spread)) +
+#   geom_point(aes(color = month)) +
+#   final_theme
+# ggsave(file.path(figdir, 'C2 filtered tempspread by pct lake by month summary.png'))
+# 
+# ggplot(C2_lst_filt_maxIQR, aes(x = pct_lake, y = IQR)) +
+#   geom_point(aes(color = month)) +
+#   final_theme
+# ggsave(file.path(figdir, 'C2 filtered temp IQR by pct lake by month summary.png'))
 
 ```
-
+## Figures of 
 ## Summary Data Tables for insitu-skin temp match
 waiting on match details; percent of lake
 
@@ -224,10 +224,10 @@ waiting on match details; percent of lake
 
 ## pair qaqc skin temp with insitu as validation data
 ```{r}
-C2_C2_validation_range <- C2_lst_filt_maxrange %>%
+C2_validation_range <- C2_lst_filt_maxrange %>%
   select(date, LSmission) %>% 
   inner_join(., C2_lst_paired)
-C2_C2_validation_IQR <- C2_lst_filt_maxIQR%>%
+C2_validation_IQR <- C2_lst_filt_maxIQR%>%
   select(date, LSmission) %>% 
   inner_join(., C2_lst_paired)
 
@@ -259,7 +259,7 @@ C2_lst_insitu_dem_forresid = mcreg(x = C2_validation_range$temp_med, y = C2_vali
 C2_validation_range$opt_resid_range = MCResult.getResiduals(C2_lst_insitu_dem_forresid)$optimized
 
 #plot to make sure prediction is correct
-ggplot(C2_validation_range, aes(x = temp_med, y = pred_range))+
+ggplot(C2_validation_range, aes(x = temp_med, y = pred_temp_range))+
   geom_point(color = 'blue') +
   geom_point(aes(x = temp_med, y = surface_temp_median))
 ```
@@ -269,6 +269,11 @@ ggplot(C2_validation_range, aes(x = temp_med, y = pred_range))+
 C2_validation_range <- C2_validation_range %>% 
   mutate(calib_range = (surface_temp_median-val_med_ls$coefficients[1])/val_med_ls$coefficients[2]) %>% 
   select(date, LSmission, temp_med, pred_temp_range, opt_resid_range, calib_range)
+
+#apply to all QAQC IQR dataset
+C2_calibration_range <- C2_lst_filt_maxrange %>% 
+  mutate(calib_range = (temp_median-val_med_ls$coefficients[1])/val_med_ls$coefficients[2])%>% 
+  select(date, LSmission, calib_range)
 
 C2_lst_all_val <- C2_lst_all_val %>% 
   full_join(., C2_validation_range)
@@ -286,6 +291,7 @@ ggplot(C2_lst_all_val, aes(x = temp_med, y = temp_median)) +
        x = expression(paste(italic('in-situ'), ' median water temp (deg C)'))) +
   final_theme
 
+C2_lst_all_val <- full_join(C2_lst_all_val, C2_calibration_range)
 
 ```
   
@@ -316,25 +322,31 @@ C2_lst_insitu_IQR_dem_forresid = mcreg(x = C2_validation_IQR$temp_med, y = C2_va
 C2_validation_IQR$opt_resid_IQR = MCResult.getResiduals(C2_lst_insitu_IQR_dem_forresid)$optimized
 
 #plot to make sure prediction is correct
-ggplot(C2_validation_IQR, aes(x = temp_med, y = pred_IQR))+
+ggplot(C2_validation_IQR, aes(x = temp_med, y = pred_temp_IQR))+
   geom_point(color = 'blue') +
   geom_point(aes(x = temp_med, y = surface_temp_median))
 ```
 
 
 ### apply calibration of temp to LS-derived data - IQR
-#LEFT OFF HERE
+
 ```{r}
 
+#apply to the validation set
 C2_validation_IQR<- C2_validation_IQR %>% 
-  mutate(calib_IQR = (surface_temp_median-val_med_IQR$coefficients[1])/val_med_IQR$coefficients[2])%>% 
-  select(rowid, pred_IQR, opt_resid_IQR, calib_IQR)
+  mutate(calib_IQR = (surface_temp_median-val_med_IQR_dem$coefficients[1])/val_med_IQR_dem$coefficients[2])%>% 
+  select(date, LSmission, pred_temp_IQR, opt_resid_IQR, calib_IQR)
+
+#apply to all QAQC IQR dataset
+C2_calibration_IQR <- C2_lst_filt_maxIQR %>% 
+  mutate(calib_IQR = (temp_median-val_med_IQR_dem$coefficients[1])/val_med_IQR_dem$coefficients[2])%>% 
+  select(date, LSmission, calib_IQR)
 
 C2_lst_all_val <- C2_lst_all_val %>% 
   full_join(., C2_validation_IQR)
 
 #plot to make sure calibration is correct
-ggplot(C2_lst_all_val, aes(x = temp_med, y = surface_temp_median)) +
+ggplot(C2_lst_all_val, aes(x = temp_med, y = temp_median)) +
   geom_point() +
   geom_point(aes(x = temp_med, y = calib_IQR), color = 'red')+
   geom_abline(intercept = val_med_IQR_dem$coefficients[1], slope = val_med_IQR_dem$coefficients[2], color = 'blue') +
@@ -347,14 +359,283 @@ ggplot(C2_lst_all_val, aes(x = temp_med, y = surface_temp_median)) +
        x = expression(paste(italic('in-situ'), ' median water temp (deg C)'))) +
   final_theme
 
+C2_lst_all_val <- full_join(C2_lst_all_val, C2_calibration_IQR)
+
+
 ```
 
-## look at the two predictions to see how they relate
+Export C2 data with validation and calibration data
 ```{r}
-ggplot(C2_lst_all_val, aes(x = calib_range, y = calib_IQR)) +
+write.csv(C2_lst_all_val, file.path(datadir, paste0('LS_C2_QAQC_calval_v', Sys.Date(), '.csv')), row.names = F)
+```
+
+
+# MSE and bias by month using opt_resid
+```{r}
+
+# calculate mse with optomized residuals
+#re-orient data for residual analysis
+C2_lst_resid <- C2_lst_all_val %>% 
+  select(month, LSmission, opt_resid_IQR, opt_resid_range) %>% 
+  rename(IQR = opt_resid_IQR,
+         range = opt_resid_range) %>% 
+  pivot_longer(cols = c('IQR', 'range'),
+               names_to = 'filter',
+               values_to = 'opt_resid')  %>% 
+  filter(!is.na(opt_resid)) %>% 
+  mutate(month = as.character(month))
+
+#all data
+all_error <- C2_lst_resid %>% 
+  group_by(filter) %>% 
+  summarise(mse = round(sum((opt_resid^2))/n(), digits = 2),
+            rmse = round(sqrt(mse), digits = 2),
+            bias = round(sum(opt_resid)/n(), digits = 2),
+            mae = round(sum(abs(opt_resid))/n(), digits = 2),
+            n_obs = n()) %>% 
+  mutate(LSmission = 'All missions',
+         month = 'All months')
+all_error
+# %>% 
+#     write.csv(., file.path(datadir, 'LSC2_deming_prediction_stats_v07Oct2021.csv'))
+
+#all data by mission
+mission_error <- C2_lst_resid %>% 
+  group_by(filter, LSmission) %>% 
+  summarise(mse = round(sum((opt_resid^2))/n(), digits = 2),
+            rmse = round(sqrt(mse), digits = 2),
+            bias = round(sum(opt_resid)/n(), digits = 2),
+            mae = round(sum(abs(opt_resid))/n(), digits = 2),
+            n_obs = n()) %>% 
+  mutate(month = 'All months')
+mission_error
+# %>% 
+#     write.csv(., file.path(datadir, 'LS_C2_deming_prediction_bymission_stats_v07Oct2021.csv'))
+
+
+# by month
+month_error <- C2_lst_resid %>% 
+  group_by(filter, month) %>% 
+  summarise(mse = round(sum((opt_resid^2))/n(), digits = 2),
+            rmse = round(sqrt(mse), digits = 2),
+            bias = round(sum(opt_resid)/n(), digits = 2),
+            mae = round(sum(abs(opt_resid))/n(), digits = 2),
+            n_obs = n()) %>% 
+  select(filter, month, n_obs, mae, mse, rmse, bias) %>% 
+  mutate(LSmission = 'All missions')
+month_error
+# %>% 
+#   write.csv(., file.path(datadir, 'LS_C2_deming_prediction_stats_allmissions_v07Oct2021.csv'))
+
+
+#by month and mission
+month_mission_error <- C2_lst_resid %>% 
+  group_by(filter, month, LSmission) %>% 
+  summarise(mse = round(sum((opt_resid^2))/n(), digits = 2),
+            rmse = round(sqrt(mse), digits = 2),
+            bias = round(sum(opt_resid)/n(), digits = 2),
+            mae = round(sum(abs(opt_resid))/n(), digits = 2),
+            n_obs = n())  %>% 
+  select(month, filter, LSmission, n_obs, mse, mae, rmse, bias) 
+month_mission_error
+
+C2_error <- full_join(all_error, month_error) %>% 
+  full_join(., mission_error) %>% 
+  full_join(., month_mission_error) %>%
+  pivot_longer(!c(month, LSmission, filter), names_to = 'variable', values_to = 'values') %>%
+  mutate(variable = factor(variable, levels = c('n_obs', 'mae','mse', 'rmse', 'bias'))) %>%
+  arrange(month, variable) %>%
+  pivot_wider(names_from = c(LSmission),
+              values_from = values) %>% 
+  select(month, filter, variable:`LS 8`) %>% 
+  mutate(month = factor(month, levels = c('All months', '5', '6', '7', '8', '9', '10', '11'))) %>% 
+  arrange(month)
+
+write.csv(C2_error, file.path(datadir, 'LSC2_deming_prediction_stats_v07Oct2021.csv'))
+
+```
+
+
+# Residuals 
+
+## plot residuals by x
+
+```{r}
+C2_lst_insitu_dem_forresid = mcreg(x = C2_validation_range$temp_med, y = C2_validation_range$surface_temp_median, method.reg = 'Deming')
+
+
+ggplot(C2_validation_range, aes(sample = opt_resid_range)) +
+  geom_qq() +
+  geom_qq_line()
+
+ggplot(C2_validation_range, aes (y = opt_resid_range, x = temp_med)) +
   geom_point() +
-  geom_abline(intercept =  0, slope = 1) +
+  labs(x = 'in-situ median water temp (deg C)',
+       y = 'deming optimized residuals (deg C)') +
+  geom_hline(yintercept = 0, color = 'black') +
   final_theme
+ggsave(paste0(dir, 'figures/optresid_x_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
+
+ggplot(C2_validation_range, aes (y = opt_resid, x = temp_med, color = month)) +
+  geom_point(size = 2) +
+  labs(x = 'in-situ median water temp (deg C)',
+       y = 'deming optimized residuals (deg C)') +
+  geom_hline(yintercept = 0, color = 'black') +
+  final_theme +
+  scale_color_colorblind()
+ggsave(paste0(dir, 'figures/optresid_x_colorbymonth_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
+```
+
+## residuals by cloud cover
+```{r}
+ggplot(C2_validation_range, aes (y = opt_resid, x = cloud_cover)) +
+  geom_point() +
+  labs(x = 'cloud cover (percent)',
+       y = 'deming optimized residuals (deg C)') +
+  geom_hline(yintercept = 0, color = 'black') +
+  final_theme
+ggsave(paste0(dir, 'figures/optresid_cloudcover_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
+
+ggplot(C2_validation_range, aes (y = opt_resid, x = cloud_cover, color = month)) +
+  geom_point(size = 2) +
+  labs(x = 'cloud cover (percent)',
+       y = 'deming optimized residuals (deg C)') +
+  geom_hline(yintercept = 0, color = 'black') +
+  final_theme +
+  scale_color_colorblind()
+ggsave(paste0(dir, 'figures/optresid_cloudcover_colorbymonth_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
+
+```
+
+## residuals by pixel count
+```{r}
+ggplot(C2_validation_range, aes (y = opt_resid, x = pixel_count)) +
+  geom_point() +
+  labs(x = 'pixel count',
+       y = 'deming optimized residuals (deg C)') +
+  geom_hline(yintercept = 0, color = 'black') +
+  final_theme
+ggsave(paste0(dir, 'figures/optresid_pixelcount_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
+
+ggplot(C2_validation_range, aes (y = opt_resid, x = pixel_count, color = month)) +
+  geom_point(size = 2) +
+  labs(x = 'pixel count',
+       y = 'deming optimized residuals (deg C)') +
+  geom_hline(yintercept = 0, color = 'black') +
+  final_theme +
+  scale_color_colorblind()
+ggsave(paste0(dir, 'figures/optresid_pixelcount_colorbymonth_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
+
+```
+
+## residuals by mean sample depth
+```{r}
+ggplot(C2_validation_range, aes (y = opt_resid, x = depth_avg)) +
+  geom_point() +
+  labs(x = 'mean in-situ depth (m)',
+       y = 'deming optimized residuals (deg C)') +
+  geom_hline(yintercept = 0, color = 'black') +
+  final_theme
+ggsave(paste0(dir, 'figures/optresid_insitudepth_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
+
+ggplot(C2_validation_range, aes (y = opt_resid, x = depth_avg, color = month)) +
+  geom_point(size = 2) +
+  labs(x = 'mean in-situ depth (m)',
+       y = 'deming optimized residuals (deg C)') +
+  geom_hline(yintercept = 0, color = 'black') +
+  final_theme +
+  scale_color_colorblind()
+ggsave(paste0(dir, 'figures/optresid_insitudepth_colorbymonth_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
+
+```
+
+## residuals by month, year, doy
+```{r}
+ggplot(C2_validation_range, aes (y = opt_resid, x = month)) +
+  geom_point() +
+  labs(x = 'month',
+       y = 'deming optimized residuals (deg C)') +
+  geom_hline(yintercept = 0, color = 'black') +
+  final_theme
+ggsave(paste0(dir, 'figures/optresid_month_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
+
+ggplot(C2_validation_range, aes (y = opt_resid, x = month, color = pixel_count)) +
+  geom_point(size = 2) +
+  labs(x = 'month',
+       y = 'deming optimized residuals (deg C)') +
+  geom_hline(yintercept = 0, color = 'black') +
+  final_theme 
+ggsave(paste0(dir, 'figures/optresid_month_bypixelcount_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
+
+ggplot(C2_validation_range, aes (y = opt_resid, x = month, color = cloud_cover)) +
+  geom_point(size = 2) +
+  labs(x = 'month',
+       y = 'deming optimized residuals (deg C)') +
+  geom_hline(yintercept = 0, color = 'black') +
+  final_theme 
+ggsave(paste0(dir, 'figures/optresid_month_bycloudcover_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
+
+ggplot(C2_validation_range, aes (y = opt_resid, x = year)) +
+  geom_point() +
+  labs(x = 'year',
+       y = 'deming optimized residuals (deg C)') +
+  geom_hline(yintercept = 0, color = 'black') +
+  final_theme
+ggsave(paste0(dir, 'figures/optresid_year_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
+
+ggplot(C2_validation_range, aes (y = opt_resid, x = year, color = pixel_count)) +
+  geom_point(size = 2) +
+  labs(x = 'year',
+       y = 'deming optimized residuals (deg C)') +
+  geom_hline(yintercept = 0, color = 'black') +
+  final_theme 
+ggsave(paste0(dir, 'figures/optresid_year_bypixelcount_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
+
+ggplot(C2_validation_range, aes (y = opt_resid, x = year, color = cloud_cover)) +
+  geom_point(size = 2) +
+  labs(x = 'year',
+       y = 'deming optimized residuals (deg C)') +
+  geom_hline(yintercept = 0, color = 'black') +
+  final_theme 
+ggsave(paste0(dir, 'figures/optresid_year_bycloudcover_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
+
+ggplot(C2_validation_range, aes (y = opt_resid, x = doy)) +
+  geom_point() +
+  labs(x = 'doy',
+       y = 'deming optimized residuals (deg C)') +
+  geom_hline(yintercept = 0, color = 'black') +
+  final_theme
+ggsave(paste0(dir, 'figures/optresid_doy_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
+
+ggplot(C2_validation_range, aes (y = opt_resid, x = doy, color = pixel_count)) +
+  geom_point(size = 2) +
+  labs(x = 'doy',
+       y = 'deming optimized residuals (deg C)') +
+  geom_hline(yintercept = 0, color = 'black') +
+  final_theme 
+ggsave(paste0(dir, 'figures/optresid_doy_bypixelcount_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
+
+ggplot(C2_validation_range, aes (y = opt_resid, x = doy, color = cloud_cover)) +
+  geom_point(size = 2) +
+  labs(x = 'doy',
+       y = 'deming optimized residuals (deg C)') +
+  geom_hline(yintercept = 0, color = 'black') +
+  final_theme 
+ggsave(paste0(dir, 'figures/optresid_doy_bycloudcover_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
+
+
+```
+
+## residuals by sun angle and azimuth
+```{r}
+ggplot(C2_validation_range, aes (y = opt_resid, x = azimuth)) +
+  geom_point() +
+  labs(x = 'azimuth (degrees)',
+       y = 'deming optimized residuals (deg C)') +
+  geom_hline(yintercept = 0, color = 'black') +
+  final_theme
+ggsave(paste0(dir, 'figures/optresid_azimuth_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
+
 
 ```
 
@@ -362,17 +643,18 @@ ggplot(C2_lst_all_val, aes(x = calib_range, y = calib_IQR)) +
 
 ## only use primary GLEON buoy data
 
+## only use 2 years of data (buoy only)
+
 ## only use 2018 data
 
 ## only use littoral data (from KLC traps)
 
 ## only use 2 years of data (all sources)
 
-## only use 2 years of data (buoy only)
 
 
 
-# Validation trials - play with LS variables
+# Validation trials - play with LS variables 
 
 Goal here: what is important to LS variables? How does it change the regression and error calcs?
 
@@ -495,243 +777,7 @@ ggsave(paste0(figdir, 'deming_reg_median_50perccc_IQR_v27Sept2021.jpg'), height 
 
 
 
-# MSE and bias by month using opt_resid
-```{r}
 
-# calculate mse with optomized residuals
-#all data
-C2_validation_range %>% 
-  summarise(mse = round(sum((opt_resid^2))/n(), digits = 2),
-            rmse = round(sqrt(mse), digits = 2),
-            bias = round(sum(opt_resid)/n(), digits = 2),
-            mae = round(sum(abs(opt_resid))/n(), digits = 2),
-            n_obs = n()) %>% 
-    write.csv(., file.path(datadir, 'LS_deming_prediction_stats_v20Jul2021.csv'))
-
-#all data
-C2_validation_range %>% 
-  group_by(LSmission) %>% 
-  summarise(mse = round(sum((opt_resid^2))/n(), digits = 2),
-            rmse = round(sqrt(mse), digits = 2),
-            bias = round(sum(opt_resid)/n(), digits = 2),
-            mae = round(sum(abs(opt_resid))/n(), digits = 2),
-            n_obs = n()) %>% 
-    write.csv(., file.path(datadir, 'LS_deming_prediction_bymission_stats_v20Jul2021.csv'))
-
-
-# by month
-C2_validation_range %>% 
-  mutate(month = as.numeric(format(date, '%m'))) %>% 
-  group_by(month) %>% 
-  summarise(mse = round(sum((opt_resid^2))/n(), digits = 2),
-            rmse = round(sqrt(mse), digits = 2),
-            bias = round(sum(opt_resid)/n(), digits = 2),
-            mae = round(sum(abs(opt_resid))/n(), digits = 2),
-            n_obs = n()) %>% 
-  select(month, n_obs, mae, rmse, bias) %>% 
-  write.csv(., file.path(datadir, 'LS_deming_prediction_stats_allmissions_v29June2021.csv'))
-
-#by month and mission
-C2_validation_range %>% 
-  mutate(month = as.numeric(format(date, '%m'))) %>% 
-  group_by(month, LSmission) %>% 
-  summarise(mse = round(sum((opt_resid^2))/n(), digits = 2),
-            rmse = round(sqrt(mse), digits = 2),
-            bias = round(sum(opt_resid)/n(), digits = 2),
-            mae = round(sum(abs(opt_resid))/n(), digits = 2),
-            n_obs = n())  %>% 
-  select(month, LSmission, n_obs, mae, rmse, bias) %>% 
-  pivot_longer(!c(month, LSmission), names_to = 'variable', values_to = 'values') %>% 
-  mutate(variable = factor(variable, levels = c('n_obs', 'mae', 'rmse', 'bias'))) %>% 
-  arrange(month, variable) %>% 
-  pivot_wider(id_cols = c(LSmission,  values, variable),
-              names_from = c(month, variable),
-              values_from = values) %>% 
-  arrange(LSmission) %>% 
-  write.csv(., file.path(datadir, 'LS_deming_prediction_stats_v29June2021.csv'))
-```
-
-
-#### plot residuals by x
-
-```{r}
-C2_lst_insitu_dem_forresid = mcreg(x = C2_validation_range$temp_med, y = C2_validation_range$surface_temp_median, method.reg = 'Deming')
-
-
-ggplot(C2_validation_range, aes(sample = opt_resid)) +
-  geom_qq() +
-  geom_qq_line()
-
-ggplot(C2_validation_range, aes (y = opt_resid, x = temp_med)) +
-  geom_point() +
-  labs(x = 'in-situ median water temp (deg C)',
-       y = 'deming optimized residuals (deg C)') +
-  geom_hline(yintercept = 0, color = 'black') +
-  final_theme
-ggsave(paste0(dir, 'figures/optresid_x_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
-
-ggplot(C2_validation_range, aes (y = opt_resid, x = temp_med, color = month)) +
-  geom_point(size = 2) +
-  labs(x = 'in-situ median water temp (deg C)',
-       y = 'deming optimized residuals (deg C)') +
-  geom_hline(yintercept = 0, color = 'black') +
-  final_theme +
-  scale_color_colorblind()
-ggsave(paste0(dir, 'figures/optresid_x_colorbymonth_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
-```
-
-#### residuals by cloud cover
-```{r}
-ggplot(C2_validation_range, aes (y = opt_resid, x = cloud_cover)) +
-  geom_point() +
-  labs(x = 'cloud cover (percent)',
-       y = 'deming optimized residuals (deg C)') +
-  geom_hline(yintercept = 0, color = 'black') +
-  final_theme
-ggsave(paste0(dir, 'figures/optresid_cloudcover_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
-
-ggplot(C2_validation_range, aes (y = opt_resid, x = cloud_cover, color = month)) +
-  geom_point(size = 2) +
-  labs(x = 'cloud cover (percent)',
-       y = 'deming optimized residuals (deg C)') +
-  geom_hline(yintercept = 0, color = 'black') +
-  final_theme +
-  scale_color_colorblind()
-ggsave(paste0(dir, 'figures/optresid_cloudcover_colorbymonth_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
-
-```
-
-#### residuals by pixel count
-```{r}
-ggplot(C2_validation_range, aes (y = opt_resid, x = pixel_count)) +
-  geom_point() +
-  labs(x = 'pixel count',
-       y = 'deming optimized residuals (deg C)') +
-  geom_hline(yintercept = 0, color = 'black') +
-  final_theme
-ggsave(paste0(dir, 'figures/optresid_pixelcount_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
-
-ggplot(C2_validation_range, aes (y = opt_resid, x = pixel_count, color = month)) +
-  geom_point(size = 2) +
-  labs(x = 'pixel count',
-       y = 'deming optimized residuals (deg C)') +
-  geom_hline(yintercept = 0, color = 'black') +
-  final_theme +
-  scale_color_colorblind()
-ggsave(paste0(dir, 'figures/optresid_pixelcount_colorbymonth_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
-
-```
-
-#### residuals by mean sample depth
-```{r}
-ggplot(C2_validation_range, aes (y = opt_resid, x = depth_avg)) +
-  geom_point() +
-  labs(x = 'mean in-situ depth (m)',
-       y = 'deming optimized residuals (deg C)') +
-  geom_hline(yintercept = 0, color = 'black') +
-  final_theme
-ggsave(paste0(dir, 'figures/optresid_insitudepth_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
-
-ggplot(C2_validation_range, aes (y = opt_resid, x = depth_avg, color = month)) +
-  geom_point(size = 2) +
-  labs(x = 'mean in-situ depth (m)',
-       y = 'deming optimized residuals (deg C)') +
-  geom_hline(yintercept = 0, color = 'black') +
-  final_theme +
-  scale_color_colorblind()
-ggsave(paste0(dir, 'figures/optresid_insitudepth_colorbymonth_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
-
-```
-
-#### residuals by month, year, doy
-```{r}
-ggplot(C2_validation_range, aes (y = opt_resid, x = month)) +
-  geom_point() +
-  labs(x = 'month',
-       y = 'deming optimized residuals (deg C)') +
-  geom_hline(yintercept = 0, color = 'black') +
-  final_theme
-ggsave(paste0(dir, 'figures/optresid_month_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
-
-ggplot(C2_validation_range, aes (y = opt_resid, x = month, color = pixel_count)) +
-  geom_point(size = 2) +
-  labs(x = 'month',
-       y = 'deming optimized residuals (deg C)') +
-  geom_hline(yintercept = 0, color = 'black') +
-  final_theme 
-ggsave(paste0(dir, 'figures/optresid_month_bypixelcount_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
-
-ggplot(C2_validation_range, aes (y = opt_resid, x = month, color = cloud_cover)) +
-  geom_point(size = 2) +
-  labs(x = 'month',
-       y = 'deming optimized residuals (deg C)') +
-  geom_hline(yintercept = 0, color = 'black') +
-  final_theme 
-ggsave(paste0(dir, 'figures/optresid_month_bycloudcover_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
-
-ggplot(C2_validation_range, aes (y = opt_resid, x = year)) +
-  geom_point() +
-  labs(x = 'year',
-       y = 'deming optimized residuals (deg C)') +
-  geom_hline(yintercept = 0, color = 'black') +
-  final_theme
-ggsave(paste0(dir, 'figures/optresid_year_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
-
-ggplot(C2_validation_range, aes (y = opt_resid, x = year, color = pixel_count)) +
-  geom_point(size = 2) +
-  labs(x = 'year',
-       y = 'deming optimized residuals (deg C)') +
-  geom_hline(yintercept = 0, color = 'black') +
-  final_theme 
-ggsave(paste0(dir, 'figures/optresid_year_bypixelcount_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
-
-ggplot(C2_validation_range, aes (y = opt_resid, x = year, color = cloud_cover)) +
-  geom_point(size = 2) +
-  labs(x = 'year',
-       y = 'deming optimized residuals (deg C)') +
-  geom_hline(yintercept = 0, color = 'black') +
-  final_theme 
-ggsave(paste0(dir, 'figures/optresid_year_bycloudcover_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
-
-ggplot(C2_validation_range, aes (y = opt_resid, x = doy)) +
-  geom_point() +
-  labs(x = 'doy',
-       y = 'deming optimized residuals (deg C)') +
-  geom_hline(yintercept = 0, color = 'black') +
-  final_theme
-ggsave(paste0(dir, 'figures/optresid_doy_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
-
-ggplot(C2_validation_range, aes (y = opt_resid, x = doy, color = pixel_count)) +
-  geom_point(size = 2) +
-  labs(x = 'doy',
-       y = 'deming optimized residuals (deg C)') +
-  geom_hline(yintercept = 0, color = 'black') +
-  final_theme 
-ggsave(paste0(dir, 'figures/optresid_doy_bypixelcount_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
-
-ggplot(C2_validation_range, aes (y = opt_resid, x = doy, color = cloud_cover)) +
-  geom_point(size = 2) +
-  labs(x = 'doy',
-       y = 'deming optimized residuals (deg C)') +
-  geom_hline(yintercept = 0, color = 'black') +
-  final_theme 
-ggsave(paste0(dir, 'figures/optresid_doy_bycloudcover_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
-
-
-```
-
-#### residuals by sun angle and azimuth
-```{r}
-ggplot(C2_validation_range, aes (y = opt_resid, x = azimuth)) +
-  geom_point() +
-  labs(x = 'azimuth (degrees)',
-       y = 'deming optimized residuals (deg C)') +
-  geom_hline(yintercept = 0, color = 'black') +
-  final_theme
-ggsave(paste0(dir, 'figures/optresid_azimuth_v28Jun2021.jpg'), height = 5, width = 8, units = 'in')
-
-
-```
 
 
 #### correlation between doy / pixel count / cloud cover

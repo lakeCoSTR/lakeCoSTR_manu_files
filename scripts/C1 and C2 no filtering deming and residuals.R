@@ -1,7 +1,7 @@
 # this script compares the C1 SC algorithm with the C2 surface temp data
 
 #load libraries and functions from R_library.R
-source('R_library.R')
+source('scripts/R_library.R')
 
 #point to directories
 C1_datadir <- '~/GitHub/ids-ne-lakes/data/colab-output/2021-06-08/'
@@ -132,6 +132,75 @@ ggsave(plot_filename,
        width = 4,
        units = 'in')
 
+# error calcs
+alldata_error <- all_surface_temp %>% 
+  group_by(collection) %>% 
+  summarise(mse = round(sum((opt_resid^2))/n(), digits = 2),
+            rmse = round(sqrt(mse), digits = 2),
+            bias = round(sum(opt_resid)/n(), digits = 2),
+            mae = round(sum(abs(opt_resid))/n(), digits = 2),
+            n_obs = n())  %>% 
+  mutate(month = 'All data',
+         LSmission = 'All missions') %>% 
+  pivot_longer(cols = c(mse:n_obs), names_to = 'variable', values_to = 'values') %>% 
+  mutate(variable = factor(variable, levels = c('n_obs', 'mae', 'rmse', 'mse', 'bias'))) %>% 
+  arrange(month, variable) %>% 
+  pivot_wider(names_from = c(LSmission),
+              values_from = values) 
+
+mission_error <- all_surface_temp %>% 
+  group_by(collection, LSmission) %>% 
+  summarise(mse = round(sum((opt_resid^2))/n(), digits = 2),
+            rmse = round(sqrt(mse), digits = 2),
+            bias = round(sum(opt_resid)/n(), digits = 2),
+            mae = round(sum(abs(opt_resid))/n(), digits = 2),
+            n_obs = n())  %>% 
+  mutate(month = 'All data') %>% 
+  pivot_longer(cols = c(mse:n_obs), names_to = 'variable', values_to = 'values') %>% 
+  mutate(variable = factor(variable, levels = c('n_obs', 'mae', 'rmse', 'mse', 'bias'))) %>% 
+  arrange(month, variable) %>% 
+  pivot_wider(names_from = c(LSmission),
+              values_from = values) 
+
+alldata_error <- full_join(alldata_error, mission_error)
+alldata_error
+
+month_mission_error <- all_surface_temp %>% 
+  group_by(collection, month, LSmission) %>% 
+  summarise(mse = round(sum((opt_resid^2))/n(), digits = 2),
+            rmse = round(sqrt(mse), digits = 2),
+            bias = round(sum(opt_resid)/n(), digits = 2),
+            mae = round(sum(abs(opt_resid))/n(), digits = 2),
+            n_obs = n())  %>% 
+  select(month, collection, LSmission, n_obs, mae, rmse, bias) %>% 
+  pivot_longer(!c(month, LSmission, collection), names_to = 'variable', values_to = 'values') %>% 
+  mutate(variable = factor(variable, levels = c('n_obs', 'mae', 'rmse', 'mse', 'bias'))) %>% 
+  arrange(month, variable) %>% 
+  pivot_wider(names_from = c(LSmission),
+              values_from = values)
+
+month_error <- all_surface_temp %>% 
+  group_by(collection, month) %>% 
+  summarise(mse = round(sum((opt_resid^2))/n(), digits = 2),
+            rmse = round(sqrt(mse), digits = 2),
+            bias = round(sum(opt_resid)/n(), digits = 2),
+            mae = round(sum(abs(opt_resid))/n(), digits = 2),
+            n_obs = n())  %>% 
+  mutate(LSmission = 'All missions') %>% 
+  select(month, collection, LSmission, n_obs, mae, rmse, bias) %>% 
+  pivot_longer(!c(month, LSmission, collection), names_to = 'variable', values_to = 'values') %>% 
+  mutate(variable = factor(variable, levels = c('n_obs', 'mae', 'rmse', 'mse', 'bias'))) %>% 
+  arrange(month, variable) %>% 
+  pivot_wider(names_from = c(LSmission),
+              values_from = values)
+
+month_error <- full_join(month_mission_error, month_error)
+
+alldata_error <- full_join(alldata_error, month_error)
+
+write.csv(alldata_error, file.path(C2_datadir, 'LS_deming_predictionerror_C1C2_stats_v07Oct2021.csv'))
+
+ 
 # by doy
 ggplot(all_surface_temp, aes(x = as.numeric(doy), y = opt_resid, color = collection)) +
   geom_point() +

@@ -15,11 +15,14 @@ lmp_temp_deep <- lmp %>%
   filter(depth_m == 0.5) 
 
 # load QAQC LS data
-ls <- read.csv('data/LS_passQAQC_v19July2021.csv') %>% 
+ls <- read.csv(file.path(datadir, 'LS_C2_QAQC_calval_v2021-10-08.csv')) %>% 
   mutate(date = as.Date(date))
+ls_range <- ls %>% 
+  filter(freeze_QAQC == 'P' & spread_QAQC == 'P')
+ls_IQR <- ls %>% 
+  filter(freeze_QAQC == 'P' & IQR_QAQC == 'P')
 
-
-#### whole lake median by month ####
+#### whole lake min, median, max by month and year ####
 lmp_temp_monthly_median <- lmp_temp_deep %>% 
   mutate(month = as.numeric(format(as.Date(date), '%m')),
          year = as.numeric(format(as.Date(date), '%Y'))) %>% 
