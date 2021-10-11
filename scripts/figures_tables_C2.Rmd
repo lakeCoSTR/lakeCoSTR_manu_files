@@ -127,36 +127,36 @@ insitu %>%
 ## QAQC flags for freezing temp images; non unimodal; max spread or IQR <110% observed; Summary of C2_lst data according to QAQC flags
 
 ```{r}
-# C2_lst_all_val <- C2_lst_all %>% 
-#   mutate(freeze_QAQC = case_when(temp_min < 0 ~ 'F', #pass/fail for freezing temps
-#                                  TRUE ~ 'P')) %>% 
-#   # left_join(., modal_analysis) %>% #join with modal analysis
-#   # mutate(unimodal_QAQC = case_when(unimodal == 'unimodal' ~ 'P',
-#   #                                  TRUE ~ 'F')) %>%  # pass/fail for unimodality
-#   mutate(temp_spread = round(temp_max, digits = 1) - round(temp_min, digits = 1)) %>% #calc temp spread; pass/fail for temp spread
-#   mutate(spread_QAQC = case_when(temp_spread < max_spread*1.1 ~ 'P',
-#                                  TRUE ~ 'F')) %>% 
-#   mutate(IQR = round(temp_p75, digits = 1) - round(temp_p25, digits = 1))  %>%  #calc IQR; pass/fail for temp IQR
-#   mutate(IQR_QAQC = case_when(IQR < max_IQR*1.1 ~ 'P',
-#                               TRUE ~ 'F'))
-# 
-# C2_lst_filt_maxrange <- C2_lst_all_val %>% 
-#   filter(freeze_QAQC == 'P' & 
-#            # unimodal_QAQC == 'P' & 
-#            spread_QAQC == 'P')
-# 
-# C2_lst_filt_maxrange %>% 
-#   group_by(LSmission) %>% 
-#   summarize(count = length(LSmission))
-# 
-# C2_lst_filt_maxIQR <- C2_lst_all_val %>% 
-#   filter(freeze_QAQC == 'P' & 
-#            # unimodal_QAQC == 'P' & 
-#            IQR_QAQC == 'P')
-# 
-# C2_lst_filt_maxIQR %>% 
-#   group_by(LSmission) %>% 
-#   summarize(count = length(LSmission))
+C2_lst_all_val <- C2_lst_all %>%
+  mutate(freeze_QAQC = case_when(temp_min < 0 ~ 'F', #pass/fail for freezing temps
+                                 TRUE ~ 'P')) %>%
+  # left_join(., modal_analysis) %>% #join with modal analysis
+  # mutate(unimodal_QAQC = case_when(unimodal == 'unimodal' ~ 'P',
+  #                                  TRUE ~ 'F')) %>%  # pass/fail for unimodality
+  mutate(temp_spread = round(temp_max, digits = 1) - round(temp_min, digits = 1)) %>% #calc temp spread; pass/fail for temp spread
+  mutate(spread_QAQC = case_when(temp_spread < max_spread*1.1 ~ 'P',
+                                 TRUE ~ 'F')) %>%
+  mutate(IQR = round(temp_p75, digits = 1) - round(temp_p25, digits = 1))  %>%  #calc IQR; pass/fail for temp IQR
+  mutate(IQR_QAQC = case_when(IQR < max_IQR*1.1 ~ 'P',
+                              TRUE ~ 'F'))
+
+C2_lst_filt_maxrange <- C2_lst_all_val %>%
+  filter(freeze_QAQC == 'P' &
+           # unimodal_QAQC == 'P' &
+           spread_QAQC == 'P')
+
+C2_lst_filt_maxrange %>%
+  group_by(LSmission) %>%
+  summarize(count = length(LSmission))
+
+C2_lst_filt_maxIQR <- C2_lst_all_val %>%
+  filter(freeze_QAQC == 'P' &
+           # unimodal_QAQC == 'P' &
+           IQR_QAQC == 'P')
+
+C2_lst_filt_maxIQR %>%
+  group_by(LSmission) %>%
+  summarize(count = length(LSmission))
 
 # ggplot(C2_lst_all_val, aes(x = pct_lake, y = (temp_max-temp_min))) +
 #   geom_point(aes(color = month)) +
@@ -183,7 +183,6 @@ insitu %>%
 # ggsave(file.path(figdir, 'C2 filtered temp IQR by pct lake by month summary.png'))
 
 ```
-## Figures of 
 ## Summary Data Tables for insitu-skin temp match
 waiting on match details; percent of lake
 
@@ -233,7 +232,7 @@ C2_validation_IQR <- C2_lst_filt_maxIQR%>%
 
 ```
 
-## predicted v observed by max range
+## predicted v observed by max range - median value
 ```{r}
 val_med_ls <-deming::deming(C2_validation_range$surface_temp_median ~ C2_validation_range$temp_med)
 val_med_ls
@@ -297,7 +296,66 @@ C2_lst_all_val <- C2_lst_all_val %>%
   full_join(., C2_calibration_range)
 
 ```
-  
+
+
+## predicted v observed by max range - max and min value
+```{r}
+is_range_minmax <- C2_validation_range %>% 
+  select(date, LSmission, HerrickCoveSouth_median, Newbury_median, NorthSunapeeHarbor_median, SouthOfTheFells_median, loon_median) %>% 
+  pivot_longer(cols = c(HerrickCoveSouth_median:loon_median),
+               names_to = 'location',
+               values_to = 'value') %>% 
+  filter(!is.na(value)) %>% 
+  group_by(date, LSmission) %>% 
+  summarise(min_temp = min(value, na.rm = T),
+            max_temp = max(value, na.rm = T),
+            n_locs = n()) %>% 
+  mutate_at(vars(min_temp, max_temp),
+            ~ case_when(n_locs < 3 ~ NA_real_,
+                        TRUE ~ .))
+C2_validation_range <- full_join(C2_validation_range, is_range_minmax)
+
+val_max_ls <- C2_validation_range %>% 
+  filter(!is.na(max_temp))
+cor(val_max_ls$surface_temp_max, val_max_ls$max_temp)
+val_max_ls <- deming::deming(val_max_ls$surface_temp_max ~ val_max_ls$max_temp)
+val_max_ls
+
+
+ggplot(C2_validation_range, aes(x = max_temp, y = surface_temp_max)) +
+  geom_point() +
+  geom_abline(intercept = val_max_ls$coefficients[1], slope = val_max_ls$coefficients[2], color = 'blue') +
+  geom_abline(intercept = val_max_ls$ci[1,1], slope = val_max_ls$ci[2,1], color = 'blue', linetype = 2) +
+  geom_abline(intercept = val_max_ls$ci[1,2], slope = val_max_ls$ci[2,2], color = 'blue', linetype = 2) +
+  geom_abline(intercept = 0, slope = 1) +
+  coord_cartesian(xlim = c(10,35),
+                  ylim = c(10,35)) +
+  labs(y = 'satellite-derived max\nskin temperature (deg C)', 
+       x = expression(paste(italic('in-situ'), ' max water temp (deg C)'))) +
+  final_theme
+ggsave(paste0(figdir, 'C2_deming_range_maxtemp_v11Oct2021.jpg'), height = 5, width = 5, units = 'in')
+
+val_min_ls <- C2_validation_range %>% 
+  filter(!is.na(max_temp))
+cor(val_min_ls$surface_temp_min, val_min_ls$min_temp)
+val_min_ls <-deming::deming(val_min_ls$surface_temp_min ~ val_min_ls$min_temp)
+val_min_ls
+
+
+ggplot(C2_validation_range, aes(x = min_temp, y = surface_temp_min)) +
+  geom_point() +
+  geom_abline(intercept = val_min_ls$coefficients[1], slope = val_min_ls$coefficients[2], color = 'blue') +
+  geom_abline(intercept = val_min_ls$ci[1,1], slope = val_min_ls$ci[2,1], color = 'blue', linetype = 2) +
+  geom_abline(intercept = val_min_ls$ci[1,2], slope = val_min_ls$ci[2,2], color = 'blue', linetype = 2) +
+  geom_abline(intercept = 0, slope = 1) +
+  coord_cartesian(xlim = c(10,25),
+                  ylim = c(10,25)) +
+  labs(y = 'satellite-derived min\nskin temperature (deg C)', 
+       x = expression(paste(italic('in-situ'), ' min water temp (deg C)'))) +
+  final_theme
+ggsave(paste0(figdir, 'C2_deming_range_mintemp_v11Oct2021.jpg'), height = 5, width = 5, units = 'in')
+
+```
 
 ## predicted v observed by IQR
 ```{r}
@@ -369,6 +427,65 @@ C2_lst_all_val <- C2_lst_all_val %>%
 
 ```
 
+
+## predicted v observed by max IQR - max and min value
+```{r}
+is_IQR_minmax <- C2_validation_IQR %>% 
+  select(date, LSmission, HerrickCoveSouth_median, Newbury_median, NorthSunapeeHarbor_median, SouthOfTheFells_median, loon_median) %>% 
+  pivot_longer(cols = c(HerrickCoveSouth_median:loon_median),
+               names_to = 'location',
+               values_to = 'value') %>% 
+  filter(!is.na(value)) %>% 
+  group_by(date, LSmission) %>% 
+  summarise(min_temp = min(value, na.rm = T),
+            max_temp = max(value, na.rm = T),
+            n_locs = n()) %>% 
+  mutate_at(vars(min_temp, max_temp),
+            ~ case_when(n_locs < 3 ~ NA_real_,
+                        TRUE ~ .))
+C2_validation_IQR <- full_join(C2_validation_IQR, is_IQR_minmax)
+
+val_max_ls <- C2_validation_IQR %>% 
+  filter(!is.na(max_temp))
+cor(val_max_ls$surface_temp_max, val_max_ls$max_temp)
+val_max_ls <- deming::deming(val_max_ls$surface_temp_max ~ val_max_ls$max_temp)
+val_max_ls
+
+
+ggplot(C2_validation_IQR, aes(x = max_temp, y = surface_temp_max)) +
+  geom_point() +
+  geom_abline(intercept = val_max_ls$coefficients[1], slope = val_max_ls$coefficients[2], color = 'blue') +
+  geom_abline(intercept = val_max_ls$ci[1,1], slope = val_max_ls$ci[2,1], color = 'blue', linetype = 2) +
+  geom_abline(intercept = val_max_ls$ci[1,2], slope = val_max_ls$ci[2,2], color = 'blue', linetype = 2) +
+  geom_abline(intercept = 0, slope = 1) +
+  coord_cartesian(xlim = c(10,35),
+                  ylim = c(10,35)) +
+  labs(y = 'satellite-derived max\nskin temperature (deg C)', 
+       x = expression(paste(italic('in-situ'), ' max water temp (deg C)'))) +
+  final_theme
+ggsave(paste0(figdir, 'C2_deming_IQR_maxtemp_v11Oct2021.jpg'), height = 5, width = 5, units = 'in')
+
+val_min_ls <- C2_validation_IQR %>% 
+  filter(!is.na(min_temp))
+cor(val_min_ls$surface_temp_min, val_min_ls$min_temp)
+val_min_ls <-deming::deming(val_min_ls$surface_temp_min ~ val_min_ls$min_temp)
+val_min_ls
+
+
+ggplot(C2_validation_IQR, aes(x = min_temp, y = surface_temp_min)) +
+  geom_point() +
+  geom_abline(intercept = val_min_ls$coefficients[1], slope = val_min_ls$coefficients[2], color = 'blue') +
+  geom_abline(intercept = val_min_ls$ci[1,1], slope = val_min_ls$ci[2,1], color = 'blue', linetype = 2) +
+  geom_abline(intercept = val_min_ls$ci[1,2], slope = val_min_ls$ci[2,2], color = 'blue', linetype = 2) +
+  geom_abline(intercept = 0, slope = 1) +
+  coord_cartesian(xlim = c(10,25),
+                  ylim = c(10,25)) +
+  labs(y = 'satellite-derived min\nskin temperature (deg C)', 
+       x = expression(paste(italic('in-situ'), ' min water temp (deg C)'))) +
+  final_theme
+ggsave(paste0(figdir, 'C2_deming_IQR_mintemp_v11Oct2021.jpg'), height = 5, width = 5, units = 'in')
+
+```
 Export C2 data with validation and calibration data
 ```{r}
 write.csv(C2_lst_all_val, file.path(datadir, paste0('LS_C2_QAQC_calval_v', Sys.Date(), '.csv')), row.names = F)

@@ -22,14 +22,18 @@ ls_range <- ls %>%
 ls_IQR <- ls %>% 
   filter(freeze_QAQC == 'P' & IQR_QAQC == 'P')
 
-#### whole lake min, median, max by month and year ####
-lmp_temp_monthly_median <- lmp_temp_deep %>% 
+#### whole lake median by month and year ####
+lmp_temp_monthly_stats <- lmp_temp_deep %>% 
   mutate(month = as.numeric(format(as.Date(date), '%m')),
+         day = as.numeric(format(as.Date(date), '%d')),
          year = as.numeric(format(as.Date(date), '%Y'))) %>% 
   group_by(year, month) %>% 
   summarise(is_summer_median_temp_degC = median(value),
-            is_n_obs = length(value)) %>% 
-  filter(month >=5 & month < 12)
+            is_summer_max_temp_degC = max(value),
+            is_summer_min_temp_degC = min(value),
+            is_n_obs = length(value),
+            day = min(day)) %>% 
+  filter((month >=5 & month < 12)) 
 
 ggplot(lmp_temp_monthly_median, aes(x=year, y = is_summer_median_temp_degC)) +
   facet_grid(.~month) +
@@ -62,13 +66,14 @@ ggplot(ls_temp_summer_monthly_median_IQR, aes(x=year, y = ls_summer_median_calib
   geom_point() +
   geom_smooth(method = 'lm', se = F)
 
-df1 <- lmp_temp_monthly_median %>% 
+
+df1_med <- lmp_temp_monthly_median %>% 
   select(year, month, is_summer_median_temp_degC)
 
-df2 <- ls_temp_summer_monthly_median_IQR %>% 
+df2_med <- ls_temp_summer_monthly_median_IQR %>% 
   select(year, month, ls_summer_median_calib_temp_degC)
 
-temp_monthly_median <- full_join(df1, df2) %>% 
+temp_monthly_median <- full_join(df1_med, df2_med) %>% 
   pivot_longer(., cols = c(ls_summer_median_calib_temp_degC, is_summer_median_temp_degC), names_to='source', values_to = 'value') %>% 
   mutate(source = case_when(grepl('is_', source) ~ 'in-situ',
                             grepl('ls_', source) ~ 'landsat',
@@ -94,6 +99,40 @@ temp_monthly_median %>%
   # geom_smooth(method = 'lm', se = F, inherit.aes = T) +
   final_theme
 ggsave(file.path(figdir, 'monthly_patterns_calib_temp_IQR.png'), height = 3, width = 9)
+
+
+df1_max <- lmp_temp_monthly_max %>% 
+  select(year, month, is_summer_max_temp_degC)
+
+df2_max <- ls_temp_summer_monthly_max_IQR %>% 
+  select(year, month, ls_summer_max_calib_temp_degC)
+
+temp_monthly_max <- full_join(df1_max, df2_max) %>% 
+  pivot_longer(., cols = c(ls_summer_max_calib_temp_degC, is_summer_max_temp_degC), names_to='source', values_to = 'value') %>% 
+  mutate(source = case_when(grepl('is_', source) ~ 'in-situ',
+                            grepl('ls_', source) ~ 'landsat',
+                            TRUE ~ NA_character_)) %>% 
+  filter(!is.na(value))
+
+temp_monthly_max %>% 
+  group_by(month) %>% 
+  ggplot(., aes(x = year, y = value)) +
+  geom_point() +
+  facet_grid(source~month) +
+  geom_smooth(method = 'lm', se = F) +
+  labs(y = 'lake surface temperature (degrees C)') +
+  final_theme
+ggsave(file.path(figdir, 'monthly_patterns_max_calib_temp_IQR_by_source.png'), height = 8, width = 12)
+
+temp_monthly_max %>% 
+  group_by(month) %>% 
+  ggplot(., aes(x = year, y = value)) +
+  geom_point(aes(color = source)) +
+  facet_grid(.~month) +
+  labs(y = 'lake surface temperature\n(degrees C)') +
+  # geom_smooth(method = 'lm', se = F, inherit.aes = T) +
+  final_theme
+ggsave(file.path(figdir, 'monthly_patterns_max_calib_temp_IQR.png'), height = 3, width = 9)
 
 
 #### linear regression - significant slope? ####
