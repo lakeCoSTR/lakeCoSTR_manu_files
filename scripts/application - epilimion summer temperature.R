@@ -29,31 +29,43 @@ lmp_temp_monthly_median <- lmp_temp_deep %>%
   group_by(year, month) %>% 
   summarise(is_summer_median_temp_degC = median(value),
             is_n_obs = length(value)) %>% 
-  filter(month !=3)
+  filter(month >=5 & month < 12)
 
 ggplot(lmp_temp_monthly_median, aes(x=year, y = is_summer_median_temp_degC)) +
   facet_grid(.~month) +
   geom_point() +
   geom_smooth(method = 'lm', se = F)
 
-ls_temp_summer_monthly_median <- ls %>% 
+ls_temp_summer_monthly_median_range <- ls_range %>% 
   mutate(month = as.numeric(format((date), '%m')),
          year = as.numeric(format((date), '%Y'))) %>% 
   group_by(year, month) %>% 
-  summarise(ls_summer_median_calib_temp_degC = median(calib_med_temp_degC),
-            ls_n_obs = length(surface_temp_median))  %>% 
+  summarise(ls_summer_median_calib_temp_degC = median(calib_range),
+            ls_n_obs = length(calib_range))  %>% 
   filter(!is.na(month))
 
-ggplot(ls_temp_summer_monthly_median, aes(x=year, y = ls_summer_median_calib_temp_degC)) +
+ggplot(ls_temp_summer_monthly_median_range, aes(x=year, y = ls_summer_median_calib_temp_degC)) +
   facet_grid(.~month) +
   geom_point() +
   geom_smooth(method = 'lm', se = F)
 
+ls_temp_summer_monthly_median_IQR <- ls_IQR %>% 
+  mutate(month = as.numeric(format((date), '%m')),
+         year = as.numeric(format((date), '%Y'))) %>% 
+  group_by(year, month) %>% 
+  summarise(ls_summer_median_calib_temp_degC = median(calib_IQR),
+            ls_n_obs = length(calib_IQR))  %>% 
+  filter(!is.na(month))
+
+ggplot(ls_temp_summer_monthly_median_IQR, aes(x=year, y = ls_summer_median_calib_temp_degC)) +
+  facet_grid(.~month) +
+  geom_point() +
+  geom_smooth(method = 'lm', se = F)
 
 df1 <- lmp_temp_monthly_median %>% 
   select(year, month, is_summer_median_temp_degC)
 
-df2 <- ls_temp_summer_monthly_median %>% 
+df2 <- ls_temp_summer_monthly_median_IQR %>% 
   select(year, month, ls_summer_median_calib_temp_degC)
 
 temp_monthly_median <- full_join(df1, df2) %>% 
@@ -71,7 +83,7 @@ temp_monthly_median %>%
   geom_smooth(method = 'lm', se = F) +
   labs(y = 'lake surface temperature (degrees C)') +
   final_theme
-ggsave(file.path(figdir, 'monthly_patterns_calib_temp_by_source.png'), height = 8, width = 12)
+ggsave(file.path(figdir, 'monthly_patterns_calib_temp_IQR_by_source.png'), height = 8, width = 12)
 
 temp_monthly_median %>% 
   group_by(month) %>% 
@@ -79,9 +91,9 @@ temp_monthly_median %>%
   geom_point(aes(color = source)) +
   facet_grid(.~month) +
   labs(y = 'lake surface temperature\n(degrees C)') +
-  geom_smooth(method = 'lm', se = F, inherit.aes = T) +
+  # geom_smooth(method = 'lm', se = F, inherit.aes = T) +
   final_theme
-ggsave(file.path(figdir, 'monthly_patterns_calib_temp.png'), height = 3, width = 9)
+ggsave(file.path(figdir, 'monthly_patterns_calib_temp_IQR.png'), height = 3, width = 9)
 
 
 #### linear regression - significant slope? ####
@@ -128,7 +140,7 @@ grom_lm = function(mm, ds){
     grom <- ggplot(data, aes(x = year, y = value)) +
       geom_point() +
       coord_cartesian(ylim = c(7, 27),
-                      xlim = c(1985, 2020)) +
+                      xlim = c(1980, 2020)) +
       labs(x = NULL, y = NULL) +
       final_theme
   } else {
@@ -136,7 +148,7 @@ grom_lm = function(mm, ds){
       grom <- ggplot(data, aes(x = year, y = value)) +
         geom_point() +
         coord_cartesian(ylim = c(7, 27),
-                        xlim = c(1985, 2020)) +
+                        xlim = c(1980, 2020)) +
         geom_abline(slope = summary(lm_result)$coefficients[2, 1],
                     intercept = summary(lm_result)$coefficients[1,1]) +
         labs(x = NULL, y = NULL) +
@@ -145,7 +157,7 @@ grom_lm = function(mm, ds){
       grom <- ggplot(data, aes(x = year, y = value)) +
         geom_point() +
         coord_cartesian(ylim = c(7, 27),
-                        xlim = c(1985, 2020)) +
+                        xlim = c(1980, 2020)) +
         labs(x = NULL, y = NULL) +
         final_theme
     }
@@ -169,7 +181,7 @@ ls_10_gg <- grom_lm(10, 'landsat')
 
 
 #set up png device
-png(file.path(figdir, 'application_monthly_median_temp_bysource.png'),
+png(file.path(figdir, 'application_monthly_median_temp_IQR_bysource.png'),
     width=16,height=6, units = 'in', res = 300)
 gridExtra::grid.arrange(is_5_gg, is_6_gg, is_7_gg, is_8_gg, is_9_gg, is_10_gg,
                         ls_5_gg, ls_6_gg, ls_7_gg, ls_8_gg, ls_9_gg, ls_10_gg,
@@ -186,7 +198,7 @@ may <- temp_monthly_median %>%
   geom_point(aes(color = source)) +
   final_theme +
   coord_cartesian(ylim = c(7, 27),
-                  xlim = c(1985, 2020)) +
+                  xlim = c(1980, 2020)) +
   scale_color_colorblind() +
   labs(x = NULL, y = NULL, title = 'May') +
   theme(legend.position = 'none')
@@ -197,7 +209,7 @@ june <- temp_monthly_median %>%
   geom_point(aes(color = source)) +
   final_theme +
   coord_cartesian(ylim = c(7, 27),
-                  xlim = c(1985, 2020)) +
+                  xlim = c(1980, 2020)) +
   scale_color_colorblind() +
   labs(x = NULL, y = NULL, title = 'June') +
   theme(legend.position = 'none')
@@ -214,9 +226,9 @@ jul <- temp_monthly_median %>%
               color = "#E69F00") +
   final_theme +
   coord_cartesian(ylim = c(7, 27),
-                  xlim = c(1985, 2020)) +
+                  xlim = c(1980, 2020)) +
   scale_color_colorblind() +
-  labs(x = NULL, y = NULL, title = 'Jul') +
+  labs(x = NULL, y = NULL, title = 'July') +
   theme(legend.position = 'none')  
 
 aug <- temp_monthly_median %>% 
@@ -228,7 +240,7 @@ aug <- temp_monthly_median %>%
               color = 'black') +
   final_theme +
   coord_cartesian(ylim = c(7, 27),
-                  xlim = c(1985, 2020)) +
+                  xlim = c(1980, 2020)) +
   scale_color_colorblind() +
   labs(x = NULL, y = NULL, title = 'August') +
   theme(legend.position = 'none')  
@@ -242,7 +254,7 @@ sept <- temp_monthly_median %>%
               color = "#E69F00") +
   final_theme +
   coord_cartesian(ylim = c(7, 27),
-                  xlim = c(1985, 2020)) +
+                  xlim = c(1980, 2020)) +
   scale_color_colorblind() +
   labs(x = NULL, y = NULL, title = 'September') +
   theme(legend.position = 'none')  
@@ -256,13 +268,13 @@ oct <- temp_monthly_median %>%
               color = "#E69F00") +
   final_theme +
   coord_cartesian(ylim = c(7, 27),
-                  xlim = c(1985, 2020)) +
+                  xlim = c(1980, 2020)) +
   scale_color_colorblind() +
   labs(x = NULL, y = NULL, title = 'October') +
   theme(legend.position = 'none')  
 
 #set up png device
-png(file.path(figdir, 'application_monthly_median_temp_together.png'),
+png(file.path(figdir, 'application_monthly_median_temp_IQR_together.png'),
     width=8,height=6, units = 'in', res = 300)
 gridExtra::grid.arrange(may, june, jul, aug, sept, oct,
                         nrow = 2,
@@ -271,3 +283,59 @@ gridExtra::grid.arrange(may, june, jul, aug, sept, oct,
 
 #Close pdf graphics device
 dev.off()
+
+
+# indicator variable analysis
+temp_monthly_median$source = as.factor(temp_monthly_median$source)
+temp_monthly_median$month = as.factor(temp_monthly_median$month)
+
+source_contrasts <- contrasts(temp_monthly_median$source)
+month_contrasts <- contrasts(temp_monthly_median$month)
+
+may_data <- temp_monthly_median %>% 
+  filter(month == 5)
+jun_data <- temp_monthly_median %>% 
+  filter(month == 6)
+jul_data <- temp_monthly_median %>% 
+  filter(month == 7)
+aug_data <- temp_monthly_median %>% 
+  filter(month == 8)
+sep_data <- temp_monthly_median %>% 
+  filter(month == 9)
+oct_data <- temp_monthly_median %>% 
+  filter(month == 10)
+nov_data <- temp_monthly_median %>% 
+  filter(month == 11)
+
+lm_source_may_iva <- lm(value ~ year+source, data = may_data)
+all_5_lm
+anova(lm_source_may_iva)
+summary(lm_source_may_iva)
+
+lm_source_jun_iva <- lm(value ~ year+source, data = jun_data)
+all_6_lm
+anova(lm_source_jun_iva)
+summary(lm_source_jun_iva)
+
+lm_source_jul_iva <- lm(value ~ year+source, data = jul_data)
+all_7_lm
+anova(lm_source_jul_iva)
+summary(lm_source_jul_iva)
+
+lm_source_aug_iva <- lm(value ~ year+source, data = aug_data)
+all_8_lm
+anova(lm_source_aug_iva)
+summary(lm_source_aug_iva)
+
+lm_source_sep_iva <- lm(value ~ year+source, data = sep_data)
+all_9_lm
+anova(lm_source_sep_iva)
+summary(lm_source_sep_iva)
+
+lm_source_oct_iva <- lm(value ~ year+source, data = oct_data)
+all_10_lm
+anova(lm_source_oct_iva)
+summary(lm_source_oct_iva)
+
+lm_source_nov <- lm(value ~ year, data = nov_data)
+summary(lm_source_nov)

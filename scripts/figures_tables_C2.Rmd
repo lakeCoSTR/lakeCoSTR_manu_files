@@ -127,36 +127,36 @@ insitu %>%
 ## QAQC flags for freezing temp images; non unimodal; max spread or IQR <110% observed; Summary of C2_lst data according to QAQC flags
 
 ```{r}
-C2_lst_all_val <- C2_lst_all %>% 
-  mutate(freeze_QAQC = case_when(temp_min < 0 ~ 'F', #pass/fail for freezing temps
-                                 TRUE ~ 'P')) %>% 
-  # left_join(., modal_analysis) %>% #join with modal analysis
-  # mutate(unimodal_QAQC = case_when(unimodal == 'unimodal' ~ 'P',
-  #                                  TRUE ~ 'F')) %>%  # pass/fail for unimodality
-  mutate(temp_spread = round(temp_max, digits = 1) - round(temp_min, digits = 1)) %>% #calc temp spread; pass/fail for temp spread
-  mutate(spread_QAQC = case_when(temp_spread < max_spread*1.1 ~ 'P',
-                                 TRUE ~ 'F')) %>% 
-  mutate(IQR = round(temp_p75, digits = 1) - round(temp_p25, digits = 1))  %>%  #calc IQR; pass/fail for temp IQR
-  mutate(IQR_QAQC = case_when(IQR < max_IQR*1.1 ~ 'P',
-                              TRUE ~ 'F'))
-
-C2_lst_filt_maxrange <- C2_lst_all_val %>% 
-  filter(freeze_QAQC == 'P' & 
-           # unimodal_QAQC == 'P' & 
-           spread_QAQC == 'P')
-
-C2_lst_filt_maxrange %>% 
-  group_by(LSmission) %>% 
-  summarize(count = length(LSmission))
-
-C2_lst_filt_maxIQR <- C2_lst_all_val %>% 
-  filter(freeze_QAQC == 'P' & 
-           # unimodal_QAQC == 'P' & 
-           IQR_QAQC == 'P')
-
-C2_lst_filt_maxIQR %>% 
-  group_by(LSmission) %>% 
-  summarize(count = length(LSmission))
+# C2_lst_all_val <- C2_lst_all %>% 
+#   mutate(freeze_QAQC = case_when(temp_min < 0 ~ 'F', #pass/fail for freezing temps
+#                                  TRUE ~ 'P')) %>% 
+#   # left_join(., modal_analysis) %>% #join with modal analysis
+#   # mutate(unimodal_QAQC = case_when(unimodal == 'unimodal' ~ 'P',
+#   #                                  TRUE ~ 'F')) %>%  # pass/fail for unimodality
+#   mutate(temp_spread = round(temp_max, digits = 1) - round(temp_min, digits = 1)) %>% #calc temp spread; pass/fail for temp spread
+#   mutate(spread_QAQC = case_when(temp_spread < max_spread*1.1 ~ 'P',
+#                                  TRUE ~ 'F')) %>% 
+#   mutate(IQR = round(temp_p75, digits = 1) - round(temp_p25, digits = 1))  %>%  #calc IQR; pass/fail for temp IQR
+#   mutate(IQR_QAQC = case_when(IQR < max_IQR*1.1 ~ 'P',
+#                               TRUE ~ 'F'))
+# 
+# C2_lst_filt_maxrange <- C2_lst_all_val %>% 
+#   filter(freeze_QAQC == 'P' & 
+#            # unimodal_QAQC == 'P' & 
+#            spread_QAQC == 'P')
+# 
+# C2_lst_filt_maxrange %>% 
+#   group_by(LSmission) %>% 
+#   summarize(count = length(LSmission))
+# 
+# C2_lst_filt_maxIQR <- C2_lst_all_val %>% 
+#   filter(freeze_QAQC == 'P' & 
+#            # unimodal_QAQC == 'P' & 
+#            IQR_QAQC == 'P')
+# 
+# C2_lst_filt_maxIQR %>% 
+#   group_by(LSmission) %>% 
+#   summarize(count = length(LSmission))
 
 # ggplot(C2_lst_all_val, aes(x = pct_lake, y = (temp_max-temp_min))) +
 #   geom_point(aes(color = month)) +
@@ -291,7 +291,10 @@ ggplot(C2_lst_all_val, aes(x = temp_med, y = temp_median)) +
        x = expression(paste(italic('in-situ'), ' median water temp (deg C)'))) +
   final_theme
 
-C2_lst_all_val <- full_join(C2_lst_all_val, C2_calibration_range)
+
+C2_lst_all_val <- C2_lst_all_val %>% 
+  select(-calib_range) %>% 
+  full_join(., C2_calibration_range)
 
 ```
   
@@ -359,7 +362,9 @@ ggplot(C2_lst_all_val, aes(x = temp_med, y = temp_median)) +
        x = expression(paste(italic('in-situ'), ' median water temp (deg C)'))) +
   final_theme
 
-C2_lst_all_val <- full_join(C2_lst_all_val, C2_calibration_IQR)
+C2_lst_all_val <- C2_lst_all_val %>% 
+  select(-calib_IQR) %>% 
+  full_join(., C2_calibration_IQR)
 
 
 ```
