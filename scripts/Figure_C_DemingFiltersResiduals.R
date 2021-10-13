@@ -61,8 +61,6 @@ C2ST <- C1SC_temp %>%
   filter(!is.na(pixel_count)) 
 head(C2ST)
 
-# #save temp paired data
-# write_csv(C2ST, file.path(datadir, 'temporary_sunapee_stats_paired_C2.csv'))
 
 #load in all high-frequency insitu data for historical data analysis
 insitu <- read.csv(paste0(datadir, 'insitu_temp_data_v2021-05-17.csv')) %>% 
@@ -98,7 +96,8 @@ C2ST <- C2ST %>%
   mutate(IQR = round(surface_temp_p75, digits = 1) - round(surface_temp_p25, digits = 1))  %>%  #calc IQR; pass/fail for temp IQR
   mutate(IQR_QAQC = case_when(IQR < max_IQR*1.1 ~ 'P',
                               TRUE ~ 'F'))
-
+write.csv(C2ST, file.path(C2_datadir,'temporary_sunapee_paired_C2_QAQCflag_v11Oct2011.csv'), row.names = F)
+                       
 C2ST_freeze <- C2ST %>% 
   filter(freeze_QAQC == 'P')
 
@@ -184,6 +183,20 @@ C2ST_maxIQR_2ybuoy$opt_resid = MCResult.getResiduals(C2_maxIQR2ybuoy_deming_forr
 C2ST_maxIQR_2ybuoy$filter = '110% in-situ IQR 2y buoy only'
 
 
+C1_deming
+cor(C1SC$surface_temp_median, C1SC$temp_med)
+
+C2_deming
+cor(C2ST$surface_temp_median, C2ST$temp_med)
+
+C2_freeze_deming
+cor(C2ST_freeze$surface_temp_median, C2ST_freeze$temp_med)
+
+C2_maxrange_deming
+cor(C2ST_maxrange$surface_temp_median, C2ST_maxrange$temp_med)
+
+C2_maxIQR_deming
+cor(C2ST_maxIQR$surface_temp_median, C2ST_maxIQR$temp_med)
 
 # Join all Deming data ####
 all_surface_temp <- full_join(C1SC, C2ST) %>% 
@@ -347,94 +360,99 @@ ggsave(file.path(fig_dir, 'FigureC_deming_residuals.jpg'),
 
 
 # by doy
-ggplot(C2ST_maxIQR, aes(x = as.numeric(doy), y = opt_resid)) +
+doy <- ggplot(C2ST_maxIQR, aes(x = as.numeric(doy), y = opt_resid)) +
   geom_point() +
   # geom_line(aes(group = date)) +
-  labs(x = 'day of year',
-       y = 'Deming-optimized residual\n(deg C)') +
+  labs(x = 'day of year\n',
+       y = '\n') +
   geom_abline(intercept =  0, slope = 0) +
   coord_cartesian(ylim = c(-6, 6)) +
   final_theme
 
 # by pixel count
-ggplot(C2ST_maxIQR, aes(x = pixel_count, y = opt_resid)) +
+perclake <- ggplot(C2ST_maxIQR, aes(x = (pixel_count/17134)*100, y = opt_resid)) +
   geom_point() +
   # geom_line(aes(group = date)) +
-  labs(x = 'pixel count',
-       y = 'Deming-optimized residual\n(deg C)') +
+  labs(x = 'percent of lake\n',
+       y = '\n') +
   geom_abline(intercept =  0, slope = 0) +
   coord_cartesian(ylim = c(-6, 6)) +
   final_theme
 
 # by cloud cover
-ggplot(C2ST_maxIQR, aes(x = cloud_cover, y = opt_resid)) +
+cloud <- ggplot(C2ST_maxIQR, aes(x = cloud_cover, y = opt_resid)) +
   geom_point() +
   # geom_line(aes(group = date)) +
   geom_abline(intercept =  0, slope = 0) +
   coord_cartesian(ylim = c(-6, 6)) +
-  labs(x = 'cloud cover (percent)',
-       y = 'Deming-optimized residual\n(deg C)') +
+  labs(x = 'cloud cover (percent)\n',
+       y = '\n') +
   final_theme 
 
 # by sun elevation
-ggplot(C2ST_maxIQR, aes(x = sunelev, y = opt_resid)) +
+sunelev <- ggplot(C2ST_maxIQR, aes(x = sunelev, y = opt_resid)) +
   geom_point() +
   # geom_line(aes(group = date)) +
   geom_abline(intercept =  0, slope = 0) +
   coord_cartesian(ylim = c(-6, 6)) +
-  labs(x = 'sun elevation (UNITS)',
+  labs(x = 'sun elevation (UNITS)\n',
        y = 'Deming-optimized residual\n(deg C)') +
   final_theme
 
 # by earth sun distance
-ggplot(C2ST_maxIQR, aes(x = earthsun_d, y = opt_resid)) +
+esd <- ggplot(C2ST_maxIQR, aes(x = earthsun_d, y = opt_resid)) +
   geom_point() +
   # geom_line(aes(group = date)) +
   geom_abline(intercept =  0, slope = 0) +
   coord_cartesian(ylim = c(-6, 6)) +
-  labs(x = 'earth sun distance (UNITS)',
-       y = 'Deming-optimized residual\n(deg C)') +
+  labs(x = 'earth sun distance (UNITS)\n',
+       y = '\n') +
   final_theme 
 
 # by azimuth
-ggplot(C2ST_maxIQR, aes(x = sunazi, y = opt_resid)) +
+azi <- ggplot(C2ST_maxIQR, aes(x = sunazi, y = opt_resid)) +
   geom_point() +
   # geom_line(aes(group = date)) +
   geom_abline(intercept =  0, slope = 0) +
   coord_cartesian(ylim = c(-6, 6)) +
-  labs(x = 'sun azimuth (degrees)',
-       y = 'Deming-optimized residual\n(deg C)') +
+  labs(x = 'sun azimuth (degrees)\n',
+       y = '\n') +
   final_theme 
 
 # depth of sensor
-ggplot(C2ST_maxIQR, aes(x = depth_avg, y = opt_resid)) +
+depth <- ggplot(C2ST_maxIQR, aes(x = depth_avg, y = opt_resid)) +
   geom_point() +
   # geom_line(aes(group = date)) +
   geom_abline(intercept =  0, slope = 0) +
   coord_cartesian(ylim = c(-6, 6)) +
-  labs(x = 'average depth of sensor (m)',
-       y = 'Deming-optimized residual\n(deg C)') +
+  labs(x = 'average depth of sensor (m)\n',
+       y = '\n') +
   final_theme 
 
 # std dev in-situ temp
-ggplot(C2ST_maxIQR, aes(x = t_stdev, y = opt_resid)) +
+sd <- ggplot(C2ST_maxIQR, aes(x = t_stdev, y = opt_resid)) +
   geom_point() +
   # geom_line(aes(group = date)) +
   geom_abline(intercept =  0, slope = 0) +
   coord_cartesian(ylim = c(-6, 6)) +
-  labs(x = 'standard deviation of temps contributing to median (deg C)',
-       y = 'Deming-optimized residual\n(deg C)') +
+  labs(x = 'standard deviation of temps\ncontributing to median (deg C)',
+       y = '\n') +
   final_theme 
 
 #in-situ count
-ggplot(C2ST_maxIQR, aes(x = insitu_count, y = opt_resid)) +
+count <- ggplot(C2ST_maxIQR, aes(x = insitu_count, y = opt_resid)) +
   geom_point() +
   # geom_line(aes(group = date)) +
   geom_abline(intercept =  0, slope = 0) +
   coord_cartesian(ylim = c(-6, 6)) +
-  labs(x = 'number of insitu measurements attributing to median',
-       y = 'Deming-optimized residual\n(deg C)') +
+  labs(x = 'number of insitu measurements\ncontributing to median',
+       y = '\n') +
   final_theme 
+
+plot_grid(doy, perclake, cloud, sunelev, esd, azi, depth, sd, count,
+          labels = c('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'))
+
+ggsave(file.path(fig_dir, 'resid_summary_C2IQR_v11Oct2021.jpg'), height = 8, width = 12, units = 'in', dpi = 300)
 
 # Calculate error for various models ####
 alldata_error <- all_surface_temp %>% 
@@ -508,35 +526,3 @@ write.csv(alldata_error, file.path(C2_datadir, 'LS_deming_predictionerror_C1C2_s
 
 
 
-# 
-# FigC_f <- ggplot(C2ST_maxIQR_buoy, aes(x = loon_median, y = surface_temp_median)) +
-#   geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
-#   geom_point() +
-#   #add deming regression and prediction intervals for C2 filtered for sub zero and maxIQR
-#   geom_abline(intercept = C2_maxIQRbuoy_deming$coefficients[1], slope = C2_maxIQRbuoy_deming$coefficients[2], size = 0.75) +
-#   geom_abline(intercept = C2_maxIQRbuoy_deming$ci[1,1], slope = C2_maxIQRbuoy_deming$ci[2,1], linetype = 3, size = 0.75) +
-#   geom_abline(intercept = C2_maxIQRbuoy_deming$ci[1,2], slope = C2_maxIQRbuoy_deming$ci[2,2], linetype = 3, size = 0.75) +
-#   labs(x = NULL,
-#        y = 'median Landsat-derived\nsurface temperature (deg C)',
-#        title = 'Collection 2\nfiltered for sub-zero and in-situ IQR buoy only') +
-#   final_theme +
-#   coord_cartesian(xlim = c(0, 27),
-#                   ylim = c(0, 27))
-# FigC_f
-# 
-# FigC_g <- C2ST_maxIQR_2ybuoy %>% 
-#   filter(date>='2019-01-01') %>% 
-#   ggplot(., aes(x = loon_median, y = surface_temp_median)) +
-#   geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
-#   geom_point() +
-#   #add deming regression and prediction intervals for C2 filtered for sub zero and maxIQR
-#   geom_abline(intercept = C2_maxIQR2ybuoy_deming$coefficients[1], slope = C2_maxIQR2ybuoy_deming$coefficients[2], size = 0.75) +
-#   geom_abline(intercept = C2_maxIQR2ybuoy_deming$ci[1,1], slope = C2_maxIQR2ybuoy_deming$ci[2,1], linetype = 3, size = 0.75) +
-#   geom_abline(intercept = C2_maxIQR2ybuoy_deming$ci[1,2], slope = C2_maxIQR2ybuoy_deming$ci[2,2], linetype = 3, size = 0.75) +
-#   labs(x = NULL,
-#        y = 'median Landsat-derived\nsurface temperature (deg C)',
-#        title = 'Collection 2\nfiltered for sub-zero and in-situ IQR') +
-#   final_theme +
-#   coord_cartesian(xlim = c(0, 27),
-#                   ylim = c(0, 27))
-# FigC_g
