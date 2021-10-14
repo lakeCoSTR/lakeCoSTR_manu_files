@@ -430,8 +430,80 @@ ggsave(file.path(fig_dir, 'FigureC_deming_filters.jpg'),
        units = 'in')
 
 
+# Plot slope and intercept with 95%ci ####
+slope_int_table <- NULL
 
-# Look at C2 IQR data set residuals against other variables ####
+slope_int_table$model = c('C1SC', 'C2ST', 'C2ST_freeze', 'C2ST_maxrange', 'C2ST_maxIQR', 'C2ST_cloud')
+slope_int_table$slope = c(C1_deming$coefficients[2],
+                          C2_deming$coefficients[2],
+                          C2_freeze_deming$coefficients[2],
+                          C2_maxrange_deming$coefficients[2],
+                          C2_maxIQR_deming$coefficients[2],
+                          C2_cloud_deming$coefficients[2])
+slope_int_table$intercept = c(C1_deming$coefficients[1],
+                              C2_deming$coefficients[1],
+                              C2_freeze_deming$coefficients[1],
+                              C2_maxrange_deming$coefficients[1],
+                              C2_maxIQR_deming$coefficients[1],
+                              C2_cloud_deming$coefficients[1])
+slope_int_table$slope_se = c(C1_deming$se[2],
+                             C2_deming$se[2],
+                             C2_freeze_deming$se[2],
+                             C2_maxrange_deming$se[2],
+                             C2_maxIQR_deming$se[2],
+                             C2_cloud_deming$se[2])
+slope_int_table$int_se = c(C1_deming$se[1],
+                             C2_deming$se[1],
+                             C2_freeze_deming$se[1],
+                             C2_maxrange_deming$se[1],
+                             C2_maxIQR_deming$se[1],
+                             C2_cloud_deming$se[1])
+slope_int_table <- as.data.frame(slope_int_table)
+
+slope_int_table <- slope_int_table %>% 
+  pivot_longer(cols = c(slope, intercept), names_to = 'var', values_to = 'value') %>% 
+  mutate(se = case_when(var == 'slope' ~ slope_se,
+                        var == 'intercept' ~ int_se,
+                        TRUE ~ NA_real_),
+         u95 = value + se,
+         l95 = value - se) %>% 
+  select(-slope_se, -int_se) %>% 
+  mutate(model = factor(model, 
+                        levels = c('C1SC', 'C2ST', 'C2ST_freeze', 'C2ST_maxIQR', 'C2ST_maxrange', 'C2ST_cloud'),
+                        labels = c('Collection 1', 'Collection 2', 'Collection 2\nsub-zero', 'Collection 2\nin-situ IQR',
+                                   'Collection 2\nin-situ range', 'Collection 2\ncloud')))
+
+slope_fig <- slope_int_table %>% 
+  filter(var == 'slope') %>% 
+  ggplot(., aes(x = model, y = value)) +
+  geom_point() +
+  geom_pointrange(aes(ymin = l95, ymax = u95))+
+  labs(x = NULL,
+       y = 'model slope') +
+  coord_cartesian(ylim = c(0.85, 1.15)) +
+  final_theme
+int_fig <- slope_int_table %>% 
+  filter(var == 'intercept') %>% 
+  ggplot(., aes(x = model, y = value)) +
+  geom_point() +
+  geom_pointrange(aes(ymin = l95, ymax = u95))+
+  labs(x = NULL,
+       y = 'model intercept') +
+  coord_cartesian(ylim = c(-3.2, 0)) +
+  final_theme
+
+slope_int_fig <- plot_grid(slope_fig, int_fig,
+                           ncol = 1,
+                           labels = c('a', 'b'))
+slope_int_fig
+
+ggsave(file.path(fig_dir, 'FigureF_slopeintercept.jpg'), 
+       dpi = 300,
+       height = 6,
+       width = 8,
+       units = 'in')
+
+# Look at C2 IQR data set residuals against other variables for SF A####
 
 
 # by insitu temp
@@ -541,6 +613,8 @@ plot_grid(istemp, doy, perclake, cloud, sunelev, esd, azi, depth, sd, count,
           label_y = 1.1)
 
 ggsave(file.path(fig_dir, 'SFA_resid_summary_C2cloud_v14Oct2021.jpg'), height = 8, width = 12, units = 'in', dpi = 300)
+
+
 
 # Calculate error for various models ####
 alldata_error <- all_surface_temp %>% 
