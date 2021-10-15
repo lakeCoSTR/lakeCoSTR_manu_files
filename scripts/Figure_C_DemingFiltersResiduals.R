@@ -283,7 +283,7 @@ FigC_c <- ggplot(C2ST_freeze, aes(x = temp_med, y = surface_temp_median)) +
                   ylim = c(0, 27))
 FigC_c
 
-FigC_d <- ggplot(C2ST_maxrange, aes(x = temp_med, y = surface_temp_median)) +
+FigC_f <- ggplot(C2ST_maxrange, aes(x = temp_med, y = surface_temp_median)) +
   geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
   geom_point() +
   #add deming regression and prediction intervals for C2 filtered for sub zero and maxrange
@@ -301,15 +301,15 @@ FigC_d <- ggplot(C2ST_maxrange, aes(x = temp_med, y = surface_temp_median)) +
             size = 4,
             hjust = 0)+
   labs(x = expression(bold(paste(italic('in-situ'), ' median water temp (deg C)'))),
-       y = 'median Landsat-derived\nsurface temperature (deg C)',
+       y = '/n',
        title = 'Collection 2',
        subtitle = 'filtered for sub-zero and in-situ range') +
   final_theme +
   coord_cartesian(xlim = c(0, 27),
                   ylim = c(0, 27))
-FigC_d
+FigC_f
 
-FigC_e <- ggplot(C2ST_maxIQR, aes(x = temp_med, y = surface_temp_median)) +
+FigC_d <- ggplot(C2ST_maxIQR, aes(x = temp_med, y = surface_temp_median)) +
   geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
   geom_point() +
   #add deming regression and prediction intervals for C2 filtered for sub zero and maxIQR
@@ -327,15 +327,15 @@ FigC_e <- ggplot(C2ST_maxIQR, aes(x = temp_med, y = surface_temp_median)) +
             size = 4,
             hjust = 0)+
   labs(x = expression(bold(paste(italic('in-situ'), ' median water temp (deg C)'))),
-       y = '\n',
+       y = 'median Landsat-derived\nsurface temperature (deg C)',
        title = 'Collection 2',
        subtitle = 'filtered for sub-zero and in-situ IQR') +
   final_theme +
   coord_cartesian(xlim = c(0, 27),
                   ylim = c(0, 27))
-FigC_e
+FigC_d
 
-FigC_f <- ggplot(C2ST_cloud, aes(x = temp_med, y = surface_temp_median)) +
+FigC_e <- ggplot(C2ST_cloud, aes(x = temp_med, y = surface_temp_median)) +
   geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
   geom_point() +
   #add deming regression and prediction intervals for C2 filtered for sub zero and cloud
@@ -359,7 +359,7 @@ FigC_f <- ggplot(C2ST_cloud, aes(x = temp_med, y = surface_temp_median)) +
   final_theme +
   coord_cartesian(xlim = c(0, 27),
                   ylim = c(0, 27))
-FigC_f
+FigC_e
 
 
 # # Plot residuals for all filters ####
@@ -469,9 +469,8 @@ slope_int_table <- slope_int_table %>%
          l95 = value - se) %>% 
   select(-slope_se, -int_se) %>% 
   mutate(model = factor(model, 
-                        levels = c('C1SC', 'C2ST', 'C2ST_freeze', 'C2ST_maxIQR', 'C2ST_maxrange', 'C2ST_cloud'),
-                        labels = c('Collection 1', 'Collection 2', 'Collection 2\nsub-zero', 'Collection 2\nin-situ IQR',
-                                   'Collection 2\nin-situ range', 'Collection 2\ncloud'))) %>% 
+                        levels = c('C1SC', 'C2ST', 'C2ST_freeze','C2ST_maxIQR', 'C2ST_cloud', 'C2ST_maxrange'),
+                        labels = c('Collection 1', 'Collection 2', 'Collection 2\nsub-zero', 'Collection 2\nin-situ IQR', 'Collection 2\ncloud','Collection 2\nin-situ range'))) %>% 
   mutate(regression = 'Deming')
 
 slope_fig <- slope_int_table %>% 
@@ -504,264 +503,7 @@ ggsave(file.path(fig_dir, 'FigureF_slopeintercept.jpg'),
        width = 8,
        units = 'in')
 
-# create SFB, that compares least-squares regression vs. Deming for the same 6 models ####
 
-lm_C1 <- lm(C1SC$temp_med ~ C1SC$surface_temp_median)
-C1_lm <- summary(lm_C1)
-
-lm_C2 <- lm(C2ST$temp_med ~ C2ST$surface_temp_median)
-C2_lm <- summary(lm_C2)
-
-lm_C2_freeze <- lm(C2ST_freeze$temp_med ~ C2ST_freeze$surface_temp_median)
-C2_freeze_lm <- summary(lm_C2_freeze)
-
-lm_C2_maxrange <- lm(C2ST_maxrange$temp_med ~ C2ST_maxrange$surface_temp_median)
-C2_maxrange_lm <- summary(lm_C2_maxrange)
-
-lm_C2_maxIQR <- lm(C2ST_maxIQR$temp_med ~ C2ST_maxIQR$surface_temp_median)
-C2_maxIQR_lm <- summary(lm_C2_maxIQR)
-
-lm_C2_cloud <- lm(C2ST_cloud$temp_med ~ C2ST_cloud$surface_temp_median)
-C2_cloud_lm <- summary(lm_C2_cloud)
-
-lm_slope_int_table <- NULL
-
-# SFC plot lm like deming Fig C ####
-SFC_a <- ggplot(C1SC, aes(x = surface_temp_median, y = temp_med)) +
-  geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
-  geom_point() +
-  #add lm regression and prediction intervals for C1
-  geom_abline(intercept = C1_lm$coefficients[1], slope = C1_lm$coefficients[2], size = 0.75) +
-  geom_text(label = paste0('r-squared = ', round(C1_lm$r.squared, digits = 3)),
-            x = 2,
-            y = 25,
-            size = 4,
-            hjust = 0)+
-  geom_text(label = paste0('n = ', length(C1SC$date)),
-            x = 2,
-            y = 23,
-            size = 4,
-            hjust = 0)+
-  labs(x = '',
-       y = 'median Landsat-derived\nsurface temperature (deg C)',
-       title = 'Collection 1',
-       subtitle = '') +
-  final_theme +
-  coord_cartesian(xlim = c(0, 27),
-                  ylim = c(0, 27))
-SFC_a
-
-SFC_b <- ggplot(C2ST, aes(x = temp_med, y = surface_temp_median)) +
-  geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
-  geom_point() +
-  #add lm regression and prediction intervals for C2
-  geom_abline(intercept = C2_lm$coefficients[1], slope = C2_lm$coefficients[2], size = 0.75) +
-  geom_text(label = paste0('r-squared = ', round(C2_lm$r.squared, digits = 3)),
-            x = 2,
-            y = 25,
-            size = 4,
-            hjust = 0)+
-  geom_text(label = paste0('n = ', length(C2ST$date)),
-            x = 2,
-            y = 23,
-            size = 4,
-            hjust = 0)+
-  labs(x = '',
-       y = '\n',
-       title = 'Collection 2',
-       subtitle = '') +
-  final_theme +
-  coord_cartesian(xlim = c(0, 27),
-                  ylim = c(0, 27))
-SFC_b
-
-SFC_c <- ggplot(C2ST_freeze, aes(x = temp_med, y = surface_temp_median)) +
-  geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
-  geom_point() +
-  #add lm regression and prediction intervals for C2 filtered for freezing mins
-  geom_abline(intercept = C2_freeze_lm$coefficients[1], slope = C2_freeze_lm$coefficients[2], size = 0.75) +
-  geom_text(label = paste0('r-squared = ', round(C2_freeze_lm$r.squared, digits = 3)),
-            x = 2,
-            y = 25,
-            size = 4,
-            hjust = 0)+
-  geom_text(label = paste0('n = ', length(C2ST_freeze$date)),
-            x = 2,
-            y = 23,
-            size = 4,
-            hjust = 0)+
-  labs(x = '',
-       y = '\n',
-       title = 'Collection 2',
-       subtitle = 'filtered for sub-zero temperatures') +
-  final_theme +
-  coord_cartesian(xlim = c(0, 27),
-                  ylim = c(0, 27))
-SFC_c
-
-SFC_d <- ggplot(C2ST_maxrange, aes(x = temp_med, y = surface_temp_median)) +
-  geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
-  geom_point() +
-  #add lm regression and prediction intervals for C2 filtered for sub zero and maxrange
-  geom_abline(intercept = C2_maxrange_lm$coefficients[1], slope = C2_maxrange_lm$coefficients[2], size = 0.75) +
-  geom_text(label = paste0('r-squared = ', round(C2_maxrange_lm$r.squared, digits = 3)),
-            x = 2,
-            y = 25,
-            size = 4,
-            hjust = 0)+
-  geom_text(label = paste0('n = ', length(C2ST_maxrange$date)),
-            x = 2,
-            y = 23,
-            size = 4,
-            hjust = 0)+
-  labs(x = expression(bold(paste(italic('in-situ'), ' median water temp (deg C)'))),
-       y = 'median Landsat-derived\nsurface temperature (deg C)',
-       title = 'Collection 2',
-       subtitle = 'filtered for sub-zero and in-situ range') +
-  final_theme +
-  coord_cartesian(xlim = c(0, 27),
-                  ylim = c(0, 27))
-SFC_d
-
-SFC_e <- ggplot(C2ST_maxIQR, aes(x = temp_med, y = surface_temp_median)) +
-  geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
-  geom_point() +
-  #add lm regression and prediction intervals for C2 filtered for sub zero and maxIQR
-  geom_abline(intercept = C2_maxIQR_lm$coefficients[1], slope = C2_maxIQR_lm$coefficients[2], size = 0.75) +
-  geom_text(label = paste0('r-squared = ', round(C2_maxIQR_lm$r.squared, digits = 3)),
-            x = 2,
-            y = 25,
-            size = 4,
-            hjust = 0)+
-  geom_text(label = paste0('n = ', length(C2ST_maxIQR$date)),
-            x = 2,
-            y = 23,
-            size = 4,
-            hjust = 0)+
-  labs(x = expression(bold(paste(italic('in-situ'), ' median water temp (deg C)'))),
-       y = '\n',
-       title = 'Collection 2',
-       subtitle = 'filtered for sub-zero and in-situ IQR') +
-  final_theme +
-  coord_cartesian(xlim = c(0, 27),
-                  ylim = c(0, 27))
-SFC_e
-
-SFC_f <- ggplot(C2ST_cloud, aes(x = temp_med, y = surface_temp_median)) +
-  geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
-  geom_point() +
-  #add lm regression and prediction intervals for C2 filtered for sub zero and cloud
-  geom_abline(intercept = C2_cloud_lm$coefficients[1], slope = C2_cloud_lm$coefficients[2], size = 0.75) +
-  geom_text(label = paste0('r-squared = ', round(C2_cloud_lm$r.squared, digits = 3)),
-            x = 2,
-            y = 25,
-            size = 4,
-            hjust = 0)+
-  geom_text(label = paste0('n = ', length(C2ST_cloud$date)),
-            x = 2,
-            y = 23,
-            size = 4,
-            hjust = 0)+
-  labs(x = expression(bold(paste(italic('in-situ'), ' median water temp (deg C)'))),
-       y = '\n',
-       title = 'Collection 2',
-       subtitle = 'filtered for sub-zero and cloud cover') +
-  final_theme +
-  coord_cartesian(xlim = c(0, 27),
-                  ylim = c(0, 27))
-SFC_f
-
-
-SFC_plot <- plot_grid(SFC_a, SFC_b, SFC_c, SFC_d, SFC_e,
-                       SFC_f,
-                       ncol = 3,
-                       labels = c('a', 'b', 'c', 'd', 'e', 'f'),
-                       label_x = 0.15)
-
-SFC_plot
-
-ggsave(file.path(fig_dir, 'SFC_lm_filters.jpg'), 
-       dpi = 300,
-       height = 9,
-       width = 12,
-       units = 'in')
-
-# SFB plot lm and dem slope and int together ####
-# make a table for lm 
-lm_slope_int_table$model = c('C1SC', 'C2ST', 'C2ST_freeze', 'C2ST_maxrange', 'C2ST_maxIQR', 'C2ST_cloud')
-lm_slope_int_table$slope = c(C1_lm$coefficients[2],
-                          C2_lm$coefficients[2],
-                          C2_freeze_lm$coefficients[2],
-                          C2_maxrange_lm$coefficients[2],
-                          C2_maxIQR_lm$coefficients[2],
-                          C2_cloud_lm$coefficients[2])
-lm_slope_int_table$intercept = c(C1_lm$coefficients[1],
-                              C2_lm$coefficients[1],
-                              C2_freeze_lm$coefficients[1],
-                              C2_maxrange_lm$coefficients[1],
-                              C2_maxIQR_lm$coefficients[1],
-                              C2_cloud_lm$coefficients[1])
-lm_slope_int_table$slope_se = c(C1_lm$coefficients[2,2],
-                             C2_lm$coefficients[2,2],
-                             C2_freeze_lm$coefficients[2,2],
-                             C2_maxrange_lm$coefficients[2,2],
-                             C2_maxIQR_lm$coefficients[2,2],
-                             C2_cloud_lm$coefficients[2,2])
-lm_slope_int_table$int_se = c(C1_lm$coefficients[1,2],
-                           C2_lm$coefficients[1,2],
-                           C2_freeze_lm$coefficients[1,2],
-                           C2_maxrange_lm$coefficients[1,2],
-                           C2_maxIQR_lm$coefficients[1,2],
-                           C2_cloud_lm$coefficients[1,2])
-lm_slope_int_table <- as.data.frame(lm_slope_int_table)
-
-lm_slope_int_table <- lm_slope_int_table %>% 
-  pivot_longer(cols = c(slope, intercept), names_to = 'var', values_to = 'value') %>% 
-  mutate(se = case_when(var == 'slope' ~ slope_se,
-                        var == 'intercept' ~ int_se,
-                        TRUE ~ NA_real_),
-         u95 = value + se,
-         l95 = value - se) %>% 
-  select(-slope_se, -int_se) %>% 
-  mutate(model = factor(model, 
-                        levels = c('C1SC', 'C2ST', 'C2ST_freeze', 'C2ST_maxIQR', 'C2ST_maxrange', 'C2ST_cloud'),
-                        labels = c('Collection 1', 'Collection 2', 'Collection 2\nsub-zero', 'Collection 2\nin-situ IQR',
-                                   'Collection 2\nin-situ range', 'Collection 2\ncloud'))) %>% 
-  mutate(regression = 'linear')
-
-lmdem_slopeint <- full_join(lm_slope_int_table, slope_int_table)
-
-lm_slope_fig <- lmdem_slopeint %>% 
-  filter(var == 'slope') %>% 
-  ggplot(., aes(x = model, y = value, color = regression)) +
-  geom_point(position = position_dodge(width = 0.2)) +
-  geom_pointrange(aes(ymin = l95, ymax = u95), position = position_dodge(width = 0.2))+
-  labs(x = NULL,
-       y = 'model slope') +
-  coord_cartesian(ylim = c(0.85, 1.15)) +
-  final_theme +
-  scale_color_colorblind()
-lm_int_fig <- lmdem_slopeint %>% 
-  filter(var == 'intercept') %>% 
-  ggplot(., aes(x = model, y = value, color = regression)) +
-  geom_point(position = position_dodge(width = 0.2)) +
-  geom_pointrange(aes(ymin = l95, ymax = u95),position = position_dodge(width = 0.2))+
-  labs(x = NULL,
-       y = 'model intercept') +
-  coord_cartesian(ylim = c(-3.2, 0)) +
-  final_theme+
-  scale_color_colorblind()
-
-SF_slope_int_fig <- plot_grid(lm_slope_fig, lm_int_fig,
-                           ncol = 1,
-                           labels = c('a', 'b'))
-SF_slope_int_fig
-
-ggsave(file.path(fig_dir, 'SFB_slopeintercept.jpg'), 
-       dpi = 300,
-       height = 6,
-       width = 8,
-       units = 'in')
 
 # Look at C2 IQR data set residuals against other variables for SF A####
 
@@ -867,11 +609,12 @@ count <- ggplot(C2ST_cloud, aes(x = insitu_count, y = opt_resid)) +
 
 plot_grid(istemp, doy, perclake, cloud, sunelev, esd, azi, depth, sd, count,
           labels = c('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'),
-          ncol = 3,
+          ncol = 2,
           label_x = 0.1,
           label_y = 1.1)
 
-ggsave(file.path(fig_dir, 'SFA_resid_summary_C2cloud_v14Oct2021.jpg'), height = 8, width = 12, units = 'in', dpi = 300)
+ggsave(file.path(fig_dir, 'SFA_resid_summary_C2cloud_v14Oct2021.jpg'), 
+       height = 12, width = 8, units = 'in', dpi = 300)
 
 
 
@@ -941,7 +684,7 @@ month_error <- full_join(month_mission_error, month_error)
 
 alldata_error <- full_join(alldata_error, month_error)
 
-write.csv(alldata_error, file.path(C2_datadir, 'LS_deming_predictionerror_C1C2_stats_v07Oct2021.csv'))
+write.csv(alldata_error, file.path(C2_datadir, 'LS_deming_predictionerror_C1C2_stats_v15Oct2021.csv'))
 
 
 
