@@ -372,21 +372,26 @@ iva_table_recode <- iva_table %>%
                                    TRUE ~ NA_real_))
 
 
-#### plot on same axes with separate lines ####
-may <- temp_monthly_median %>% 
+iva_table_recode
+
+#### plot with connected lines ####
+may_inter <- temp_monthly_median %>% 
   filter(month == 5) %>% 
   ggplot(., aes(x = year, y = value))+
   geom_point(aes(color = source)) +
+  geom_line(aes(color = source)) +
   final_theme +
   coord_cartesian(ylim = c(7, 27),
                   xlim = c(1980, 2020)) +
   scale_color_colorblind() +
   labs(x = NULL, y = NULL, title = 'May') +
   theme(legend.position = 'none')
+may_inter
 
-june <- temp_monthly_median %>% 
+june_inter <- temp_monthly_median %>% 
   filter(month == 6) %>% 
   ggplot(., aes(x = year, y = value))+
+  geom_line(aes(color = source)) +
   geom_point(aes(color = source)) +
   final_theme +
   coord_cartesian(ylim = c(7, 27),
@@ -394,73 +399,68 @@ june <- temp_monthly_median %>%
   scale_color_colorblind() +
   labs(x = NULL, y = NULL, title = 'June') +
   theme(legend.position = 'none')
+june_inter
 
-jul <- temp_monthly_median %>% 
+jul_inter <- temp_monthly_median %>% 
   filter(month == 7) %>% 
   ggplot(., aes(x = year, y = value))+
+  geom_line(aes(color = source)) +
   geom_point(aes(color = source)) +
-  # geom_abline(slope = is_7_lm$coefficients[2, 1],
-  #             intercept = is_7_lm$coefficients[1,1],
-  #             color = 'black') +
-  # geom_abline(slope = ls_7_lm$coefficients[2, 1],
-  #             intercept = ls_7_lm$coefficients[1,1],
-  #             color = "#E69F00") +
   final_theme +
   coord_cartesian(ylim = c(7, 27),
                   xlim = c(1980, 2020)) +
   scale_color_colorblind() +
   labs(x = NULL, y = NULL, title = 'July') +
   theme(legend.position = 'none')  
+jul_inter
 
-aug <- temp_monthly_median %>% 
+aug_inter <- temp_monthly_median %>% 
   filter(month == 8) %>% 
   ggplot(., aes(x = year, y = value))+
+  geom_line(aes(color = source)) +
   geom_point(aes(color = source)) +
-  # geom_abline(slope = is_8_lm$coefficients[2, 1],
-  #             intercept = is_8_lm$coefficients[1,1],
-  #             color = 'black') +
   final_theme +
   coord_cartesian(ylim = c(7, 27),
                   xlim = c(1980, 2020)) +
   scale_color_colorblind() +
   labs(x = NULL, y = NULL, title = 'August') +
   theme(legend.position = 'none')  
+aug_inter
 
-sept <- temp_monthly_median %>% 
+sep_inter <- temp_monthly_median %>% 
   filter(month == 9) %>% 
   ggplot(., aes(x = year, y = value))+
   geom_point(aes(color = source)) +
-  # geom_abline(slope = ls_9_lm$coefficients[2, 1],
-  #             intercept = ls_9_lm$coefficients[1,1],
-  #             color = "#E69F00") +
+  geom_line(aes(color = source)) +
   final_theme +
   coord_cartesian(ylim = c(7, 27),
                   xlim = c(1980, 2020)) +
   scale_color_colorblind() +
   labs(x = NULL, y = NULL, title = 'September') +
   theme(legend.position = 'none')  
+sep_inter
 
-oct <- temp_monthly_median %>% 
+
+oct_inter <- temp_monthly_median %>% 
   filter(month == 10) %>% 
   ggplot(., aes(x = year, y = value))+
   geom_point(aes(color = source)) +
-  # geom_abline(slope = ls_10_lm$coefficients[2, 1],
-  #             intercept = ls_10_lm$coefficients[1,1],
-  #             color = "#E69F00") +
+  geom_line(aes(color = source)) +
   final_theme +
   coord_cartesian(ylim = c(7, 27),
                   xlim = c(1980, 2020)) +
   scale_color_colorblind() +
   labs(x = NULL, y = NULL, title = 'October') +
   theme(legend.position = 'none')  
+oct_inter
 
 #set up png device
-png(file.path(figdir, 'application_monthly_median_temp_IQR_together.png'),
+png(file.path(figdir, 'application_monthly_median_temp_cloud_together_interconnected.png'),
     width=9,height=6, units = 'in', res = 300)
-gridExtra::grid.arrange(may, june, jul, aug, sept, oct,
+gridExtra::grid.arrange(may_inter, june_inter, jul_inter, aug_inter, sep_inter, oct_inter,
                         nrow = 2,
                         left = 'lake surface temperature\ndegrees C',
-                        bottom = 'black = in-situ   yellow = landsat')
+                        bottom = 'black = in-situ   yellow = Landsat')
 
 #Close pdf graphics device
 dev.off()
