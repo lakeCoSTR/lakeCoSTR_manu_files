@@ -10,14 +10,14 @@ source('scripts/R_library.R')
 
 # point to directories
 datadir = '~/GitHub/ids-ne-lakes/data/'
-C1_datadir <- '~/GitHub/ids-ne-lakes/data/colab-output/2021-06-08/'
+C1_datadir <- '~/GitHub/ids-ne-lakes/data/colab-output/C1/'
 C2_datadir <- '~/GitHub/ids-ne-lakes/data/colab-output/C2/'
 fig_dir <- '~/GitHub/ids-ne-lakes/figures/'
 
 # Read in Data ####
 
 # read in C1 single-channel and C2 surface temperature data
-C1SC <- read_csv(file.path(C1_datadir, 'sunapee_insitu_landsat_paired.csv')) %>% 
+C1SC <- read_csv(file.path(C1_datadir, 'C1_SCA_v2_temp_landsat_paired.csv')) %>% 
   mutate(date = as.Date(substrRight(`system:index`, 8), format = '%Y%m%d')) %>% 
   mutate(LSmission = case_when(grepl('LT05', `system:index`) ~ 'LS 5',
                                grepl('LT04', `system:index`) ~ 'LS 4',
@@ -26,7 +26,8 @@ C1SC <- read_csv(file.path(C1_datadir, 'sunapee_insitu_landsat_paired.csv')) %>%
                                TRUE ~ NA_character_)) %>% 
   mutate(collection = 1,
          month = format(date, '%m'),
-         doy = format(date, '%j'))
+         doy = format(date, '%j')) %>% 
+  select(-X1)
 head(C1SC)
 
 # rename LS-related columns
@@ -34,6 +35,7 @@ C1SC <- C1SC %>%
   rename(earthsun_d = esd,
          sunazi = azimuth,
          sunelev = elev)
+head(C1SC)
 
 #DELETE AFTER C2 PAIR DATA ARRIVES #
 #break out into temp data for join with C2
@@ -96,7 +98,7 @@ C2ST <- C2ST %>%
   mutate(IQR = round(surface_temp_p75, digits = 1) - round(surface_temp_p25, digits = 1))  %>%  #calc IQR; pass/fail for temp IQR
   mutate(IQR_QAQC = case_when(IQR < max_IQR*1.1 ~ 'P',
                               TRUE ~ 'F'))
-write.csv(C2ST, file.path(C2_datadir,'temporary_sunapee_paired_C2_QAQCflag_v11Oct2011.csv'), row.names = F)
+write.csv(C2ST, file.path(C2_datadir,'temporary_sunapee_paired_C2_QAQCflag_v18Oct2011.csv'), row.names = F)
                        
 C2ST_freeze <- C2ST %>% 
   filter(freeze_QAQC == 'P')
@@ -149,7 +151,7 @@ C2_freeze_deming_forresid = mcreg(x = C2ST_freeze$temp_med,
                            y = C2ST_freeze$surface_temp_median, 
                            method.reg = 'Deming')
 C2ST_freeze$opt_resid = MCResult.getResiduals(C2_freeze_deming_forresid)$optimized
-C2ST_freeze$filter = 'min below zero'
+C2ST_freeze$filter = 'freeze'
 
 # deming regression for C2 without freezing temps and within range
 C2_maxrange_deming = deming::deming(C2ST_maxrange$surface_temp_median ~ C2ST_maxrange$temp_med)
@@ -157,7 +159,7 @@ C2_maxrange_deming_forresid = mcreg(x = C2ST_maxrange$temp_med,
                                   y = C2ST_maxrange$surface_temp_median, 
                                   method.reg = 'Deming')
 C2ST_maxrange$opt_resid = MCResult.getResiduals(C2_maxrange_deming_forresid)$optimized
-C2ST_maxrange$filter = '110% in-situ range'
+C2ST_maxrange$filter = 'range'
 
 # deming regression for C2 without freezing temps and within IQR
 C2_maxIQR_deming = deming::deming(C2ST_maxIQR$surface_temp_median ~ C2ST_maxIQR$temp_med)
@@ -165,7 +167,7 @@ C2_maxIQR_deming_forresid = mcreg(x = C2ST_maxIQR$temp_med,
                                   y = C2ST_maxIQR$surface_temp_median, 
                                   method.reg = 'Deming')
 C2ST_maxIQR$opt_resid = MCResult.getResiduals(C2_maxIQR_deming_forresid)$optimized
-C2ST_maxIQR$filter = '110% in-situ IQR'
+C2ST_maxIQR$filter = 'IQR'
 
 # deming regression for C2 without freezing temps and within IQR and data from the buoy only
 C2_cloud_deming = deming::deming(C2ST_cloud$surface_temp_median ~ 
@@ -174,7 +176,7 @@ C2_cloud_deming_forresid = mcreg(x = C2ST_cloud$temp_med,
                                   y = C2ST_cloud$surface_temp_median, 
                                   method.reg = 'Deming')
 C2ST_cloud$opt_resid = MCResult.getResiduals(C2_cloud_deming_forresid)$optimized
-C2ST_cloud$filter = 'freeze and 40% cc'
+C2ST_cloud$filter = 'cloud'
 
 
 C1_deming
@@ -277,7 +279,7 @@ FigC_c <- ggplot(C2ST_freeze, aes(x = temp_med, y = surface_temp_median)) +
   labs(x = '',
        y = '\n',
        title = 'Collection 2',
-       subtitle = 'filtered for sub-zero temperatures') +
+       subtitle = 'freeze') +
   final_theme +
   coord_cartesian(xlim = c(0, 27),
                   ylim = c(0, 27))
@@ -303,7 +305,7 @@ FigC_f <- ggplot(C2ST_maxrange, aes(x = temp_med, y = surface_temp_median)) +
   labs(x = expression(bold(paste(italic('in-situ'), ' median water temp (deg C)'))),
        y = '/n',
        title = 'Collection 2',
-       subtitle = 'filtered for sub-zero and in-situ range') +
+       subtitle = 'range') +
   final_theme +
   coord_cartesian(xlim = c(0, 27),
                   ylim = c(0, 27))
@@ -329,7 +331,7 @@ FigC_d <- ggplot(C2ST_maxIQR, aes(x = temp_med, y = surface_temp_median)) +
   labs(x = expression(bold(paste(italic('in-situ'), ' median water temp (deg C)'))),
        y = 'median Landsat-derived\nsurface temperature (deg C)',
        title = 'Collection 2',
-       subtitle = 'filtered for sub-zero and in-situ IQR') +
+       subtitle = 'IQR') +
   final_theme +
   coord_cartesian(xlim = c(0, 27),
                   ylim = c(0, 27))
@@ -355,7 +357,7 @@ FigC_e <- ggplot(C2ST_cloud, aes(x = temp_med, y = surface_temp_median)) +
   labs(x = expression(bold(paste(italic('in-situ'), ' median water temp (deg C)'))),
        y = '\n',
        title = 'Collection 2',
-       subtitle = 'filtered for sub-zero and cloud cover') +
+       subtitle = 'cloud') +
   final_theme +
   coord_cartesian(xlim = c(0, 27),
                   ylim = c(0, 27))
@@ -470,7 +472,7 @@ slope_int_table <- slope_int_table %>%
   select(-slope_se, -int_se) %>% 
   mutate(model = factor(model, 
                         levels = c('C1SC', 'C2ST', 'C2ST_freeze','C2ST_maxIQR', 'C2ST_cloud', 'C2ST_maxrange'),
-                        labels = c('Collection 1', 'Collection 2', 'Collection 2\nsub-zero', 'Collection 2\nin-situ IQR', 'Collection 2\ncloud','Collection 2\nin-situ range'))) %>% 
+                        labels = c('Collection 1', 'Collection 2', 'Collection 2\nfreeze', 'Collection 2\nIQR', 'Collection 2\ncloud','Collection 2\nrange'))) %>% 
   mutate(regression = 'Deming')
 
 slope_fig <- slope_int_table %>% 
@@ -505,7 +507,7 @@ ggsave(file.path(fig_dir, 'FigureF_slopeintercept.jpg'),
 
 
 
-# Look at C2 IQR data set residuals against other variables for SF A####
+# Look at C2 cloud data set residuals against other variables for SF A####
 
 # by insitu temp
 istemp <- ggplot(C2ST_cloud, aes(x = temp_med, y = opt_resid)) +
@@ -686,7 +688,57 @@ alldata_error <- full_join(alldata_error, month_error)
 
 write.csv(alldata_error, file.path(C2_datadir, 'LS_deming_predictionerror_C1C2_stats_v15Oct2021.csv'))
 
+# Create bar charts of bias and MAE for missions and months ####
+head(alldata_error)
+mission <- alldata_error %>% 
+  filter(month == 'All data' & (variable == 'mae' | variable == 'bias')) %>% 
+  select(-`All missions`) %>% 
+  pivot_longer(cols = c(`LS 5`:`LS 8`),
+               names_to = 'mission',
+               values_to = 'value') %>% 
+  mutate(c_filter = paste0('C', collection, ' ', filter)) %>% 
+  mutate(c_filter = factor(c_filter, 
+                           levels = c('C1 none', 'C2 none', 'C2 freeze',
+                                                'C2 IQR', 'C2 cloud', 'C2 range'),
+                           labels = c('C1', 'C2', 'C2 freeze',
+                                      'C2 IQR', 'C2 cloud', 'C2 range'))) %>% 
+  mutate(variable = case_when(variable == 'mae' ~ 'mean absolute error (deg C)',
+                              variable == 'bias' ~ 'bias (deg C)'))
+ggplot(mission, aes(x = c_filter, y = value, fill = mission)) +
+  geom_col(position = 'dodge') +
+  facet_grid(variable ~., scales = 'free_y') +
+  labs(x = NULL, 
+       y = NULL,
+       fill = 'Landsat\nmission')+
+  scale_fill_colorblind() +
+  final_theme
+ggsave(file.path(fig_dir, 'FigG_errorbymission.jpg'), height = 5, width = 8, units = 'in', dpi = 300)
 
+month <- alldata_error %>% 
+  filter(month != 'All data' & (variable == 'mae' | variable == 'bias')) %>% 
+  select(-(`LS 5`:`LS 8`)) %>% 
+  mutate(c_filter = paste0('C', collection, ' ', filter)) %>% 
+  mutate(c_filter = factor(c_filter, levels = c('C1 none', 'C2 none', 'C2 freeze',
+                                                'C2 IQR', 'C2 cloud', 'C2 range'))) %>% 
+  mutate(variable = case_when(variable == 'mae' ~ 'mean absolute error (deg C)',
+                              variable == 'bias' ~ 'bias (deg C)')) %>% 
+  mutate(month_text = case_when(month == '05' ~ 'May',
+                                month == '06' ~ 'June',
+                                month == '07' ~ 'July',
+                                month == '08' ~ 'August',
+                                month == '09' ~ 'September',
+                                month == '10' ~ 'October',
+                                month == '11' ~ 'November')) %>% 
+  mutate(month_text = factor(month_text, levels = c('May', 'June', 'July', 'August', 'September', 'October', 'November')))
+ggplot(month, aes(x = c_filter, y = `All missions`, fill = month_text)) +
+  geom_col(position = 'dodge') +
+  facet_grid(variable ~., scales = 'free_y') +
+  labs(x = NULL, 
+       y = NULL,
+       fill = 'month')+
+  scale_fill_colorblind() +
+  final_theme
+ggsave(file.path(fig_dir, 'FigI_errorbymonth.jpg'),height = 5, width = 8, units = 'in', dpi = 300)
 
 
 
