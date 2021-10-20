@@ -227,7 +227,7 @@ FigC_a <- ggplot(C1SC, aes(x = temp_med, y = surface_temp_median)) +
   labs(x = '',
        y = 'median Landsat-derived\nsurface temperature (deg C)',
        title = 'Collection 1',
-       subtitle = '') +
+       subtitle = 'single-channel algorithm') +
   final_theme +
   coord_cartesian(xlim = c(0, 27),
                   ylim = c(0, 27))
@@ -435,27 +435,23 @@ ggsave(file.path(fig_dir, 'FigureC_deming_filters.jpg'),
 # Plot slope and intercept with 95%ci ####
 slope_int_table <- NULL
 
-slope_int_table$model = c('C1SC', 'C2ST', 'C2ST_freeze', 'C2ST_maxrange', 'C2ST_maxIQR', 'C2ST_cloud')
-slope_int_table$slope = c(C1_deming$coefficients[2],
-                          C2_deming$coefficients[2],
+slope_int_table$model = c( 'C2ST', 'C2ST_freeze', 'C2ST_maxrange', 'C2ST_maxIQR', 'C2ST_cloud')
+slope_int_table$slope = c(C2_deming$coefficients[2],
                           C2_freeze_deming$coefficients[2],
                           C2_maxrange_deming$coefficients[2],
                           C2_maxIQR_deming$coefficients[2],
                           C2_cloud_deming$coefficients[2])
-slope_int_table$intercept = c(C1_deming$coefficients[1],
-                              C2_deming$coefficients[1],
+slope_int_table$intercept = c(C2_deming$coefficients[1],
                               C2_freeze_deming$coefficients[1],
                               C2_maxrange_deming$coefficients[1],
                               C2_maxIQR_deming$coefficients[1],
                               C2_cloud_deming$coefficients[1])
-slope_int_table$slope_se = c(C1_deming$se[2],
-                             C2_deming$se[2],
+slope_int_table$slope_se = c(C2_deming$se[2],
                              C2_freeze_deming$se[2],
                              C2_maxrange_deming$se[2],
                              C2_maxIQR_deming$se[2],
                              C2_cloud_deming$se[2])
-slope_int_table$int_se = c(C1_deming$se[1],
-                             C2_deming$se[1],
+slope_int_table$int_se = c(  C2_deming$se[1],
                              C2_freeze_deming$se[1],
                              C2_maxrange_deming$se[1],
                              C2_maxIQR_deming$se[1],
@@ -471,8 +467,8 @@ slope_int_table <- slope_int_table %>%
          l95 = value - se) %>% 
   select(-slope_se, -int_se) %>% 
   mutate(model = factor(model, 
-                        levels = c('C1SC', 'C2ST', 'C2ST_freeze','C2ST_maxIQR', 'C2ST_cloud', 'C2ST_maxrange'),
-                        labels = c('Collection 1', 'Collection 2', 'Collection 2\nfreeze', 'Collection 2\nIQR', 'Collection 2\ncloud','Collection 2\nrange'))) %>% 
+                        levels = c('C2ST', 'C2ST_freeze','C2ST_maxIQR', 'C2ST_cloud', 'C2ST_maxrange'),
+                        labels = c('Collection 2', 'Collection 2\nfreeze', 'Collection 2\nIQR', 'Collection 2\ncloud','Collection 2\nrange'))) %>% 
   mutate(regression = 'Deming')
 
 slope_fig <- slope_int_table %>% 
@@ -480,8 +476,9 @@ slope_fig <- slope_int_table %>%
   ggplot(., aes(x = model, y = value)) +
   geom_point() +
   geom_pointrange(aes(ymin = l95, ymax = u95))+
+  geom_abline(intercept = 1, slope = 0, color = '#454545', lty=2) +
   labs(x = NULL,
-       y = 'model slope') +
+       y = 'estimated slope') +
   coord_cartesian(ylim = c(0.85, 1.15)) +
   final_theme
 int_fig <- slope_int_table %>% 
@@ -489,8 +486,9 @@ int_fig <- slope_int_table %>%
   ggplot(., aes(x = model, y = value)) +
   geom_point() +
   geom_pointrange(aes(ymin = l95, ymax = u95))+
+  geom_abline(intercept = 0, slope = 0, color = '#454545', lty=2) +
   labs(x = NULL,
-       y = 'model intercept') +
+       y = 'estmiated intercept') +
   coord_cartesian(ylim = c(-3.2, 0)) +
   final_theme
 
@@ -690,9 +688,10 @@ write.csv(alldata_error, file.path(C2_datadir, 'LS_deming_predictionerror_C1C2_s
 
 # Create bar charts of bias and MAE for missions and months ####
 head(alldata_error)
-mission <- alldata_error %>% 
+mission_biasmae <- alldata_error %>% 
   filter(month == 'All data' & (variable == 'mae' | variable == 'bias')) %>% 
   select(-`All missions`) %>% 
+  filter(collection == 2) %>% 
   pivot_longer(cols = c(`LS 5`:`LS 8`),
                names_to = 'mission',
                values_to = 'value') %>% 
@@ -701,27 +700,42 @@ mission <- alldata_error %>%
                            levels = c('C1 none', 'C2 none', 'C2 freeze',
                                                 'C2 IQR', 'C2 cloud', 'C2 range'),
                            labels = c('C1', 'C2', 'C2 freeze',
-                                      'C2 IQR', 'C2 cloud', 'C2 range'))) %>% 
-  mutate(variable = case_when(variable == 'mae' ~ 'mean absolute error (deg C)',
-                              variable == 'bias' ~ 'bias (deg C)'))
-ggplot(mission, aes(x = c_filter, y = value, fill = mission)) +
+                                      'C2 IQR', 'C2 cloud', 'C2 range')))
+missionbias <- mission_biasmae %>% 
+  filter(variable == 'bias') %>% 
+  ggplot(., aes(x = c_filter, y = value, fill = mission)) +
   geom_col(position = 'dodge') +
-  facet_grid(variable ~., scales = 'free_y') +
   labs(x = NULL, 
-       y = NULL,
+       y = 'bias\n(deg C)',
        fill = 'Landsat\nmission')+
   scale_fill_colorblind() +
   final_theme
+missionmae <- mission_biasmae %>% 
+  filter(variable == 'mae') %>% 
+  ggplot(., aes(x = c_filter, y = value, fill = mission)) +
+  geom_col(position = 'dodge') +
+  labs(x = NULL, 
+       y = 'mean absolute error\n(deg C)',
+       fill = 'Landsat\nmission')+
+  scale_fill_colorblind() +
+  final_theme
+
+plot_grid(missionbias, missionmae, 
+          labels = c('a', 'b'), 
+          nrow = 2,         
+          label_x = 0.03)
+
 ggsave(file.path(fig_dir, 'FigG_errorbymission.jpg'), height = 5, width = 8, units = 'in', dpi = 300)
 
-month <- alldata_error %>% 
+month_biasmae <- alldata_error %>% 
   filter(month != 'All data' & (variable == 'mae' | variable == 'bias')) %>% 
   select(-(`LS 5`:`LS 8`)) %>% 
+  filter(collection == 2) %>% 
   mutate(c_filter = paste0('C', collection, ' ', filter)) %>% 
   mutate(c_filter = factor(c_filter, levels = c('C1 none', 'C2 none', 'C2 freeze',
-                                                'C2 IQR', 'C2 cloud', 'C2 range'))) %>% 
-  mutate(variable = case_when(variable == 'mae' ~ 'mean absolute error (deg C)',
-                              variable == 'bias' ~ 'bias (deg C)')) %>% 
+                                                'C2 IQR', 'C2 cloud', 'C2 range'),
+                           labels = c('C1', 'C2', 'C2 freeze',
+                                      'C2 IQR', 'C2 cloud', 'C2 range'))) %>% 
   mutate(month_text = case_when(month == '05' ~ 'May',
                                 month == '06' ~ 'June',
                                 month == '07' ~ 'July',
@@ -729,15 +743,30 @@ month <- alldata_error %>%
                                 month == '09' ~ 'September',
                                 month == '10' ~ 'October',
                                 month == '11' ~ 'November')) %>% 
-  mutate(month_text = factor(month_text, levels = c('May', 'June', 'July', 'August', 'September', 'October', 'November')))
-ggplot(month, aes(x = c_filter, y = `All missions`, fill = month_text)) +
+  mutate(month_text = factor(month_text, 
+                             levels = c('May', 'June', 'July', 'August', 'September', 'October', 'November')))
+monthbias <- month_biasmae %>% 
+  filter(variable == 'bias') %>% 
+  ggplot(., aes(x = c_filter, y = `All missions`, fill = month_text)) +
   geom_col(position = 'dodge') +
-  facet_grid(variable ~., scales = 'free_y') +
   labs(x = NULL, 
-       y = NULL,
+       y = 'bias\n(deg C)',
        fill = 'month')+
   scale_fill_colorblind() +
   final_theme
+monthmae <- month_biasmae %>% 
+  filter(variable == 'mae') %>% 
+  ggplot(., aes(x = c_filter, y = `All missions`, fill = month_text)) +
+  geom_col(position = 'dodge') +
+  labs(x = NULL, 
+       y = 'mean absolute error\n(deg C)',
+       fill = 'month')+
+  scale_fill_colorblind() +
+  final_theme
+plot_grid(monthbias, monthmae, 
+          labels = c('a', 'b'), 
+          nrow = 2,
+          label_x = 0.03)
 ggsave(file.path(fig_dir, 'FigI_errorbymonth.jpg'),height = 5, width = 8, units = 'in', dpi = 300)
 
 

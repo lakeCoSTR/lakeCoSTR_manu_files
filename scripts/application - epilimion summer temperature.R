@@ -76,7 +76,7 @@ temp_monthly_median %>%
   labs(y = 'lake surface temperature\n(degrees C)') +
   # geom_smooth(method = 'lm', se = F, inherit.aes = T) +
   final_theme
-ggsave(file.path(figdir, 'monthly_patterns_calib_temp_cloud.png'), height = 3, width = 9)
+# ggsave(file.path(figdir, 'monthly_patterns_calib_temp_cloud.png'), height = 3, width = 9)
 
 
 #### linear regression - significant slope? ####
@@ -114,65 +114,7 @@ all_7_lm <- linear_analysis_all(7)
 all_8_lm <- linear_analysis_all(8)
 all_9_lm <- linear_analysis_all(9)
 all_10_lm <- linear_analysis_all(10)
-
-# grom_lm = function(mm, ds){
-#   data <- temp_monthly_median %>% 
-#     filter(month == mm & source == ds)
-#   lm_result <- lm(data$value ~ data$year)
-#   if(is.na(summary(lm_result)$coefficients[2,4])) {
-#     grom <- ggplot(data, aes(x = year, y = value)) +
-#       geom_point() +
-#       coord_cartesian(ylim = c(7, 27),
-#                       xlim = c(1980, 2020)) +
-#       labs(x = NULL, y = NULL) +
-#       final_theme
-#   } else {
-#     if(summary(lm_result)$coefficients[2,4] < 0.05){ 
-#       grom <- ggplot(data, aes(x = year, y = value)) +
-#         geom_point() +
-#         coord_cartesian(ylim = c(7, 27),
-#                         xlim = c(1980, 2020)) +
-#         geom_abline(slope = summary(lm_result)$coefficients[2, 1],
-#                     intercept = summary(lm_result)$coefficients[1,1]) +
-#         labs(x = NULL, y = NULL) +
-#         final_theme
-#     } else {
-#       grom <- ggplot(data, aes(x = year, y = value)) +
-#         geom_point() +
-#         coord_cartesian(ylim = c(7, 27),
-#                         xlim = c(1980, 2020)) +
-#         labs(x = NULL, y = NULL) +
-#         final_theme
-#     }
-#   }
-#   print(grom)
-# }
-# 
-# 
-# is_5_gg <- grom_lm(5, 'in-situ')
-# is_6_gg <- grom_lm(6, 'in-situ')
-# is_7_gg <- grom_lm(7, 'in-situ')
-# is_8_gg <- grom_lm(8, 'in-situ')
-# is_9_gg <- grom_lm(9, 'in-situ')
-# is_10_gg <- grom_lm(10, 'in-situ')
-# ls_5_gg <- grom_lm(5, 'landsat')
-# ls_6_gg <- grom_lm(6, 'landsat')
-# ls_7_gg <- grom_lm(7, 'landsat')
-# ls_8_gg <- grom_lm(8, 'landsat')
-# ls_9_gg <- grom_lm(9, 'landsat')
-# ls_10_gg <- grom_lm(10, 'landsat')
-
-
-# #set up png device
-# png(file.path(figdir, 'application_monthly_median_temp_IQR_bysource.png'),
-#     width=16,height=6, units = 'in', res = 300)
-# gridExtra::grid.arrange(is_5_gg, is_6_gg, is_7_gg, is_8_gg, is_9_gg, is_10_gg,
-#                         ls_5_gg, ls_6_gg, ls_7_gg, ls_8_gg, ls_9_gg, ls_10_gg,
-#                         nrow = 2,
-#                         left = 'lake surface temperature\ndegrees C')
-# 
-# #Close pdf graphics device
-# dev.off()
+all_11_lm <- linear_analysis_all(11)
 
 # indicator variable analysis ####
 temp_monthly_median$source = as.factor(temp_monthly_median$source)
@@ -374,96 +316,219 @@ iva_table_recode <- iva_table %>%
 
 iva_table_recode
 
-#### plot with connected lines ####
-may_inter <- temp_monthly_median %>% 
+#### plot on same axes with separate lines ####
+may_is <- may_data %>% 
+  filter(source == 'in-situ') 
+mean_may_is = mean(may_is$value)
+may_ls <- may_data %>% 
+  filter(source == 'landsat') 
+mean_may_ls = mean(may_ls$value)
+may <- temp_monthly_median %>% 
   filter(month == 5) %>% 
   ggplot(., aes(x = year, y = value))+
   geom_point(aes(color = source)) +
-  geom_line(aes(color = source)) +
+  geom_abline(slope = 0, 
+              intercept = mean_may_is, 
+              lty = 2) +
+  geom_abline(slope = 0,
+              intercept = mean_may_ls,
+              lty = 2,
+              color = "#E69F00") +
   final_theme +
   coord_cartesian(ylim = c(7, 27),
                   xlim = c(1980, 2020)) +
   scale_color_colorblind() +
   labs(x = NULL, y = NULL, title = 'May') +
   theme(legend.position = 'none')
-may_inter
+may
 
-june_inter <- temp_monthly_median %>% 
+mean_june = mean(jun_data$value)
+june <- temp_monthly_median %>% 
   filter(month == 6) %>% 
   ggplot(., aes(x = year, y = value))+
-  geom_line(aes(color = source)) +
   geom_point(aes(color = source)) +
-  final_theme +
-  coord_cartesian(ylim = c(7, 27),
-                  xlim = c(1980, 2020)) +
+  geom_abline(slope = 0, 
+              intercept = mean_june, 
+              lty = 2,
+              color = '#009E73') +
+    final_theme +
+  coord_cartesian(ylim = c(7, 27)) +
   scale_color_colorblind() +
   labs(x = NULL, y = NULL, title = 'June') +
   theme(legend.position = 'none')
-june_inter
+june
 
-jul_inter <- temp_monthly_median %>% 
+jul <- temp_monthly_median %>% 
   filter(month == 7) %>% 
   ggplot(., aes(x = year, y = value))+
-  geom_line(aes(color = source)) +
   geom_point(aes(color = source)) +
+  geom_abline(slope = all_7_lm$coefficients[2, 1],
+              intercept = all_7_lm$coefficients[1,1],
+              color = '#009E73') +
   final_theme +
   coord_cartesian(ylim = c(7, 27),
                   xlim = c(1980, 2020)) +
   scale_color_colorblind() +
   labs(x = NULL, y = NULL, title = 'July') +
   theme(legend.position = 'none')  
-jul_inter
+jul
 
-aug_inter <- temp_monthly_median %>% 
-  filter(month == 8) %>% 
-  ggplot(., aes(x = year, y = value))+
-  geom_line(aes(color = source)) +
+aug_data_out <- aug_data %>% 
+  filter(value < 15)
+aug <- ggplot(aug_data_wo, aes(x = year, y = value)) +
   geom_point(aes(color = source)) +
+  geom_abline(slope = all_8_lm$coefficients[2, 1],
+              intercept = all_8_lm$coefficients[1,1],
+              color = '#009E73') +
   final_theme +
   coord_cartesian(ylim = c(7, 27),
                   xlim = c(1980, 2020)) +
   scale_color_colorblind() +
+  geom_point(data = aug_data_out, mapping = aes(x = year, y =value), shape = 17, color = '#E69F00', size = 2) +
   labs(x = NULL, y = NULL, title = 'August') +
   theme(legend.position = 'none')  
-aug_inter
+aug
 
-sep_inter <- temp_monthly_median %>% 
-  filter(month == 9) %>% 
-  ggplot(., aes(x = year, y = value))+
+sep_data_out <- sep_data %>% 
+  filter(value < 15)
+is_data_sep <- sep_data %>% 
+  filter(source == 'in-situ')
+
+sept <-ggplot(sep_data_wo, aes(x = year, y = value))+
   geom_point(aes(color = source)) +
-  geom_line(aes(color = source)) +
+  geom_abline(slope = ls_9_lm$coefficients[2, 1],
+              intercept = ls_9_lm$coefficients[1,1],
+              color = '#E69F00') +
+  geom_abline(slope = 0, 
+              intercept = mean(is_data_sep$value),
+              lty = 2) +
   final_theme +
   coord_cartesian(ylim = c(7, 27),
                   xlim = c(1980, 2020)) +
   scale_color_colorblind() +
+  geom_point(data = sep_data_out, mapping = aes(x = year, y =value), shape = 17, color = '#E69F00', size = 2) +
   labs(x = NULL, y = NULL, title = 'September') +
   theme(legend.position = 'none')  
-sep_inter
+sept
 
 
-oct_inter <- temp_monthly_median %>% 
+oct <- temp_monthly_median %>% 
   filter(month == 10) %>% 
   ggplot(., aes(x = year, y = value))+
   geom_point(aes(color = source)) +
-  geom_line(aes(color = source)) +
+  geom_abline(slope = all_10_lm$coefficients[2, 1],
+              intercept = all_10_lm$coefficients[1,1],
+              color = '#009E73') +
   final_theme +
   coord_cartesian(ylim = c(7, 27),
                   xlim = c(1980, 2020)) +
   scale_color_colorblind() +
   labs(x = NULL, y = NULL, title = 'October') +
   theme(legend.position = 'none')  
-oct_inter
+oct
 
 #set up png device
-png(file.path(figdir, 'application_monthly_median_temp_cloud_together_interconnected.png'),
+jpeg(file.path(figdir, 'application_monthly_median_temp_IQR_together.jpg'),
     width=9,height=6, units = 'in', res = 300)
-gridExtra::grid.arrange(may_inter, june_inter, jul_inter, aug_inter, sep_inter, oct_inter,
+gridExtra::grid.arrange(may, june, jul, aug, sept, oct,
                         nrow = 2,
                         left = 'lake surface temperature\ndegrees C',
-                        bottom = 'black = in-situ   yellow = Landsat')
+                        bottom = 'black = in-situ   yellow = landsat   green = all data')
+
+#July Aug wit
 
 #Close pdf graphics device
 dev.off()
+#### plot with connected lines ####
+# may_inter <- temp_monthly_median %>% 
+#   filter(month == 5) %>% 
+#   ggplot(., aes(x = year, y = value))+
+#   geom_point(aes(color = source)) +
+#   geom_line(aes(color = source)) +
+#   final_theme +
+#   coord_cartesian(ylim = c(7, 27),
+#                   xlim = c(1980, 2020)) +
+#   scale_color_colorblind() +
+#   labs(x = NULL, y = NULL, title = 'May') +
+#   theme(legend.position = 'none')
+# may_inter
+# 
+# june_inter <- temp_monthly_median %>% 
+#   filter(month == 6) %>% 
+#   ggplot(., aes(x = year, y = value))+
+#   geom_line(aes(color = source)) +
+#   geom_point(aes(color = source)) +
+#   final_theme +
+#   coord_cartesian(ylim = c(7, 27),
+#                   xlim = c(1980, 2020)) +
+#   scale_color_colorblind() +
+#   labs(x = NULL, y = NULL, title = 'June') +
+#   theme(legend.position = 'none')
+# june_inter
+# 
+# jul_inter <- temp_monthly_median %>% 
+#   filter(month == 7) %>% 
+#   ggplot(., aes(x = year, y = value))+
+#   geom_line(aes(color = source)) +
+#   geom_point(aes(color = source)) +
+#   final_theme +
+#   coord_cartesian(ylim = c(7, 27),
+#                   xlim = c(1980, 2020)) +
+#   scale_color_colorblind() +
+#   labs(x = NULL, y = NULL, title = 'July') +
+#   theme(legend.position = 'none')  
+# jul_inter
+# 
+# aug_inter <- temp_monthly_median %>% 
+#   filter(month == 8) %>% 
+#   ggplot(., aes(x = year, y = value))+
+#   geom_line(aes(color = source)) +
+#   geom_point(aes(color = source)) +
+#   final_theme +
+#   coord_cartesian(ylim = c(7, 27),
+#                   xlim = c(1980, 2020)) +
+#   scale_color_colorblind() +
+#   labs(x = NULL, y = NULL, title = 'August') +
+#   theme(legend.position = 'none')  
+# aug_inter
+# 
+# sep_inter <- temp_monthly_median %>% 
+#   filter(month == 9) %>% 
+#   ggplot(., aes(x = year, y = value))+
+#   geom_point(aes(color = source)) +
+#   geom_line(aes(color = source)) +
+#   final_theme +
+#   coord_cartesian(ylim = c(7, 27),
+#                   xlim = c(1980, 2020)) +
+#   scale_color_colorblind() +
+#   labs(x = NULL, y = NULL, title = 'September') +
+#   theme(legend.position = 'none')  
+# sep_inter
+# 
+# 
+# oct_inter <- temp_monthly_median %>% 
+#   filter(month == 10) %>% 
+#   ggplot(., aes(x = year, y = value))+
+#   geom_point(aes(color = source)) +
+#   geom_line(aes(color = source)) +
+#   final_theme +
+#   coord_cartesian(ylim = c(7, 27),
+#                   xlim = c(1980, 2020)) +
+#   scale_color_colorblind() +
+#   labs(x = NULL, y = NULL, title = 'October') +
+#   theme(legend.position = 'none')  
+# oct_inter
+# 
+# #set up png device
+# png(file.path(figdir, 'application_monthly_median_temp_cloud_together_interconnected.png'),
+#     width=9,height=6, units = 'in', res = 300)
+# gridExtra::grid.arrange(may_inter, june_inter, jul_inter, aug_inter, sep_inter, oct_inter,
+#                         nrow = 2,
+#                         left = 'lake surface temperature\ndegrees C',
+#                         bottom = 'black = in-situ   yellow = Landsat')
+# 
+# #Close pdf graphics device
+# dev.off()
 
 
 
