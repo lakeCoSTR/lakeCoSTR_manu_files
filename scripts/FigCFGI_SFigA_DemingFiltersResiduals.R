@@ -208,7 +208,7 @@ all_surface_temp <- full_join(C1SC, C2ST) %>%
 
 # Plot Deming regression for all filters ####
 FigC_a <- ggplot(C1SC, aes(x = temp_med, y = surface_temp_median)) +
-  geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
+  geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
   geom_point() +
   #add deming regression and prediction intervals for C1
   geom_abline(intercept = C1_deming$coefficients[1], slope = C1_deming$coefficients[2], size = 0.75) +
@@ -234,7 +234,7 @@ FigC_a <- ggplot(C1SC, aes(x = temp_med, y = surface_temp_median)) +
 FigC_a
 
 FigC_b <- ggplot(C2ST, aes(x = temp_med, y = surface_temp_median)) +
-  geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
+  geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
   geom_point() +
   #add deming regression and prediction intervals for C2
   geom_abline(intercept = C2_deming$coefficients[1], slope = C2_deming$coefficients[2], size = 0.75) +
@@ -260,7 +260,7 @@ FigC_b <- ggplot(C2ST, aes(x = temp_med, y = surface_temp_median)) +
 FigC_b
 
 FigC_c <- ggplot(C2ST_freeze, aes(x = temp_med, y = surface_temp_median)) +
-  geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
+  geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
   geom_point() +
   #add deming regression and prediction intervals for C2 filtered for freezing mins
   geom_abline(intercept = C2_freeze_deming$coefficients[1], slope = C2_freeze_deming$coefficients[2], size = 0.75) +
@@ -286,7 +286,7 @@ FigC_c <- ggplot(C2ST_freeze, aes(x = temp_med, y = surface_temp_median)) +
 FigC_c
 
 FigC_f <- ggplot(C2ST_maxrange, aes(x = temp_med, y = surface_temp_median)) +
-  geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
+  geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
   geom_point() +
   #add deming regression and prediction intervals for C2 filtered for sub zero and maxrange
   geom_abline(intercept = C2_maxrange_deming$coefficients[1], slope = C2_maxrange_deming$coefficients[2], size = 0.75) +
@@ -312,7 +312,7 @@ FigC_f <- ggplot(C2ST_maxrange, aes(x = temp_med, y = surface_temp_median)) +
 FigC_f
 
 FigC_d <- ggplot(C2ST_maxIQR, aes(x = temp_med, y = surface_temp_median)) +
-  geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
+  geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
   geom_point() +
   #add deming regression and prediction intervals for C2 filtered for sub zero and maxIQR
   geom_abline(intercept = C2_maxIQR_deming$coefficients[1], slope = C2_maxIQR_deming$coefficients[2], size = 0.75) +
@@ -338,7 +338,7 @@ FigC_d <- ggplot(C2ST_maxIQR, aes(x = temp_med, y = surface_temp_median)) +
 FigC_d
 
 FigC_e <- ggplot(C2ST_cloud, aes(x = temp_med, y = surface_temp_median)) +
-  geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
+  geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
   geom_point() +
   #add deming regression and prediction intervals for C2 filtered for sub zero and cloud
   geom_abline(intercept = C2_cloud_deming$coefficients[1], slope = C2_cloud_deming$coefficients[2], size = 0.75) +
@@ -686,10 +686,11 @@ alldata_error <- full_join(alldata_error, month_error)
 
 write.csv(alldata_error, file.path(C2_datadir, 'LS_deming_predictionerror_C1C2_stats_v15Oct2021.csv'))
 
-# Create bar charts of bias and MAE for missions and months ####
+# create point(by mission for bias, mae, rmse) faceted by model ####
 head(alldata_error)
-mission_biasmae <- alldata_error %>% 
-  filter(month == 'All data' & (variable == 'mae' | variable == 'bias')) %>% 
+
+missionmonth_biasmae <- alldata_error %>% 
+  filter(month != 'All data' & (variable == 'mae' | variable == 'bias')) %>% 
   select(-`All missions`) %>% 
   filter(collection == 2) %>% 
   pivot_longer(cols = c(`LS 5`:`LS 8`),
@@ -701,23 +702,39 @@ mission_biasmae <- alldata_error %>%
                                                 'C2 IQR', 'C2 cloud', 'C2 range'),
                            labels = c('C1', 'C2', 'C2 freeze',
                                       'C2 IQR', 'C2 cloud', 'C2 range')))
+
+
+
+ggplot(missionmonth_biasmae, aes(x = month, y = value)) +
+  geom_point(aes(color = mission)) +
+  facet_grid(c_filter ~ variable)+
+  final_theme+
+  scale_color_colorblind()
+ggsave(file.path(fig_dir, 'FigG_errorbymission.jpg'), height = 8, width = 8, units = 'in', dpi = 300)
+
 missionbias <- mission_biasmae %>% 
   filter(variable == 'bias') %>% 
-  ggplot(., aes(x = c_filter, y = value, fill = mission)) +
-  geom_col(position = 'dodge') +
+  ggplot(., aes(x = variable, y = value, color = mission)) +
+  facet_grid(c_filter ~ .) +
+  geom_abline(intercept =  0, slope = 0, lty = 2, color = 'grey')+
+  geom_point() +
+  geom_point(position=position_dodge(width=0.3)) +
   labs(x = NULL, 
        y = 'bias\n(deg C)',
        fill = 'Landsat\nmission')+
-  scale_fill_colorblind() +
+  scale_color_colorblind() +
   final_theme
 missionmae <- mission_biasmae %>% 
   filter(variable == 'mae') %>% 
-  ggplot(., aes(x = c_filter, y = value, fill = mission)) +
-  geom_col(position = 'dodge') +
+  ggplot(., aes(x = variable, y = value, color = mission)) +
+  facet_grid(c_filter ~ .) +
+  geom_abline(intercept =  0, slope = 0, lty = 2, color = 'grey')+
+  coord_cartesian(ylim = c(0, 1)) +
+  geom_point(position=position_dodge(width=0.3)) +
   labs(x = NULL, 
        y = 'mean absolute error\n(deg C)',
        fill = 'Landsat\nmission')+
-  scale_fill_colorblind() +
+  scale_color_colorblind() +
   final_theme
 
 plot_grid(missionbias, missionmae, 
