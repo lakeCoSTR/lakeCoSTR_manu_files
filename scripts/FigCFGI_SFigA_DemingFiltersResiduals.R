@@ -710,7 +710,179 @@ ggplot(missionmonth_biasmae, aes(x = month, y = value)) +
   facet_grid(c_filter ~ variable)+
   final_theme+
   scale_color_colorblind()
-ggsave(file.path(fig_dir, 'FigG_errorbymission.jpg'), height = 8, width = 8, units = 'in', dpi = 300)
+
+month <- (c('05', '06', '07', '08', '09', '10', '11'))
+month_list <- as.data.frame(month)
+
+FigGI_a <- missionmonth_biasmae %>% 
+  filter(variable == 'bias' & c_filter == 'C2') %>% 
+  ggplot(., aes(x = month, y = value)) +
+  geom_point(aes(shape = mission), size =2) +
+  labs(x = '',
+       y = '\n') +
+  geom_abline(intercept = 0,
+              slope = 0, 
+              lty = 2) +
+  coord_cartesian(ylim = c(-2, 2)) +
+  final_theme+
+  theme(legend.position = 'none') +
+  scale_color_colorblind()
+FigGI_a
+FigGI_b <- missionmonth_biasmae %>% 
+  filter(variable == 'bias' & c_filter == 'C2 freeze') %>% 
+  ggplot(., aes(x = month, y = value)) +
+  geom_point(aes(shape = mission), size =2) +
+  geom_abline(intercept = 0,
+              slope = 0, 
+              lty = 2) +
+  coord_cartesian(ylim = c(-2, 2)) +
+  labs(x = '',
+       y = '\n') +
+  final_theme+
+  theme(legend.position = 'none') +
+  scale_color_colorblind()
+FigGI_b
+FigGI_c <- missionmonth_biasmae %>% 
+  filter(variable == 'bias' & c_filter == 'C2 IQR') %>% 
+  ggplot(., aes(x = month, y = value)) +
+  geom_point(aes(shape = mission), size =2) +
+  labs(x = '',
+       y = 'temerature\ndegrees C') +
+  final_theme+
+  theme(legend.position = 'none') +
+  coord_cartesian(ylim = c(-2, 2)) +
+  geom_abline(intercept = 0,
+              slope = 0, 
+              lty = 2) +
+  scale_color_colorblind()
+FigGI_c
+FigGI_d <- missionmonth_biasmae %>% 
+  filter(variable == 'bias' & c_filter == 'C2 cloud') %>% 
+  ggplot(., aes(x = month, y = value)) +
+  geom_point(aes(shape = mission), size =2) +
+  labs(x = '',
+       y = '\n') +
+  final_theme+
+  coord_cartesian(ylim = c(-2, 2)) +
+  geom_abline(intercept = 0,
+              slope = 0, 
+              lty = 2) +
+  theme(legend.position = 'none') +
+  scale_color_colorblind()
+FigGI_d
+FigGI_e <- missionmonth_biasmae %>% 
+  filter(variable == 'bias' & c_filter == 'C2 range') %>% 
+  full_join(month_list) %>% 
+  ggplot(., aes(x = month, y = value)) +
+  geom_point(aes(shape = mission), size =2) +
+  coord_cartesian(ylim = c(-2, 2)) +
+  geom_abline(intercept = 0,
+              slope = 0, 
+              lty = 2) +
+  labs(x = 'month',
+       y = '\n') +
+  final_theme+
+  theme(legend.position = 'none') +
+  scale_color_colorblind()
+FigGI_e
+
+FigGI_f <- missionmonth_biasmae %>% 
+  filter(variable == 'mae' & c_filter == 'C2') %>% 
+  ggplot(., aes(x = month, y = value)) +
+  geom_point(aes(shape = mission), size =2) +
+  coord_cartesian(ylim = c(0, 2)) +
+  geom_abline(intercept = 0,
+              slope = 0, 
+              lty = 2) +
+  labs(x = '',
+       y = '\n') +
+  final_theme+
+  theme(legend.position = 'none') +
+  scale_color_colorblind()
+FigGI_f
+FigGI_g <- missionmonth_biasmae %>% 
+  filter(variable == 'mae' & c_filter == 'C2 freeze') %>% 
+  ggplot(., aes(x = month, y = value)) +
+  geom_point(aes(shape = mission), size =2) +
+  coord_cartesian(ylim = c(0, 2)) +
+  geom_abline(intercept = 0,
+              slope = 0, 
+              lty = 2) +
+  labs(x = '',
+       y = '\n') +
+  final_theme+
+  theme(legend.position = 'none') +
+  scale_color_colorblind()
+FigGI_g
+FigGI_h <- missionmonth_biasmae %>% 
+  filter(variable == 'mae' & c_filter == 'C2 IQR') %>% 
+  ggplot(., aes(x = month, y = value)) +
+  geom_point(aes(shape = mission), size =2) +
+  coord_cartesian(ylim = c(0, 2)) +
+  geom_abline(intercept = 0,
+              slope = 0, 
+              lty = 2) +
+  labs(x = '',
+       y = '\n') +
+  final_theme+
+  theme(legend.position = 'none') +
+  scale_color_colorblind()
+FigGI_h
+FigGI_i <- missionmonth_biasmae %>% 
+  filter(variable == 'mae' & c_filter == 'C2 cloud') %>% 
+  ggplot(., aes(x = month, y = value)) +
+  geom_point(aes(shape = mission), size =2) +
+  coord_cartesian(ylim = c(0, 2)) +
+  geom_abline(intercept = 0,
+              slope = 0, 
+              lty = 2) +
+  labs(x = '',
+       y = '\n') +
+  final_theme+
+  theme(legend.position = 'none') +
+  scale_color_colorblind()
+FigGI_i
+FigGI_j <- missionmonth_biasmae %>% 
+  filter(variable == 'mae' & c_filter == 'C2 range') %>% 
+  full_join(month_list) %>% 
+  ggplot(., aes(x = month, y = value)) +
+  geom_point(aes(shape = mission), size =2) +
+  coord_cartesian(ylim = c(0, 2)) +
+  geom_abline(intercept = 0,
+              slope = 0, 
+              lty = 2) +
+  labs(x = 'month',
+       y = '\n') +
+  final_theme+
+  theme(legend.position = 'none') +
+  scale_color_colorblind()
+FigGI_j
+
+forlegend <- missionmonth_biasmae %>% 
+  filter(variable == 'mae' & c_filter == 'C2 freeze') %>% 
+  full_join(month_list) %>% 
+  ggplot(., aes(x = month, y = value)) +
+  geom_point(aes(shape = mission), size =2) +
+  coord_cartesian(ylim = c(0, 2)) +
+  geom_abline(intercept = 0,
+              slope = 0, 
+              lty = 2) +
+  theme(legend.position = 'bottom') +
+  labs(x = 'month',
+       y = '\n') +
+  final_theme+
+  scale_color_colorblind()
+leg <- get_legend(forlegend)
+leg
+
+FigGI <- plot_grid(FigGI_a, FigGI_f,
+          FigGI_b, FigGI_g,
+          FigGI_c, FigGI_h,
+          FigGI_d, FigGI_i,
+          FigGI_e, FigGI_j,
+          ncol =2)
+plot_grid(FigGI, leg, rel_widths = c(0.9,0.1))
+ggsave(file.path(fig_dir, 'FigGI_errorbymission.jpg'), height = 8, width = 8, units = 'in', dpi = 300)
 
 missionbias <- mission_biasmae %>% 
   filter(variable == 'bias') %>% 
