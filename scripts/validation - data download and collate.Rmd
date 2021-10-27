@@ -1563,7 +1563,7 @@ all_temp_filtered <- all_temp_filtered %>%
 ```{r}
 all_temp_filtered %>% 
   mutate(datetime = as.character(datetime)) %>% 
-  write_csv(., paste0(dumpdir, 'all_temp_data_v', Sys.Date(), '.csv'))
+  write_csv(., paste0(dumpdir, 'insitu_temp_data_v', Sys.Date(), '.csv'))
 ```
 
 
