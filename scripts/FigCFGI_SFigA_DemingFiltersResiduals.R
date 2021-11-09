@@ -1,6 +1,6 @@
 # this script creates Figure C, which compares deming regression and residuals by x using varying QAQC filters
 
-# last modified 2021-10-08
+# last modified 2021-11-03
 # written by B. Steele 
 
 # Set up Workspace ####
@@ -17,7 +17,7 @@ fig_dir <- '~/GitHub/ids-ne-lakes/figures/'
 # Read in Data ####
 
 # read in C1 single-channel and C2 surface temperature data
-C1SC <- read_csv(file.path(C1_datadir, 'C1_SCA_v2_temp_landsat_paired.csv')) %>% 
+C1SC <- read_csv(file.path(C1_datadir, 'C1_temp_landsat_paired.csv')) %>% 
   mutate(date = as.Date(substrRight(`system:index`, 8), format = '%Y%m%d')) %>% 
   mutate(LSmission = case_when(grepl('LT05', `system:index`) ~ 'LS 5',
                                grepl('LT04', `system:index`) ~ 'LS 4',
@@ -37,35 +37,22 @@ C1SC <- C1SC %>%
          sunelev = elev)
 head(C1SC)
 
-#DELETE AFTER C2 PAIR DATA ARRIVES #
-#break out into temp data for join with C2
-C1SC_temp <- C1SC %>% 
-  select(date, LSmission, month, doy, temp_avg:StateBeach_count)
-
-# REPLACE WITH PAIRED DATA #
-C2ST <- read_csv(file.path(C2_datadir, 'sunapee_1980_2020_C2_stats.csv')) %>% 
+# Collection 2 data
+C2ST <- read_csv(file.path(C2_datadir, 'C2_temp_landsat_paired.csv')) %>% 
   mutate(date = as.Date(substrRight(`system:index`, 8), format = '%Y%m%d')) %>% 
   mutate(LSmission = case_when(grepl('LT05', `system:index`) ~ 'LS 5',
                                grepl('LT04', `system:index`) ~ 'LS 4',
                                grepl('LE07', `system:index`) ~ 'LS 7',
                                grepl('LC08', `system:index`) ~ 'LS 8',
                                TRUE ~ NA_character_)) %>% 
-  rename_at(vars('temp_max', 'temp_mean', 'temp_median', 'temp_min', 'temp_p25', 'temp_p75', 'temp_skew', 'temp_stdDev'),
-            ~ paste('surface', ., sep = '_')) %>% 
   mutate(collection = 2,
          month = format(date, '%m'),
          doy = format(date, '%j'))
 head(C2ST)
 
-# DELETE ONCE PAIRED DATA ARE HERE #
-C2ST <- C1SC_temp %>% 
-  left_join(., C2ST) %>% 
-  filter(!is.na(pixel_count)) 
-head(C2ST)
-
 
 #load in all high-frequency insitu data for historical data analysis
-insitu <- read.csv(paste0(datadir, 'insitu_temp_data_v2021-05-17.csv')) %>% 
+insitu <- read.csv(paste0(datadir, 'insitu_temp_data_v2021-10-20.csv')) %>% 
   filter(!is.na(lat_dd)) %>% 
   mutate(datetime = as.POSIXct(datetime, tz='Etc/GMT+5'))
 
@@ -89,16 +76,13 @@ max_IQR <- max(range_per_date$IQR, na.rm = T)
 C2ST <- C2ST %>% 
   mutate(freeze_QAQC = case_when(surface_temp_min < 0 ~ 'F', #pass/fail for freezing temps
                                  TRUE ~ 'P')) %>% 
-  # left_join(., modal_analysis) %>% #join with modal analysis
-  # mutate(unimodal_QAQC = case_when(unimodal == 'unimodal' ~ 'P',
-  #                                  TRUE ~ 'F')) %>%  # pass/fail for unimodality
   mutate(temp_spread = round(surface_temp_max, digits = 1) - round(surface_temp_min, digits = 1)) %>% #calc temp spread; pass/fail for temp spread
   mutate(spread_QAQC = case_when(temp_spread < max_spread*1.1 ~ 'P',
                                  TRUE ~ 'F')) %>% 
   mutate(IQR = round(surface_temp_p75, digits = 1) - round(surface_temp_p25, digits = 1))  %>%  #calc IQR; pass/fail for temp IQR
   mutate(IQR_QAQC = case_when(IQR < max_IQR*1.1 ~ 'P',
                               TRUE ~ 'F'))
-write.csv(C2ST, file.path(C2_datadir,'temporary_sunapee_paired_C2_QAQCflag_v18Oct2011.csv'), row.names = F)
+write.csv(C2ST, file.path(C2_datadir,paste0('sunapee_paired_C2_QAQCflag_v', Sys.Date(), '.csv')), row.names = F)
                        
 C2ST_freeze <- C2ST %>% 
   filter(freeze_QAQC == 'P')
