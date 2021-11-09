@@ -500,6 +500,7 @@ istemp <- ggplot(C2ST_cloud, aes(x = temp_med, y = opt_resid)) +
   geom_abline(intercept =  0, slope = 0) +
   coord_cartesian(ylim = c(-5, 5)) +
   final_theme
+istemp
 
 # by doy
 doy <- ggplot(C2ST_cloud, aes(x = as.numeric(doy), y = opt_resid)) +
@@ -510,6 +511,7 @@ doy <- ggplot(C2ST_cloud, aes(x = as.numeric(doy), y = opt_resid)) +
   geom_abline(intercept =  0, slope = 0) +
   coord_cartesian(ylim = c(-5, 5)) +
   final_theme
+doy
 
 # by pixel count
 perclake <- ggplot(C2ST_cloud, aes(x = (pixel_count/17134)*100, y = opt_resid)) +
@@ -520,6 +522,7 @@ perclake <- ggplot(C2ST_cloud, aes(x = (pixel_count/17134)*100, y = opt_resid)) 
   geom_abline(intercept =  0, slope = 0) +
   coord_cartesian(ylim = c(-5, 5)) +
   final_theme
+perclake
 
 # by cloud cover
 cloud <- ggplot(C2ST_cloud, aes(x = cloud_cover, y = opt_resid)) +
@@ -530,9 +533,10 @@ cloud <- ggplot(C2ST_cloud, aes(x = cloud_cover, y = opt_resid)) +
   labs(x = 'cloud cover (percent)\n',
        y = '\n') +
   final_theme 
+cloud
 
 # by sun elevation
-sunelev <- ggplot(C2ST_cloud, aes(x = sunelev, y = opt_resid)) +
+sunelev <- ggplot(C2ST_cloud, aes(x = elev, y = opt_resid)) +
   geom_point() +
   # geom_line(aes(group = date)) +
   geom_abline(intercept =  0, slope = 0) +
@@ -540,9 +544,10 @@ sunelev <- ggplot(C2ST_cloud, aes(x = sunelev, y = opt_resid)) +
   labs(x = 'sun elevation (UNITS)\n',
        y = 'Deming-optimized residual\n(deg C)') +
   final_theme
+sunelev
 
 # by earth sun distance
-esd <- ggplot(C2ST_cloud, aes(x = earthsun_d, y = opt_resid)) +
+esd <- ggplot(C2ST_cloud, aes(x = esd, y = opt_resid)) +
   geom_point() +
   # geom_line(aes(group = date)) +
   geom_abline(intercept =  0, slope = 0) +
@@ -550,9 +555,10 @@ esd <- ggplot(C2ST_cloud, aes(x = earthsun_d, y = opt_resid)) +
   labs(x = 'earth sun distance (UNITS)\n',
        y = '\n') +
   final_theme 
+esd
 
 # by azimuth
-azi <- ggplot(C2ST_cloud, aes(x = sunazi, y = opt_resid)) +
+azi <- ggplot(C2ST_cloud, aes(x = azimuth, y = opt_resid)) +
   geom_point() +
   # geom_line(aes(group = date)) +
   geom_abline(intercept =  0, slope = 0) +
@@ -560,6 +566,7 @@ azi <- ggplot(C2ST_cloud, aes(x = sunazi, y = opt_resid)) +
   labs(x = 'sun azimuth (degrees)\n',
        y = '\n') +
   final_theme 
+azi
 
 # depth of sensor
 depth <- ggplot(C2ST_cloud, aes(x = depth_avg, y = opt_resid)) +
@@ -570,7 +577,7 @@ depth <- ggplot(C2ST_cloud, aes(x = depth_avg, y = opt_resid)) +
   labs(x = 'average depth of sensor (m)\n',
        y = '\n') +
   final_theme 
-
+depth
 # std dev in-situ temp
 sd <- ggplot(C2ST_cloud, aes(x = t_stdev, y = opt_resid)) +
   geom_point() +
@@ -580,6 +587,7 @@ sd <- ggplot(C2ST_cloud, aes(x = t_stdev, y = opt_resid)) +
   labs(x = 'standard deviation of temps\ncontributing to median (deg C)',
        y = '\n') +
   final_theme 
+sd
 
 #in-situ count
 count <- ggplot(C2ST_cloud, aes(x = insitu_count, y = opt_resid)) +
@@ -590,14 +598,14 @@ count <- ggplot(C2ST_cloud, aes(x = insitu_count, y = opt_resid)) +
   labs(x = 'number of insitu measurements\ncontributing to median',
        y = '\n') +
   final_theme 
-
+count
 plot_grid(istemp, doy, perclake, cloud, sunelev, esd, azi, depth, sd, count,
           labels = c('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'),
           ncol = 2,
-          label_x = 0.1,
-          label_y = 1.1)
+          label_x = 0.07,
+          label_y = 1)
 
-ggsave(file.path(fig_dir, 'SFA_resid_summary_C2cloud_v14Oct2021.jpg'), 
+ggsave(file.path(fig_dir, 'SFA_resid_summary_C2cloud_v09Nov2021.jpg'), 
        height = 12, width = 8, units = 'in', dpi = 300)
 
 
@@ -668,7 +676,7 @@ month_error <- full_join(month_mission_error, month_error)
 
 alldata_error <- full_join(alldata_error, month_error)
 
-write.csv(alldata_error, file.path(C2_datadir, 'LS_deming_predictionerror_C1C2_stats_v15Oct2021.csv'))
+write.csv(alldata_error, file.path(C2_datadir, 'LS_deming_predictionerror_C1C2_stats_v09Nov2021.csv'))
 
 # create point(by mission for bias, mae, rmse) faceted by model ####
 head(alldata_error)
@@ -709,6 +717,7 @@ FigGI_a <- missionmonth_biasmae %>%
               lty = 2) +
   coord_cartesian(ylim = c(-2, 2)) +
   final_theme+
+  theme(axis.title=element_text(size=10,face="bold")) +
   theme(legend.position = 'none') +
   scale_color_colorblind()
 FigGI_a
@@ -723,6 +732,7 @@ FigGI_b <- missionmonth_biasmae %>%
   labs(x = '',
        y = '\n') +
   final_theme+
+  theme(axis.title=element_text(size=10,face="bold")) +
   theme(legend.position = 'none') +
   scale_color_colorblind()
 FigGI_b
@@ -731,13 +741,14 @@ FigGI_c <- missionmonth_biasmae %>%
   ggplot(., aes(x = month, y = value)) +
   geom_point(aes(shape = mission), size =2) +
   labs(x = '',
-       y = 'temerature\ndegrees C') +
-  final_theme+
-  theme(legend.position = 'none') +
+       y = 'temperature bias\n(degrees C)') +
   coord_cartesian(ylim = c(-2, 2)) +
   geom_abline(intercept = 0,
               slope = 0, 
-              lty = 2) +
+              lty = 2)+
+  final_theme +
+  theme(legend.position = 'none')+
+  theme(axis.title=element_text(size=10,face="bold")) +
   scale_color_colorblind()
 FigGI_c
 FigGI_d <- missionmonth_biasmae %>% 
@@ -752,6 +763,7 @@ FigGI_d <- missionmonth_biasmae %>%
               slope = 0, 
               lty = 2) +
   theme(legend.position = 'none') +
+  theme(axis.title=element_text(size=10,face="bold")) +
   scale_color_colorblind()
 FigGI_d
 FigGI_e <- missionmonth_biasmae %>% 
@@ -766,6 +778,7 @@ FigGI_e <- missionmonth_biasmae %>%
   labs(x = 'month',
        y = '\n') +
   final_theme+
+  theme(axis.title=element_text(size=10,face="bold")) +
   theme(legend.position = 'none') +
   scale_color_colorblind()
 FigGI_e
@@ -781,6 +794,7 @@ FigGI_f <- missionmonth_biasmae %>%
   labs(x = '',
        y = '\n') +
   final_theme+
+  theme(axis.title=element_text(size=10,face="bold")) +
   theme(legend.position = 'none') +
   scale_color_colorblind()
 FigGI_f
@@ -796,6 +810,7 @@ FigGI_g <- missionmonth_biasmae %>%
        y = '\n') +
   final_theme+
   theme(legend.position = 'none') +
+  theme(axis.title=element_text(size=10,face="bold")) +
   scale_color_colorblind()
 FigGI_g
 FigGI_h <- missionmonth_biasmae %>% 
@@ -807,8 +822,9 @@ FigGI_h <- missionmonth_biasmae %>%
               slope = 0, 
               lty = 2) +
   labs(x = '',
-       y = '\n') +
+       y = 'mean absolute error\n(degrees C)') +
   final_theme+
+  theme(axis.title=element_text(size=10,face="bold")) +
   theme(legend.position = 'none') +
   scale_color_colorblind()
 FigGI_h
@@ -823,6 +839,7 @@ FigGI_i <- missionmonth_biasmae %>%
   labs(x = '',
        y = '\n') +
   final_theme+
+  theme(axis.title=element_text(size=10,face="bold")) +
   theme(legend.position = 'none') +
   scale_color_colorblind()
 FigGI_i
@@ -838,6 +855,7 @@ FigGI_j <- missionmonth_biasmae %>%
   labs(x = 'month',
        y = '\n') +
   final_theme+
+  theme(axis.title=element_text(size=10,face="bold")) +
   theme(legend.position = 'none') +
   scale_color_colorblind()
 FigGI_j
@@ -859,88 +877,54 @@ forlegend <- missionmonth_biasmae %>%
 leg <- get_legend(forlegend)
 leg
 
-FigGI <- plot_grid(FigGI_a, FigGI_f,
-          FigGI_b, FigGI_g,
-          FigGI_c, FigGI_h,
-          FigGI_d, FigGI_i,
-          FigGI_e, FigGI_j,
-          ncol =2)
-plot_grid(FigGI, leg, rel_widths = c(0.9,0.1))
-ggsave(file.path(fig_dir, 'FigGI_errorbymission.jpg'), height = 8, width = 8, units = 'in', dpi = 300)
+nofilter <- plot_grid(FigGI_a, FigGI_f,
+                      ncol = 2)
+nofilter_title <- ggdraw() + draw_label("Collection 2", fontface='bold')
+nofilter <- plot_grid(nofilter_title, nofilter,
+                      nrow = 2,
+                      rel_heights = c(0.1, 0.9))
+nofilter
 
-missionbias <- mission_biasmae %>% 
-  filter(variable == 'bias') %>% 
-  ggplot(., aes(x = variable, y = value, color = mission)) +
-  facet_grid(c_filter ~ .) +
-  geom_abline(intercept =  0, slope = 0, lty = 2, color = 'grey')+
-  geom_point() +
-  geom_point(position=position_dodge(width=0.3)) +
-  labs(x = NULL, 
-       y = 'bias\n(deg C)',
-       fill = 'Landsat\nmission')+
-  scale_color_colorblind() +
-  final_theme
-missionmae <- mission_biasmae %>% 
-  filter(variable == 'mae') %>% 
-  ggplot(., aes(x = variable, y = value, color = mission)) +
-  facet_grid(c_filter ~ .) +
-  geom_abline(intercept =  0, slope = 0, lty = 2, color = 'grey')+
-  coord_cartesian(ylim = c(0, 1)) +
-  geom_point(position=position_dodge(width=0.3)) +
-  labs(x = NULL, 
-       y = 'mean absolute error\n(deg C)',
-       fill = 'Landsat\nmission')+
-  scale_color_colorblind() +
-  final_theme
+freeze <- plot_grid(FigGI_b, FigGI_g,
+                      ncol = 2)
+freeze_title <- ggdraw() + draw_label("Collection 2 - freeze", fontface='bold')
+freeze <- plot_grid(freeze_title, freeze,
+                      nrow = 2,
+                    rel_heights = c(0.1, 0.9))
+freeze
 
-plot_grid(missionbias, missionmae, 
-          labels = c('a', 'b'), 
-          nrow = 2,         
-          label_x = 0.03)
+iqr <- plot_grid(FigGI_c, FigGI_h,
+                    ncol = 2)
+iqr_title <- ggdraw() + draw_label("Collection 2 - IQR", fontface='bold')
+iqr <- plot_grid(iqr_title, iqr,
+                    nrow = 2,
+                 rel_heights = c(0.1, 0.9))
+iqr
 
-ggsave(file.path(fig_dir, 'FigG_errorbymission.jpg'), height = 5, width = 8, units = 'in', dpi = 300)
+cloud <- plot_grid(FigGI_d, FigGI_i,
+                    ncol = 2)
+cloud_title <- ggdraw() + draw_label("Collection 2 - cloud", fontface='bold')
+cloud <- plot_grid(cloud_title, cloud,
+                    nrow = 2,
+                   rel_heights = c(0.1, 0.9))
+cloud
 
-month_biasmae <- alldata_error %>% 
-  filter(month != 'All data' & (variable == 'mae' | variable == 'bias')) %>% 
-  select(-(`LS 5`:`LS 8`)) %>% 
-  filter(collection == 2) %>% 
-  mutate(c_filter = paste0('C', collection, ' ', filter)) %>% 
-  mutate(c_filter = factor(c_filter, levels = c('C1 none', 'C2 none', 'C2 freeze',
-                                                'C2 IQR', 'C2 cloud', 'C2 range'),
-                           labels = c('C1', 'C2', 'C2 freeze',
-                                      'C2 IQR', 'C2 cloud', 'C2 range'))) %>% 
-  mutate(month_text = case_when(month == '05' ~ 'May',
-                                month == '06' ~ 'June',
-                                month == '07' ~ 'July',
-                                month == '08' ~ 'August',
-                                month == '09' ~ 'September',
-                                month == '10' ~ 'October',
-                                month == '11' ~ 'November')) %>% 
-  mutate(month_text = factor(month_text, 
-                             levels = c('May', 'June', 'July', 'August', 'September', 'October', 'November')))
-monthbias <- month_biasmae %>% 
-  filter(variable == 'bias') %>% 
-  ggplot(., aes(x = c_filter, y = `All missions`, fill = month_text)) +
-  geom_col(position = 'dodge') +
-  labs(x = NULL, 
-       y = 'bias\n(deg C)',
-       fill = 'month')+
-  scale_fill_colorblind() +
-  final_theme
-monthmae <- month_biasmae %>% 
-  filter(variable == 'mae') %>% 
-  ggplot(., aes(x = c_filter, y = `All missions`, fill = month_text)) +
-  geom_col(position = 'dodge') +
-  labs(x = NULL, 
-       y = 'mean absolute error\n(deg C)',
-       fill = 'month')+
-  scale_fill_colorblind() +
-  final_theme
-plot_grid(monthbias, monthmae, 
-          labels = c('a', 'b'), 
-          nrow = 2,
-          label_x = 0.03)
-ggsave(file.path(fig_dir, 'FigI_errorbymonth.jpg'),height = 5, width = 8, units = 'in', dpi = 300)
+range <- plot_grid(FigGI_e, FigGI_j,
+                    ncol = 2)
+range_title <- ggdraw() + draw_label("Collection 2 - range", fontface='bold')
+range <- plot_grid(range_title, range,
+                    nrow = 2,
+                    rel_heights = c(0.1, 0.9))
+range
 
+FigGI <- plot_grid(nofilter,
+                   freeze, 
+                   iqr,
+                   cloud,
+                   range,
+                   ncol =1)
+FigGI
 
+plot_grid(FigGI, leg, rel_widths = c(0.9,0.1 ))
+ggsave(file.path(fig_dir, 'FigGI_errorbymission.jpg'), height = 10, width = 8, units = 'in', dpi = 300)
 

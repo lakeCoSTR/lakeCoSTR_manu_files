@@ -13,7 +13,7 @@ C2_datadir <- '~/GitHub/ids-ne-lakes/data/colab-output/C2/'
 fig_dir <- '~/GitHub/ids-ne-lakes/figures/'
 
 # Read in Data ####
-C2_data <- read.csv(file.path(C2_datadir, 'temporary_sunapee_paired_C2_QAQCflag_v11Oct2021.csv'))
+C2_data <- read.csv(file.path(C2_datadir, 'sunapee_paired_C2_QAQCflag_v2021-11-09.csv'))
 
 # filter for subsets 
 C2_buoy <- C2_data %>% 
@@ -216,4 +216,4 @@ FigD_e
 plot_grid(FigD_a, FigD_b, FigD_c, FigD_d, FigD_e,
           labels = c('a', 'b', 'c', 'd', 'e'))
 
-ggsave(file.path(fig_dir, 'SFC_C2ValidationExample_v18Oct2021.jpg'), height = 8, width = 12, units = 'in', dpi = 300)
+ggsave(file.path(fig_dir, 'SFC_C2ValidationExample_v09Nov2021.jpg'), height = 8, width = 12, units = 'in', dpi = 300)

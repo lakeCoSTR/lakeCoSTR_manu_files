@@ -15,11 +15,11 @@ lmp_temp_deep <- lmp %>%
   filter(depth_m == 0.5) 
 
 # load all LS data, filter for freeze and cloud cover
-ls <- read.csv(file.path(datadir, 'colab-output/C2/sunapee_1980_2020_C2_stats.csv')) %>% 
+ls <- read.csv(file.path(datadir, 'colab-output/C2/C2_temp_stats.csv')) %>% 
   mutate(date = substrRight(`system.index`, 8),
          date = as.Date(date, format = '%Y%m%d'))
 ls_cloud <- ls %>% 
-  filter(temp_min > 0 & cloud_cover < 40)
+  filter(surface_temp_min > 0 & cloud_cover < 40)
 
 #### whole lake median by month and year ####
 lmp_temp_monthly_stats <- lmp_temp_deep %>% 
@@ -44,8 +44,8 @@ ls_temp_summer_monthly_median_cloud <- ls_cloud %>%
   mutate(month = as.numeric(format((date), '%m')),
          year = as.numeric(format((date), '%Y'))) %>% 
   group_by(year, month) %>% 
-  summarise(ls_summer_median_temp_degC = median(temp_median),
-            ls_n_obs = length(temp_median))  %>% 
+  summarise(ls_summer_median_temp_degC = median(surface_temp_median),
+            ls_n_obs = length(surface_temp_median))  %>% 
   filter(!is.na(month))
 
 ggplot(ls_temp_summer_monthly_median_cloud, aes(x=year, y = ls_summer_median_temp_degC)) +
@@ -427,15 +427,17 @@ oct <- temp_monthly_median %>%
   theme(legend.position = 'none')  
 oct
 
+#save title
+x_axis_title=ggpubr:::text_grob('median lake surface temperature\n(degrees C)', size = 12, face = "bold", rot = 90) 
+
 #set up png device
-jpeg(file.path(figdir, 'application_monthly_median_temp_IQR_together.jpg'),
+jpeg(file.path(figdir, 'FigH_application_monthly_median_temp_IQR_together.jpg'),
     width=9,height=6, units = 'in', res = 300)
 gridExtra::grid.arrange(may, june, jul, aug, sept, oct,
                         nrow = 2,
-                        left = 'lake surface temperature\ndegrees C',
+                        left = x_axis_title,
                         bottom = 'black = in-situ   yellow = landsat   green = all data')
 
-#July Aug wit
 
 #Close pdf graphics device
 dev.off()
