@@ -1485,7 +1485,8 @@ gloeo_temp_dstadj <- gloeo_temp_dstadj %>%
   select(-year, -approx_depth_m)
 
 #join with loc data
-gloeo_temp_dstadj <- full_join(gloeo_temp_dstadj, gloeo_locs)
+gloeo_temp_dstadj <- full_join(gloeo_temp_dstadj, gloeo_locs) %>% 
+        filter(depth_m <= 1.5)
 
 #add source info, rename site to location
 gloeo_temp_dstadj <- gloeo_temp_dstadj %>% 
@@ -1562,7 +1563,7 @@ all_temp_filtered <- all_temp_filtered %>%
 ```{r}
 all_temp_filtered %>% 
   mutate(datetime = as.character(datetime)) %>% 
-  write_csv(., paste0(dumpdir, 'all_temp_data_v', Sys.Date(), '.csv'))
+  write_csv(., paste0(dumpdir, 'insitu_temp_data_v', Sys.Date(), '.csv'))
 ```
 
 

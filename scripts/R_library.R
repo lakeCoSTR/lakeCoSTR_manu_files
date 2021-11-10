@@ -7,11 +7,13 @@ library(reticulate)
 library(mcr)
 library(cowplot)
 library(Metrics)
+library(deming)
 
 final_theme=theme_bw() +
   theme(axis.text=element_text(size=12),
         axis.title=element_text(size=14,face="bold"),
-        plot.title=element_text(size=16, face='bold', hjust=0.5))
+        plot.title=element_text(size=16, face='bold', hjust=0.5),
+        plot.subtitle = element_text(size = 12, hjust = 0.5))
 
 substrRight <- function(x, n){
   substr(x, nchar(x)-n+1, nchar(x))
