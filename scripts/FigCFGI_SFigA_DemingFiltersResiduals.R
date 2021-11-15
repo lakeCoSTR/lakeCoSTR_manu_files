@@ -1,6 +1,6 @@
 # this script creates Figure C, which compares deming regression and residuals by x using varying QAQC filters
 
-# last modified 2021-11-12
+# last modified 2021-11-15
 # written by B. Steele 
 
 # Set up Workspace ####
@@ -89,33 +89,10 @@ C2ST <- C2ST %>%
                               TRUE ~ 'F'))
 write.csv(C2ST, file.path(C2_datadir,paste0('sunapee_paired_C2_QAQCflag_v', Sys.Date(), '.csv')), row.names = F)
                        
-C2ST_freeze <- C2ST %>% 
-  filter(freeze_QAQC == 'P')
+C1SC_kurtosis <- C1SC %>% 
+  filter(surface_temp_kurtosis >2)
 
-C2ST_freeze %>% 
-  group_by(LSmission) %>% 
-  summarize(count = length(LSmission))
-
-C2ST_maxrange <- C2ST %>% 
-  filter(freeze_QAQC == 'P' & 
-           spread_QAQC == 'P')
-
-C2ST_maxrange %>% 
-  group_by(LSmission) %>% 
-  summarize(count = length(LSmission))
-
-C2ST_maxIQR <- C2ST %>% 
-  filter(freeze_QAQC == 'P' & 
-           IQR_QAQC == 'P')
-
-C2ST_maxIQR %>% 
-  group_by(LSmission) %>% 
-  summarize(count = length(LSmission))
-
-C2ST_cloud <- C2ST %>% 
-  filter(freeze_QAQC == 'P' & cloud_cover <40)
-
-C2ST_cloud %>% 
+C1SC_kurtosis %>% 
   group_by(LSmission) %>% 
   summarize(count = length(LSmission))
 
@@ -134,44 +111,30 @@ C1_deming_forresid = mcreg(x = C1SC$is_temp_med, y = C1SC$surface_temp_median, m
 C1SC$opt_resid = MCResult.getResiduals(C1_deming_forresid)$optimized
 C1SC$filter = 'none'
 
+C1_deming
+cor(C1SC$surface_temp_median, C1SC$is_temp_med)
+
+#deming regress for C1 with kurtosis >= 2
+C1_kurtosis_deming = deming::deming(C1SC_kurtosis$surface_temp_median ~ 
+                                      C1SC_kurtosis$is_temp_med)
+C1_kurtosis_deming_forresid = mcreg(x = C1SC_kurtosis$is_temp_med, 
+                                    y = C1SC_kurtosis$surface_temp_median, 
+                                    method.reg = 'Deming')
+C1SC_kurtosis$opt_resid = MCResult.getResiduals(C1_kurtosis_deming_forresid)$optimized
+C1SC_kurtosis$filter = 'kurtosis'
+
+C1_kurtosis_deming
+cor(C1SC_kurtosis$surface_temp_median, C1SC_kurtosis$is_temp_med)
+
+
 # deming regression for C2
 C2_deming = deming::deming(C2ST$surface_temp_median ~ C2ST$is_temp_med)
 C2_deming_forresid = mcreg(x = C2ST$is_temp_med, y = C2ST$surface_temp_median, method.reg = 'Deming')
 C2ST$opt_resid = MCResult.getResiduals(C2_deming_forresid)$optimized
 C2ST$filter = 'none'
 
-# deming regression for C2 without freezing temps
-C2_freeze_deming = deming::deming(C2ST_freeze$surface_temp_median ~ C2ST_freeze$is_temp_med)
-C2_freeze_deming_forresid = mcreg(x = C2ST_freeze$is_temp_med, 
-                           y = C2ST_freeze$surface_temp_median, 
-                           method.reg = 'Deming')
-C2ST_freeze$opt_resid = MCResult.getResiduals(C2_freeze_deming_forresid)$optimized
-C2ST_freeze$filter = 'freeze'
-
-# deming regression for C2 without freezing temps and within range
-C2_maxrange_deming = deming::deming(C2ST_maxrange$surface_temp_median ~ C2ST_maxrange$is_temp_med)
-C2_maxrange_deming_forresid = mcreg(x = C2ST_maxrange$is_temp_med, 
-                                  y = C2ST_maxrange$surface_temp_median, 
-                                  method.reg = 'Deming')
-C2ST_maxrange$opt_resid = MCResult.getResiduals(C2_maxrange_deming_forresid)$optimized
-C2ST_maxrange$filter = 'range'
-
-# deming regression for C2 without freezing temps and within IQR
-C2_maxIQR_deming = deming::deming(C2ST_maxIQR$surface_temp_median ~ C2ST_maxIQR$is_temp_med)
-C2_maxIQR_deming_forresid = mcreg(x = C2ST_maxIQR$is_temp_med, 
-                                  y = C2ST_maxIQR$surface_temp_median, 
-                                  method.reg = 'Deming')
-C2ST_maxIQR$opt_resid = MCResult.getResiduals(C2_maxIQR_deming_forresid)$optimized
-C2ST_maxIQR$filter = 'IQR'
-
-# deming regression for C2 without freezing temps and within IQR and data from the buoy only
-C2_cloud_deming = deming::deming(C2ST_cloud$surface_temp_median ~ 
-                                        C2ST_cloud$is_temp_med)
-C2_cloud_deming_forresid = mcreg(x = C2ST_cloud$is_temp_med, 
-                                  y = C2ST_cloud$surface_temp_median, 
-                                  method.reg = 'Deming')
-C2ST_cloud$opt_resid = MCResult.getResiduals(C2_cloud_deming_forresid)$optimized
-C2ST_cloud$filter = 'cloud'
+C2_deming
+cor(C2ST$surface_temp_median, C2ST$is_temp_med)
 
 #deming regress for C2 with kurtosis >= 2
 C2_kurtosis_deming = deming::deming(C2ST_kurtosis$surface_temp_median ~ 
@@ -182,39 +145,17 @@ C2_kurtosis_deming_forresid = mcreg(x = C2ST_kurtosis$is_temp_med,
 C2ST_kurtosis$opt_resid = MCResult.getResiduals(C2_kurtosis_deming_forresid)$optimized
 C2ST_kurtosis$filter = 'kurtosis'
 
-
-C1_deming
-cor(C1SC$surface_temp_median, C1SC$is_temp_med)
-
-C2_deming
-cor(C2ST$surface_temp_median, C2ST$is_temp_med)
-
-C2_freeze_deming
-cor(C2ST_freeze$surface_temp_median, C2ST_freeze$is_temp_med)
-
-C2_maxrange_deming
-cor(C2ST_maxrange$surface_temp_median, C2ST_maxrange$is_temp_med)
-
-C2_maxIQR_deming
-cor(C2ST_maxIQR$surface_temp_median, C2ST_maxIQR$is_temp_med)
-
-C2_cloud_deming
-cor(C2ST_cloud$surface_temp_median, C2ST_cloud$is_temp_med)
-
 C2_kurtosis_deming
 cor(C2ST_kurtosis$surface_temp_median, C2ST_kurtosis$is_temp_med)
 
 # Join all Deming data ####
 all_surface_temp <- full_join(C1SC, C2ST) %>% 
-  full_join(., C2ST_freeze) %>% 
-  full_join(., C2ST_maxrange) %>% 
-  full_join(., C2ST_maxIQR) %>% 
-  full_join(., C2ST_cloud) %>% 
+  full_join(., C1SC_kurtosis) %>% 
   full_join(., C2ST_kurtosis) %>% 
   mutate(collection = as.factor(collection),
          filter = as.factor(filter))
 
-# Plot Deming regression for all filters ####
+# Figure C: Plot Deming regression for all filters ####
 FigC_a <- ggplot(C1SC, aes(x = is_temp_med, y = surface_temp_median)) +
   geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
   geom_point() +
@@ -261,117 +202,39 @@ FigC_b <- ggplot(C2ST, aes(x = is_temp_med, y = surface_temp_median)) +
   labs(x = '',
        y = '\n',
        title = 'Collection 2',
-       subtitle = '') +
+       subtitle = 'surface temperature product') +
   final_theme +
   coord_cartesian(xlim = c(0, 27),
                   ylim = c(0, 27))
 FigC_b
 
-FigC_c <- ggplot(C2ST_freeze, aes(x = is_temp_med, y = surface_temp_median)) +
+FigC_c <- ggplot(C1SC_kurtosis, aes(x = is_temp_med, y = surface_temp_median)) +
   geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
   geom_point() +
-  #add deming regression and prediction intervals for C2 filtered for freezing mins
-  geom_abline(intercept = C2_freeze_deming$coefficients[1], slope = C2_freeze_deming$coefficients[2], size = 0.75) +
-  geom_abline(intercept = C2_freeze_deming$ci[1,1], slope = C2_freeze_deming$ci[2,1], linetype = 3, size = 0.75) +
-  geom_abline(intercept = C2_freeze_deming$ci[1,2], slope = C2_freeze_deming$ci[2,2], linetype = 3, size = 0.75) +
-  geom_text(label = paste0('r = ', round(cor(C2ST_freeze$surface_temp_median, C2ST_freeze$is_temp_med), digits = 3)),
+  #add deming regression and prediction intervals for C2 filtered for sub zero and kurtosis
+  geom_abline(intercept = C1_kurtosis_deming$coefficients[1], slope = C1_kurtosis_deming$coefficients[2], size = 0.75) +
+  geom_abline(intercept = C1_kurtosis_deming$ci[1,1], slope = C1_kurtosis_deming$ci[2,1], linetype = 3, size = 0.75) +
+  geom_abline(intercept = C1_kurtosis_deming$ci[1,2], slope = C1_kurtosis_deming$ci[2,2], linetype = 3, size = 0.75) +
+  geom_text(label = paste0('r = ', round(cor(C1SC_kurtosis$surface_temp_median, C1SC_kurtosis$is_temp_med), digits = 3)),
             x = 2,
             y = 25,
             size = 4,
             hjust = 0)+
-  geom_text(label = paste0('n = ', length(C2ST_freeze$date)),
+  geom_text(label = paste0('n = ', length(C1SC_kurtosis$date)),
             x = 2,
             y = 23,
             size = 4,
             hjust = 0)+
   labs(x = '',
        y = '\n',
-       title = 'Collection 2',
-       subtitle = 'freeze') +
+       title = 'Collection 1',
+       subtitle = 'kurtosis filter') +
   final_theme +
   coord_cartesian(xlim = c(0, 27),
                   ylim = c(0, 27))
 FigC_c
 
-FigC_f <- ggplot(C2ST_maxrange, aes(x = is_temp_med, y = surface_temp_median)) +
-  geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
-  geom_point() +
-  #add deming regression and prediction intervals for C2 filtered for sub zero and maxrange
-  geom_abline(intercept = C2_maxrange_deming$coefficients[1], slope = C2_maxrange_deming$coefficients[2], size = 0.75) +
-  geom_abline(intercept = C2_maxrange_deming$ci[1,1], slope = C2_maxrange_deming$ci[2,1], linetype = 3, size = 0.75) +
-  geom_abline(intercept = C2_maxrange_deming$ci[1,2], slope = C2_maxrange_deming$ci[2,2], linetype = 3, size = 0.75) +
-  geom_text(label = paste0('r = ', round(cor(C2ST_maxrange$surface_temp_median, C2ST_maxrange$is_temp_med), digits = 3)),
-            x = 2,
-            y = 25,
-            size = 4,
-            hjust = 0)+
-  geom_text(label = paste0('n = ', length(C2ST_maxrange$date)),
-            x = 2,
-            y = 23,
-            size = 4,
-            hjust = 0)+
-  labs(x = expression(bold(paste(italic('in-situ'), ' median water temp (deg C)'))),
-       y = '\n',
-       title = 'Collection 2',
-       subtitle = 'range') +
-  final_theme +
-  coord_cartesian(xlim = c(0, 27),
-                  ylim = c(0, 27))
-FigC_f
-
-FigC_d <- ggplot(C2ST_maxIQR, aes(x = is_temp_med, y = surface_temp_median)) +
-  geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
-  geom_point() +
-  #add deming regression and prediction intervals for C2 filtered for sub zero and maxIQR
-  geom_abline(intercept = C2_maxIQR_deming$coefficients[1], slope = C2_maxIQR_deming$coefficients[2], size = 0.75) +
-  geom_abline(intercept = C2_maxIQR_deming$ci[1,1], slope = C2_maxIQR_deming$ci[2,1], linetype = 3, size = 0.75) +
-  geom_abline(intercept = C2_maxIQR_deming$ci[1,2], slope = C2_maxIQR_deming$ci[2,2], linetype = 3, size = 0.75) +
-  geom_text(label = paste0('r = ', round(cor(C2ST_maxIQR$surface_temp_median, C2ST_maxIQR$is_temp_med), digits = 3)),
-            x = 2,
-            y = 25,
-            size = 4,
-            hjust = 0)+
-  geom_text(label = paste0('n = ', length(C2ST_maxIQR$date)),
-            x = 2,
-            y = 23,
-            size = 4,
-            hjust = 0)+
-  labs(x = expression(bold(paste(italic('in-situ'), ' median water temp (deg C)'))),
-       y = 'median Landsat-derived\nsurface temperature (deg C)',
-       title = 'Collection 2',
-       subtitle = 'IQR') +
-  final_theme +
-  coord_cartesian(xlim = c(0, 27),
-                  ylim = c(0, 27))
-FigC_d
-
-FigC_e <- ggplot(C2ST_cloud, aes(x = is_temp_med, y = surface_temp_median)) +
-  geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
-  geom_point() +
-  #add deming regression and prediction intervals for C2 filtered for sub zero and cloud
-  geom_abline(intercept = C2_cloud_deming$coefficients[1], slope = C2_cloud_deming$coefficients[2], size = 0.75) +
-  geom_abline(intercept = C2_cloud_deming$ci[1,1], slope = C2_cloud_deming$ci[2,1], linetype = 3, size = 0.75) +
-  geom_abline(intercept = C2_cloud_deming$ci[1,2], slope = C2_cloud_deming$ci[2,2], linetype = 3, size = 0.75) +
-  geom_text(label = paste0('r = ', round(cor(C2ST_cloud$surface_temp_median, C2ST_cloud$is_temp_med), digits = 3)),
-            x = 2,
-            y = 25,
-            size = 4,
-            hjust = 0)+
-  geom_text(label = paste0('n = ', length(C2ST_cloud$date)),
-            x = 2,
-            y = 23,
-            size = 4,
-            hjust = 0)+
-  labs(x = expression(bold(paste(italic('in-situ'), ' median water temp (deg C)'))),
-       y = '\n',
-       title = 'Collection 2',
-       subtitle = 'cloud') +
-  final_theme +
-  coord_cartesian(xlim = c(0, 27),
-                  ylim = c(0, 27))
-FigC_e
-
-FigC_g <- ggplot(C2ST_kurtosis, aes(x = is_temp_med, y = surface_temp_median)) +
+FigC_d <- ggplot(C2ST_kurtosis, aes(x = is_temp_med, y = surface_temp_median)) +
   geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
   geom_point() +
   #add deming regression and prediction intervals for C2 filtered for sub zero and kurtosis
@@ -388,229 +251,46 @@ FigC_g <- ggplot(C2ST_kurtosis, aes(x = is_temp_med, y = surface_temp_median)) +
             y = 23,
             size = 4,
             hjust = 0)+
-  labs(x = expression(bold(paste(italic('in-situ'), ' median water temp (deg C)'))),
+  labs(x = '',
        y = '\n',
        title = 'Collection 2',
-       subtitle = 'kurtosis') +
+       subtitle = 'kurtosis filter') +
   final_theme +
   coord_cartesian(xlim = c(0, 27),
                   ylim = c(0, 27))
-FigC_g
+FigC_d
 
 
-FigC_plot <- plot_grid(FigC_a, FigC_b, FigC_c, FigC_d, FigC_g, FigC_e,NULL,
-                   FigC_f,NULL,
-                   ncol = 3,
-                   labels = c('a', 'b', 'c', 'd', 'e', 'f', '', 'g', ''),
-                   label_x = 0.15)
+FigC_plot <- plot_grid(FigC_a, FigC_b, FigC_c, FigC_d,
+                   ncol = 2,
+                   labels = c('a', 'b', 'c', 'd'),
+                   label_y = 0.9,
+                   label_x = 0.1)
 
 FigC_plot
 
+x_lab = ggdraw() + draw_label(label = expression(bold(paste(italic('in-situ'), ' median water temp (deg C)'))),
+                      fontface = 'bold')
+
+y_lab = ggdraw() + draw_label(label = 'Landsat median water temp (deg C)',
+                              fontface = 'bold',
+                              angle =90)
+
+FigC_label = plot_grid(y_lab, FigC_plot,
+                       NULL, x_lab,
+                       ncol = 2,
+                       rel_widths = c(0.05, 1.1),
+                       rel_heights = c(1.1, 0.05))
+
+FigC_label
+
 ggsave(file.path(fig_dir, 'FigureC_deming_filters.jpg'), 
        dpi = 300,
-       height = 12,
-       width = 12,
+       height = 10,
+       width = 10,
        units = 'in')
 
-
-# Plot slope and intercept with 95%ci ####
-slope_int_table <- NULL
-
-slope_int_table$model = c( 'C2ST', 'C2ST_freeze', 'C2ST_maxrange', 'C2ST_kurtosis', 'C2ST_maxIQR', 'C2ST_cloud')
-slope_int_table$slope = c(C2_deming$coefficients[2],
-                          C2_freeze_deming$coefficients[2],
-                          C2_maxrange_deming$coefficients[2],
-                          C2_kurtosis_deming$coefficients[2],
-                          C2_maxIQR_deming$coefficients[2],
-                          C2_cloud_deming$coefficients[2])
-slope_int_table$intercept = c(C2_deming$coefficients[1],
-                              C2_freeze_deming$coefficients[1],
-                              C2_maxrange_deming$coefficients[1],
-                              C2_kurtosis_deming$coefficients[1],
-                              C2_maxIQR_deming$coefficients[1],
-                              C2_cloud_deming$coefficients[1])
-slope_int_table$slope_se = c(C2_deming$se[2],
-                             C2_freeze_deming$se[2],
-                             C2_maxrange_deming$se[2],
-                             C2_kurtosis_deming$se[2],
-                             C2_maxIQR_deming$se[2],
-                             C2_cloud_deming$se[2])
-slope_int_table$int_se = c(  C2_deming$se[1],
-                             C2_freeze_deming$se[1],
-                             C2_maxrange_deming$se[1],
-                             C2_kurtosis_deming$se[1],
-                             C2_maxIQR_deming$se[1],
-                             C2_cloud_deming$se[1])
-slope_int_table <- as.data.frame(slope_int_table)
-
-slope_int_table <- slope_int_table %>% 
-  pivot_longer(cols = c(slope, intercept), names_to = 'var', values_to = 'value') %>% 
-  mutate(se = case_when(var == 'slope' ~ slope_se,
-                        var == 'intercept' ~ int_se,
-                        TRUE ~ NA_real_),
-         u95 = value + se,
-         l95 = value - se) %>% 
-  select(-slope_se, -int_se) %>% 
-  mutate(model = factor(model, 
-                        levels = c('C2ST', 'C2ST_freeze','C2ST_maxIQR', 'C2ST_kurtosis', 'C2ST_cloud', 'C2ST_maxrange'),
-                        labels = c('Collection 2', 'Collection 2\nfreeze', 'Collection 2\nIQR', 'Collection 2\nkurtosis', 'Collection 2\ncloud','Collection 2\nrange'))) %>% 
-  mutate(regression = 'Deming')
-
-slope_fig <- slope_int_table %>% 
-  filter(var == 'slope') %>% 
-  ggplot(., aes(x = model, y = value)) +
-  geom_point() +
-  geom_pointrange(aes(ymin = l95, ymax = u95))+
-  geom_abline(intercept = 1, slope = 0, color = '#454545', lty=2) +
-  labs(x = NULL,
-       y = 'estimated slope') +
-  coord_cartesian(ylim = c(0.85, 1.15)) +
-  final_theme
-int_fig <- slope_int_table %>% 
-  filter(var == 'intercept') %>% 
-  ggplot(., aes(x = model, y = value)) +
-  geom_point() +
-  geom_pointrange(aes(ymin = l95, ymax = u95))+
-  geom_abline(intercept = 0, slope = 0, color = '#454545', lty=2) +
-  labs(x = NULL,
-       y = 'estmiated intercept') +
-  coord_cartesian(ylim = c(-3.2, 0)) +
-  final_theme
-
-slope_int_fig <- plot_grid(slope_fig, int_fig,
-                           ncol = 1,
-                           labels = c('a', 'b'))
-slope_int_fig
-
-ggsave(file.path(fig_dir, 'FigureF_slopeintercept.jpg'), 
-       dpi = 300,
-       height = 6,
-       width = 8,
-       units = 'in')
-
-
-
-# Look at C2 cloud data set residuals against other variables for SF A####
-
-# by insitu temp
-istemp <- ggplot(C2ST_cloud, aes(x = is_temp_med, y = opt_resid)) +
-  geom_point() +
-  # geom_line(aes(group = date)) +
-  labs(x = 'in-situ median water temp\n(deg C)',
-       y = '\n') +
-  geom_abline(intercept =  0, slope = 0) +
-  coord_cartesian(ylim = c(-5, 5)) +
-  final_theme
-istemp
-
-# by doy
-doy <- ggplot(C2ST_cloud, aes(x = as.numeric(doy), y = opt_resid)) +
-  geom_point() +
-  # geom_line(aes(group = date)) +
-  labs(x = 'day of year\n',
-       y = '\n') +
-  geom_abline(intercept =  0, slope = 0) +
-  coord_cartesian(ylim = c(-5, 5)) +
-  final_theme
-doy
-
-# by pixel count
-perclake <- ggplot(C2ST_cloud, aes(x = (pixel_count/17134)*100, y = opt_resid)) +
-  geom_point() +
-  # geom_line(aes(group = date)) +
-  labs(x = 'percent of lake\n',
-       y = '\n') +
-  geom_abline(intercept =  0, slope = 0) +
-  coord_cartesian(ylim = c(-5, 5)) +
-  final_theme
-perclake
-
-# by cloud cover
-cloud <- ggplot(C2ST_cloud, aes(x = cloud_cover, y = opt_resid)) +
-  geom_point() +
-  # geom_line(aes(group = date)) +
-  geom_abline(intercept =  0, slope = 0) +
-  coord_cartesian(ylim = c(-5, 5)) +
-  labs(x = 'cloud cover (percent)\n',
-       y = '\n') +
-  final_theme 
-cloud
-
-# by sun elevation
-sunelev <- ggplot(C2ST_cloud, aes(x = elev, y = opt_resid)) +
-  geom_point() +
-  # geom_line(aes(group = date)) +
-  geom_abline(intercept =  0, slope = 0) +
-  coord_cartesian(ylim = c(-5, 5)) +
-  labs(x = 'sun elevation (UNITS)\n',
-       y = 'Deming-optimized residual\n(deg C)') +
-  final_theme
-sunelev
-
-# by earth sun distance
-esd <- ggplot(C2ST_cloud, aes(x = esd, y = opt_resid)) +
-  geom_point() +
-  # geom_line(aes(group = date)) +
-  geom_abline(intercept =  0, slope = 0) +
-  coord_cartesian(ylim = c(-5, 5)) +
-  labs(x = 'earth sun distance (UNITS)\n',
-       y = '\n') +
-  final_theme 
-esd
-
-# by azimuth
-azi <- ggplot(C2ST_cloud, aes(x = azimuth, y = opt_resid)) +
-  geom_point() +
-  # geom_line(aes(group = date)) +
-  geom_abline(intercept =  0, slope = 0) +
-  coord_cartesian(ylim = c(-5, 5)) +
-  labs(x = 'sun azimuth (degrees)\n',
-       y = '\n') +
-  final_theme 
-azi
-
-# depth of sensor
-depth <- ggplot(C2ST_cloud, aes(x = depth_avg, y = opt_resid)) +
-  geom_point() +
-  # geom_line(aes(group = date)) +
-  geom_abline(intercept =  0, slope = 0) +
-  coord_cartesian(ylim = c(-5, 5)) +
-  labs(x = 'average depth of sensor (m)\n',
-       y = '\n') +
-  final_theme 
-depth
-# std dev in-situ temp
-sd <- ggplot(C2ST_cloud, aes(x = t_stdev, y = opt_resid)) +
-  geom_point() +
-  # geom_line(aes(group = date)) +
-  geom_abline(intercept =  0, slope = 0) +
-  coord_cartesian(ylim = c(-5, 5)) +
-  labs(x = 'standard deviation of temps\ncontributing to median (deg C)',
-       y = '\n') +
-  final_theme 
-sd
-
-#in-situ count
-count <- ggplot(C2ST_cloud, aes(x = insitu_count, y = opt_resid)) +
-  geom_point() +
-  # geom_line(aes(group = date)) +
-  geom_abline(intercept =  0, slope = 0) +
-  coord_cartesian(ylim = c(-5, 5)) +
-  labs(x = 'number of insitu measurements\ncontributing to median',
-       y = '\n') +
-  final_theme 
-count
-plot_grid(istemp, doy, perclake, cloud, sunelev, esd, azi, depth, sd, count,
-          labels = c('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'),
-          ncol = 2,
-          label_x = 0.07,
-          label_y = 1)
-
-ggsave(file.path(fig_dir, 'SFA_resid_summary_C2cloud_v09Nov2021.jpg'), 
-       height = 12, width = 8, units = 'in', dpi = 300)
-
-
-# Look at C2 kurtosis data set residuals against other variables for SF A####
+# Supplemental Figure A: Look at C2 kurtosis data set residuals against other variables ####
 
 # by insitu temp
 istemp <- ggplot(C2ST_kurtosis, aes(x = is_temp_med, y = opt_resid)) +
@@ -799,7 +479,7 @@ month_error <- full_join(month_mission_error, month_error)
 
 alldata_error <- full_join(alldata_error, month_error)
 
-write.csv(alldata_error, file.path(C2_datadir, 'LS_deming_predictionerror_C1C2_stats_v12Nov2021.csv'))
+write.csv(alldata_error, file.path(C2_datadir, 'LS_deming_predictionerror_C1C2_stats_v15Nov2021.csv'))
 
 # create point(by mission for bias, mae, rmse) faceted by model ####
 head(alldata_error)
@@ -813,10 +493,8 @@ missionmonth_biasmae <- alldata_error %>%
                values_to = 'value') %>% 
   mutate(c_filter = paste0('C', collection, ' ', filter)) %>% 
   mutate(c_filter = factor(c_filter, 
-                           levels = c('C1 none', 'C2 none', 'C2 freeze',
-                                                'C2 IQR', 'C2 kurtosis', 'C2 cloud', 'C2 range'),
-                           labels = c('C1', 'C2', 'C2 freeze',
-                                      'C2 IQR', 'C2 kurtosis', 'C2 cloud', 'C2 range')))
+                           levels = c('C2 none', 'C2 kurtosis'),
+                           labels = c('C2', 'C2 kurtosis')))
 
 
 
@@ -844,37 +522,8 @@ FigGI_a <- missionmonth_biasmae %>%
   theme(legend.position = 'none') +
   scale_color_colorblind()
 FigGI_a
-FigGI_b <- missionmonth_biasmae %>% 
-  filter(variable == 'bias' & c_filter == 'C2 freeze') %>% 
-  ggplot(., aes(x = month, y = value)) +
-  geom_point(aes(shape = mission), size =2) +
-  geom_abline(intercept = 0,
-              slope = 0, 
-              lty = 2) +
-  coord_cartesian(ylim = c(-2, 2)) +
-  labs(x = '',
-       y = '') +
-  final_theme+
-  theme(axis.title=element_text(size=10,face="bold")) +
-  theme(legend.position = 'none') +
-  scale_color_colorblind()
-FigGI_b
+
 FigGI_c <- missionmonth_biasmae %>% 
-  filter(variable == 'bias' & c_filter == 'C2 IQR') %>% 
-  ggplot(., aes(x = month, y = value)) +
-  geom_point(aes(shape = mission), size =2) +
-  labs(x = '',
-       y = 'temeprature (degrees C)') +
-  coord_cartesian(ylim = c(-2, 2)) +
-  geom_abline(intercept = 0,
-              slope = 0, 
-              lty = 2)+
-  final_theme +
-  theme(legend.position = 'none')+
-  theme(axis.title=element_text(size=10,face="bold")) +
-  scale_color_colorblind()
-FigGI_c
-FigGI_d <- missionmonth_biasmae %>% 
   filter(variable == 'bias' & c_filter == 'C2 kurtosis') %>% 
   ggplot(., aes(x = month, y = value)) +
   geom_point(aes(shape = mission), size =2) +
@@ -888,40 +537,9 @@ FigGI_d <- missionmonth_biasmae %>%
   theme(legend.position = 'none') +
   theme(axis.title=element_text(size=10,face="bold")) +
   scale_color_colorblind()
-FigGI_d
-FigGI_e <- missionmonth_biasmae %>% 
-  filter(variable == 'bias' & c_filter == 'C2 cloud') %>% 
-  ggplot(., aes(x = month, y = value)) +
-  geom_point(aes(shape = mission), size =2) +
-  labs(x = '',
-       y = '') +
-  final_theme+
-  coord_cartesian(ylim = c(-2, 2)) +
-  geom_abline(intercept = 0,
-              slope = 0, 
-              lty = 2) +
-  theme(legend.position = 'none') +
-  theme(axis.title=element_text(size=10,face="bold")) +
-  scale_color_colorblind()
-FigGI_e
-FigGI_f <- missionmonth_biasmae %>% 
-  filter(variable == 'bias' & c_filter == 'C2 range') %>% 
-  full_join(month_list) %>% 
-  ggplot(., aes(x = month, y = value)) +
-  geom_point(aes(shape = mission), size =2) +
-  coord_cartesian(ylim = c(-2, 2)) +
-  geom_abline(intercept = 0,
-              slope = 0, 
-              lty = 2) +
-  labs(x = 'month',
-       y = '') +
-  final_theme+
-  theme(axis.title=element_text(size=10,face="bold")) +
-  theme(legend.position = 'none') +
-  scale_color_colorblind()
-FigGI_f
+FigGI_c
 
-FigGI_g <- missionmonth_biasmae %>% 
+FigGI_b <- missionmonth_biasmae %>% 
   filter(variable == 'mae' & c_filter == 'C2') %>% 
   ggplot(., aes(x = month, y = value)) +
   geom_point(aes(shape = mission), size =2) +
@@ -935,38 +553,9 @@ FigGI_g <- missionmonth_biasmae %>%
   theme(axis.title=element_text(size=10,face="bold")) +
   theme(legend.position = 'none') +
   scale_color_colorblind()
-FigGI_g
-FigGI_h <- missionmonth_biasmae %>% 
-  filter(variable == 'mae' & c_filter == 'C2 freeze') %>% 
-  ggplot(., aes(x = month, y = value)) +
-  geom_point(aes(shape = mission), size =2) +
-  coord_cartesian(ylim = c(0, 2)) +
-  geom_abline(intercept = 0,
-              slope = 0, 
-              lty = 2) +
-  labs(x = '',
-       y = '') +
-  final_theme+
-  theme(legend.position = 'none') +
-  theme(axis.title=element_text(size=10,face="bold")) +
-  scale_color_colorblind()
-FigGI_h
-FigGI_i <- missionmonth_biasmae %>% 
-  filter(variable == 'mae' & c_filter == 'C2 IQR') %>% 
-  ggplot(., aes(x = month, y = value)) +
-  geom_point(aes(shape = mission), size =2) +
-  coord_cartesian(ylim = c(0, 2)) +
-  geom_abline(intercept = 0,
-              slope = 0, 
-              lty = 2) +
-  labs(x = '',
-       y = '') +
-  final_theme+
-  theme(axis.title=element_text(size=10,face="bold")) +
-  theme(legend.position = 'none') +
-  scale_color_colorblind()
-FigGI_i
-FigGI_j <- missionmonth_biasmae %>% 
+FigGI_b
+
+FigGI_d <- missionmonth_biasmae %>% 
   filter(variable == 'mae' & c_filter == 'C2 kurtosis') %>% 
   ggplot(., aes(x = month, y = value)) +
   geom_point(aes(shape = mission), size =2) +
@@ -980,42 +569,10 @@ FigGI_j <- missionmonth_biasmae %>%
   theme(axis.title=element_text(size=10,face="bold")) +
   theme(legend.position = 'none') +
   scale_color_colorblind()
-FigGI_j
-FigGI_k <- missionmonth_biasmae %>% 
-  filter(variable == 'mae' & c_filter == 'C2 cloud') %>% 
-  ggplot(., aes(x = month, y = value)) +
-  geom_point(aes(shape = mission), size =2) +
-  coord_cartesian(ylim = c(0, 2)) +
-  geom_abline(intercept = 0,
-              slope = 0, 
-              lty = 2) +
-  labs(x = '',
-       y = '') +
-  final_theme+
-  theme(axis.title=element_text(size=10,face="bold")) +
-  theme(legend.position = 'none') +
-  scale_color_colorblind()
-FigGI_k
-FigGI_l <- missionmonth_biasmae %>% 
-  filter(variable == 'mae' & c_filter == 'C2 range') %>% 
-  full_join(month_list) %>% 
-  ggplot(., aes(x = month, y = value)) +
-  geom_point(aes(shape = mission), size =2) +
-  coord_cartesian(ylim = c(0, 2)) +
-  geom_abline(intercept = 0,
-              slope = 0, 
-              lty = 2) +
-  labs(x = 'month',
-       y = '') +
-  final_theme+
-  theme(axis.title=element_text(size=10,face="bold")) +
-  theme(legend.position = 'none') +
-  scale_color_colorblind()
-FigGI_l
+FigGI_d
 
 forlegend <- missionmonth_biasmae %>% 
-  filter(variable == 'mae' & c_filter == 'C2 freeze') %>% 
-  full_join(month_list) %>% 
+  filter(variable == 'mae' & c_filter == 'C2 kurtosis') %>% 
   ggplot(., aes(x = month, y = value)) +
   geom_point(aes(shape = mission), size =2) +
   coord_cartesian(ylim = c(0, 2)) +
@@ -1036,65 +593,45 @@ figure_title_mae <- ggdraw() + draw_label('   mean absolute error', fontface = '
 figure_title <- plot_grid(figure_title_bias, figure_title_mae, nrow = 1)
 figure_title
 
-nofilter <- plot_grid(FigGI_a, FigGI_g,
+nofilter <- plot_grid(FigGI_a, FigGI_b,
+                      labels = c('a', 'b'),
                       ncol = 2)
 nofilter_title <- ggdraw() + draw_label("Collection 2", fontface='bold')
 nofilter <- plot_grid(nofilter_title, nofilter,
                       nrow = 2,
-                      rel_heights = c(0.15, 0.85))
+                      rel_heights = c(0.1, 1))
 nofilter
 
-freeze <- plot_grid(FigGI_b, FigGI_h,
-                      ncol = 2)
-freeze_title <- ggdraw() + draw_label("Collection 2 - freeze", fontface='bold')
-freeze <- plot_grid(freeze_title, freeze,
-                      nrow = 2,
-                    rel_heights = c(0.15, 0.85))
-freeze
-
-iqr <- plot_grid(FigGI_c, FigGI_i,
-                    ncol = 2)
-iqr_title <- ggdraw() + draw_label("Collection 2 - IQR", fontface='bold')
-iqr <- plot_grid(iqr_title, iqr,
-                    nrow = 2,
-                 rel_heights = c(0.15, 0.85))
-iqr
-
-kurtosis <- plot_grid(FigGI_d, FigGI_j,
+kurtosis <- plot_grid(FigGI_c, FigGI_d,
+                      labels = c('c', 'd'),
                       ncol = 2)
 kurtosis_title <- ggdraw() + draw_label("Collection 2 - kurtosis", fontface='bold')
 kurtosis <- plot_grid(kurtosis_title, kurtosis,
                  nrow = 2,
-                 rel_heights = c(0.15, 0.85))
+                 rel_heights = c(0.1, 1))
 kurtosis
 
-cloud <- plot_grid(FigGI_e, FigGI_k,
-                    ncol = 2)
-cloud_title <- ggdraw() + draw_label("Collection 2 - cloud", fontface='bold')
-cloud <- plot_grid(cloud_title, cloud,
-                    nrow = 2,
-                   rel_heights = c(0.15, 0.85))
-cloud
-
-range <- plot_grid(FigGI_f, FigGI_l,
-                    ncol = 2)
-range_title <- ggdraw() + draw_label("Collection 2 - range", fontface='bold')
-range <- plot_grid(range_title, range,
-                    nrow = 2,
-                    rel_heights = c(0.15, 0.85))
-range
+x_lab = ggdraw() + draw_label(label = 'month', fontface = 'bold')
+y_lab = ggdraw() + draw_label(label = 'water temperature (deg C)',
+                              angle = 90,
+                              fontface = 'bold')
 
 FigGI <- plot_grid(figure_title,
                    nofilter,
-                   freeze, 
-                   iqr,
                    kurtosis,
-                   cloud,
-                   range,
-                   rel_heights = c(0.2, 0.9, 0.9,0.9,0.9,0.9, 0.9),
+                   rel_heights = c(0.05, 1, 1),
                    ncol =1)
 FigGI
 
-plot_grid(FigGI, leg, rel_widths = c(0.9,0.1 ))
-ggsave(file.path(fig_dir, 'FigGI_errorbymission.jpg'), height = 10, width = 8, units = 'in', dpi = 300)
+FigGI_label = plot_grid(y_lab, FigGI,
+                        NULL, x_lab,
+                        rel_heights = c(1.1, 0.05),
+                        rel_widths = c(0.05, 1.1))
+
+FigGI_label
+
+plot_grid(FigGI_label, leg, rel_widths = c(0.9,0.1 ))
+
+ggsave(file.path(fig_dir, 'FigGI_errorbymission.jpg'), 
+       height = 6, width = 8, units = 'in', dpi = 300)
 
