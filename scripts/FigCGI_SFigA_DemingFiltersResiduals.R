@@ -481,7 +481,8 @@ alldata_error <- full_join(alldata_error, month_error)
 
 write.csv(alldata_error, file.path(C2_datadir, 'LS_deming_predictionerror_C1C2_stats_v15Nov2021.csv'))
 
-# create point(by mission for bias, mae, rmse) faceted by model ####
+# FigGI create point (by mission for bias, mae, rmse) faceted by model ####
+
 head(alldata_error)
 
 missionmonth_biasmae <- alldata_error %>% 
