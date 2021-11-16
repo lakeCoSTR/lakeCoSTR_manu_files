@@ -15,11 +15,11 @@ lmp_temp_deep <- lmp %>%
   filter(depth_m == 0.5) 
 
 # load all LS data, filter for freeze and cloud cover
-ls <- read.csv(file.path(datadir, 'colab-output/C2/C2_temp_stats.csv')) %>% 
+ls <- read.csv(file.path(datadir, 'colab-output/C2/C2_v2_temp_stats.csv')) %>% 
   mutate(date = substrRight(`system.index`, 8),
          date = as.Date(date, format = '%Y%m%d'))
-ls_cloud <- ls %>% 
-  filter(surface_temp_min > 0 & cloud_cover < 40)
+ls_kurtosis <- ls %>% 
+  filter(surface_temp_kurtosis >2 )
 
 #### whole lake median by month and year ####
 lmp_temp_monthly_stats <- lmp_temp_deep %>% 
@@ -39,8 +39,7 @@ ggplot(lmp_temp_monthly_stats, aes(x=year, y = is_summer_median_temp_degC)) +
   geom_point() +
   geom_smooth(method = 'lm', se = F)
 
-
-ls_temp_summer_monthly_median_cloud <- ls_cloud %>% 
+ls_temp_summer_monthly_median_kurtosis <- ls_kurtosis %>% 
   mutate(month = as.numeric(format((date), '%m')),
          year = as.numeric(format((date), '%Y'))) %>% 
   group_by(year, month) %>% 
@@ -48,7 +47,7 @@ ls_temp_summer_monthly_median_cloud <- ls_cloud %>%
             ls_n_obs = length(surface_temp_median))  %>% 
   filter(!is.na(month))
 
-ggplot(ls_temp_summer_monthly_median_cloud, aes(x=year, y = ls_summer_median_temp_degC)) +
+ggplot(ls_temp_summer_monthly_median_kurtosis, aes(x=year, y = ls_summer_median_temp_degC)) +
   facet_grid(.~month) +
   geom_point() +
   geom_smooth(method = 'lm', se = F)
@@ -57,10 +56,10 @@ ggplot(ls_temp_summer_monthly_median_cloud, aes(x=year, y = ls_summer_median_tem
 df1_med <- lmp_temp_monthly_stats %>% 
   select(year, month, is_summer_median_temp_degC)
 
-df2_med <- ls_temp_summer_monthly_median_cloud %>% 
+df2_med_kurtosis <- ls_temp_summer_monthly_median_kurtosis %>% 
   select(year, month, ls_summer_median_temp_degC)
 
-temp_monthly_median <- full_join(df1_med, df2_med) %>% 
+temp_monthly_median <- full_join(df1_med, df2_med_kurtosis) %>% 
   pivot_longer(., cols = c(ls_summer_median_temp_degC, is_summer_median_temp_degC), names_to='source', values_to = 'value') %>% 
   mutate(source = case_when(grepl('is_', source) ~ 'in-situ',
                             grepl('ls_', source) ~ 'landsat',
@@ -76,10 +75,44 @@ temp_monthly_median %>%
   labs(y = 'lake surface temperature\n(degrees C)') +
   # geom_smooth(method = 'lm', se = F, inherit.aes = T) +
   final_theme
-# ggsave(file.path(figdir, 'monthly_patterns_calib_temp_cloud.png'), height = 3, width = 9)
 
 
 #### linear regression - significant slope? ####
+
+linear_analysis = function(mm, ds){
+  data <- temp_monthly_median %>% 
+    filter(month == mm & source == ds)
+  lm_result <- lm(data$value ~ data$year)
+  print(summary(lm_result))
+}
+
+is_5_lm <- linear_analysis(5, 'in-situ')
+is_6_lm <- linear_analysis(6, 'in-situ')
+is_7_lm <- linear_analysis(7, 'in-situ')
+is_8_lm <- linear_analysis(8, 'in-situ')
+is_9_lm <- linear_analysis(9, 'in-situ')
+is_10_lm <- linear_analysis(10, 'in-situ')
+ls_5_lm <- linear_analysis(5, 'landsat')
+ls_6_lm <- linear_analysis(6, 'landsat')
+ls_7_lm <- linear_analysis(7, 'landsat')
+ls_8_lm <- linear_analysis(8, 'landsat')
+ls_9_lm <- linear_analysis(9, 'landsat')
+ls_10_lm <- linear_analysis(10, 'landsat')
+
+linear_analysis_all = function(mm){
+  data <- temp_monthly_median %>% 
+    filter(month == mm)
+  lm_result <- lm(data$value ~ data$year)
+  print(summary(lm_result))
+}
+
+all_5_lm <- linear_analysis_all(5)
+all_6_lm <- linear_analysis_all(6)
+all_7_lm <- linear_analysis_all(7)
+all_8_lm <- linear_analysis_all(8)
+all_9_lm <- linear_analysis_all(9)
+all_10_lm <- linear_analysis_all(10)
+all_11_lm <- linear_analysis_all(11)
 
 linear_analysis = function(mm, ds){
   data <- temp_monthly_median %>% 
@@ -179,31 +212,12 @@ all_8_lm
 car::durbinWatsonTest(lm(value~year, data = aug_data))
 #confirms autocorrelation
 
-# do the analysis without the outliers
-aug_data_wo <- aug_data %>% 
-  filter(value > 15)
-lm_source_aug_iva_wo <- lm(value ~ year+source+year*source, data = aug_data_wo)
-summary(lm_source_aug_iva_wo)
-#no sig diff in slope
-lm_source_aug_wo <- lm(value ~ year+source, data = aug_data_wo)
-summary(lm_source_aug_wo)
-# no sig diff in intercept
-lm_aug_wo <- lm(value ~ year, data = aug_data_wo)
-summary(lm_aug_wo)
-# slope and intercept sig plot one line for the two groups
-ls_aug_data_wo <- aug_data_wo %>% 
-  filter(source == 'landsat')
-is_aug_data_wo <- aug_data_wo %>% 
-  filter(source == 'in-situ')
-ls_8_lm_wo <- lm(value~year, data = ls_aug_data_wo)
-is_8_lm_wo <- lm(value~year, data = is_aug_data_wo)
-
 lm_source_sep_iva <- lm(value ~ year+source+year*source, data = sep_data)
 summary(lm_source_sep_iva)
 # there is a significant difference in slope
 lm_source_sep <- lm(value ~ year+source, data = sep_data)
 summary(lm_source_sep)
-all_9_lm
+
 is_9_lm
 ls_9_lm
 #plot one line for landsat
@@ -211,27 +225,6 @@ ls_9_data <- sep_data %>%
   filter(source == 'landsat')
 car::durbinWatsonTest(lm(value~year, data = ls_9_data))
 #confirms autocorrelation
-
-# do analysis without outliers
-sep_data_wo <- sep_data %>% 
-  filter(value >15)
-lm_source_sep_iva_wo <- lm(value ~ year+source+year*source, data = sep_data_wo)
-summary(lm_source_sep_iva_wo)
-# sig diff in slope
-lm_source_sep_wo <- lm(value ~ year+source, data = sep_data_wo)
-summary(lm_source_sep_wo)
-lm_sep_wo <- lm(value ~ year, data = sep_data_wo)
-summary(lm_sep_wo)
-ls_sep_data_Wo <- sep_data_wo %>% 
-  filter(source == 'landsat')
-is_sep_data_Wo <- sep_data_wo %>% 
-  filter(source == 'in-situ')
-ls_9_lm_wo = lm(value ~ year, data = ls_sep_data_Wo)
-summary(ls_9_lm_wo)
-is_9_lm_wo = lm(value ~ year, data = is_sep_data_Wo)
-is_9_lm
-#plot one line for landsat
-
 
 lm_source_oct_iva <- lm(value ~ year+source+year*source, data = oct_data)
 summary(lm_source_oct_iva)
@@ -247,51 +240,41 @@ car::durbinWatsonTest(lm(value~year, data = oct_data))
 # IVA results to table ####
 iva_table <- NULL
 
-iva_table$month <- c('May', 'June', 'July', 'August', 'August, outliers removed', 'September', 'September, outliers removed', 'October')
+iva_table$month <- c('May', 'June', 'July', 'August', 'September', 'October')
 
 iva_table$iva_pval <- c(summary(lm_source_may_iva)$coefficients[4,4],
                         summary(lm_source_jun_iva)$coefficients[4,4],
                         summary(lm_source_jul_iva)$coefficients[4,4],
                         summary(lm_source_aug_iva)$coefficients[4,4],
-                        summary(lm_source_aug_iva_wo)$coefficients[4,4],
                         summary(lm_source_sep_iva)$coefficients[4,4],
-                        summary(lm_source_sep_iva_wo)$coefficients[4,4],
                         summary(lm_source_oct_iva)$coefficients[4,4])
 
 iva_table$multreg_pval <- c(summary(lm_source_may)$coefficients[3,4],
                            summary(lm_source_jun)$coefficients[3,4],
                            summary(lm_source_jul)$coefficients[3,4],
                            summary(lm_source_aug)$coefficients[3,4],
-                           summary(lm_source_aug_wo)$coefficients[3,4],
                            summary(lm_source_sep)$coefficients[3,4],
-                           summary(lm_source_sep_wo)$coefficients[3,4],
                            summary(lm_source_oct)$coefficients[3,4])
 
 iva_table$alldata_slope_pval <- c(all_5_lm$coefficients[2,4],
                                   all_6_lm$coefficients[2,4],
                                   all_7_lm$coefficients[2,4],
                                   all_8_lm$coefficients[2,4],
-                                  summary(lm_aug_wo)$coefficients[2,4],
                                   all_9_lm$coefficients[2,4],
-                                  summary(lm_sep_wo)$coefficients[2,4],
                                   all_10_lm$coefficients[2,4])
 
 iva_table$ls_slope_pval <- c(ls_5_lm$coefficients[2,4],
                              ls_6_lm$coefficients[2,4],
                              ls_7_lm$coefficients[2,4],
                              ls_8_lm$coefficients[2,4],
-                             summary(ls_8_lm_wo)$coefficients[2,4],
                              ls_9_lm$coefficients[2,4],
-                             summary(ls_9_lm_wo)$coefficients[2,4],
                              ls_10_lm$coefficients[2,4])
 
 iva_table$is_slope_pval <- c(is_5_lm$coefficients[2,4],
                              is_6_lm$coefficients[2,4],
                              is_7_lm$coefficients[2,4],
                              is_8_lm$coefficients[2,4],
-                             summary(is_8_lm_wo)$coefficients[2,4],
                              is_9_lm$coefficients[2,4],
-                             summary(is_9_lm_wo)$coefficients[2,4],
                              is_10_lm$coefficients[2,4])
 iva_table <- as.data.frame(iva_table) 
 iva_table <- iva_table %>% 
@@ -352,7 +335,8 @@ june <- temp_monthly_median %>%
               lty = 2,
               color = '#009E73') +
     final_theme +
-  coord_cartesian(ylim = c(7, 27)) +
+  coord_cartesian(ylim = c(7, 27),
+                  xlim = c(1980, 2020)) +
   scale_color_colorblind() +
   labs(x = NULL, y = NULL, title = 'June') +
   theme(legend.position = 'none')
@@ -373,9 +357,10 @@ jul <- temp_monthly_median %>%
   theme(legend.position = 'none')  
 jul
 
-aug_data_out <- aug_data %>% 
-  filter(value < 15)
-aug <- ggplot(aug_data_wo, aes(x = year, y = value)) +
+
+aug <- temp_monthly_median %>% 
+  filter(month == 8) %>% 
+  ggplot(., aes(x = year, y = value))+
   geom_point(aes(color = source)) +
   geom_abline(slope = all_8_lm$coefficients[2, 1],
               intercept = all_8_lm$coefficients[1,1],
@@ -384,33 +369,30 @@ aug <- ggplot(aug_data_wo, aes(x = year, y = value)) +
   coord_cartesian(ylim = c(7, 27),
                   xlim = c(1980, 2020)) +
   scale_color_colorblind() +
-  geom_point(data = aug_data_out, mapping = aes(x = year, y =value), shape = 17, color = '#E69F00', size = 2) +
   labs(x = NULL, y = NULL, title = 'August') +
   theme(legend.position = 'none')  
 aug
 
-sep_data_out <- sep_data %>% 
-  filter(value < 15)
-is_data_sep <- sep_data %>% 
-  filter(source == 'in-situ')
-
-sept <-ggplot(sep_data_wo, aes(x = year, y = value))+
+sept_is <- sep_data %>% 
+  filter(source == 'in-situ') 
+mean_sept_is = mean(sept_is$value)
+sept <- temp_monthly_median %>% 
+  filter(month ==9) %>% 
+  ggplot(., aes(x = year, y = value))+
   geom_point(aes(color = source)) +
   geom_abline(slope = ls_9_lm$coefficients[2, 1],
               intercept = ls_9_lm$coefficients[1,1],
-              color = '#E69F00') +
-  geom_abline(slope = 0, 
-              intercept = mean(is_data_sep$value),
+              color = "#E69F00") +
+  geom_abline(slope = 0,
+              intercept = mean_sept_is,
               lty = 2) +
   final_theme +
   coord_cartesian(ylim = c(7, 27),
                   xlim = c(1980, 2020)) +
   scale_color_colorblind() +
-  geom_point(data = sep_data_out, mapping = aes(x = year, y =value), shape = 17, color = '#E69F00', size = 2) +
   labs(x = NULL, y = NULL, title = 'September') +
   theme(legend.position = 'none')  
 sept
-
 
 oct <- temp_monthly_median %>% 
   filter(month == 10) %>% 
@@ -428,109 +410,25 @@ oct <- temp_monthly_median %>%
 oct
 
 #save title
-x_axis_title=ggpubr:::text_grob('median lake surface temperature\n(degrees C)', size = 12, face = "bold", rot = 90) 
+y_axis_title = ggdraw() + draw_label('median lake surface temperature\n(degrees C)', size = 12, fontface = "bold", angle = 90) 
+x_axis_title = ggdraw() + draw_label('year', size = 12, fontface = 'bold')
+legend = ggdraw() + draw_label('black = in-situ   yellow = landsat   green = all data', size = 12)
 
-#set up png device
-jpeg(file.path(figdir, 'FigH_application_monthly_median_temp_IQR_together.jpg'),
-    width=9,height=6, units = 'in', res = 300)
-gridExtra::grid.arrange(may, june, jul, aug, sept, oct,
-                        nrow = 2,
-                        left = x_axis_title,
-                        bottom = 'black = in-situ   yellow = landsat   green = all data')
+FigH = plot_grid(may, june, jul, aug, sept, oct,
+          ncol = 3)
+FigH
 
+FigH_labels = plot_grid(y_axis_title, FigH,
+                        NULL, x_axis_title,
+                        NULL, legend,
+                        cols = 2, 
+                        rel_widths = c(0.05, 0.9),
+                        rel_heights = c(0.9, 0.05, 0.05))
 
-#Close pdf graphics device
-dev.off()
-#### plot with connected lines ####
-# may_inter <- temp_monthly_median %>% 
-#   filter(month == 5) %>% 
-#   ggplot(., aes(x = year, y = value))+
-#   geom_point(aes(color = source)) +
-#   geom_line(aes(color = source)) +
-#   final_theme +
-#   coord_cartesian(ylim = c(7, 27),
-#                   xlim = c(1980, 2020)) +
-#   scale_color_colorblind() +
-#   labs(x = NULL, y = NULL, title = 'May') +
-#   theme(legend.position = 'none')
-# may_inter
-# 
-# june_inter <- temp_monthly_median %>% 
-#   filter(month == 6) %>% 
-#   ggplot(., aes(x = year, y = value))+
-#   geom_line(aes(color = source)) +
-#   geom_point(aes(color = source)) +
-#   final_theme +
-#   coord_cartesian(ylim = c(7, 27),
-#                   xlim = c(1980, 2020)) +
-#   scale_color_colorblind() +
-#   labs(x = NULL, y = NULL, title = 'June') +
-#   theme(legend.position = 'none')
-# june_inter
-# 
-# jul_inter <- temp_monthly_median %>% 
-#   filter(month == 7) %>% 
-#   ggplot(., aes(x = year, y = value))+
-#   geom_line(aes(color = source)) +
-#   geom_point(aes(color = source)) +
-#   final_theme +
-#   coord_cartesian(ylim = c(7, 27),
-#                   xlim = c(1980, 2020)) +
-#   scale_color_colorblind() +
-#   labs(x = NULL, y = NULL, title = 'July') +
-#   theme(legend.position = 'none')  
-# jul_inter
-# 
-# aug_inter <- temp_monthly_median %>% 
-#   filter(month == 8) %>% 
-#   ggplot(., aes(x = year, y = value))+
-#   geom_line(aes(color = source)) +
-#   geom_point(aes(color = source)) +
-#   final_theme +
-#   coord_cartesian(ylim = c(7, 27),
-#                   xlim = c(1980, 2020)) +
-#   scale_color_colorblind() +
-#   labs(x = NULL, y = NULL, title = 'August') +
-#   theme(legend.position = 'none')  
-# aug_inter
-# 
-# sep_inter <- temp_monthly_median %>% 
-#   filter(month == 9) %>% 
-#   ggplot(., aes(x = year, y = value))+
-#   geom_point(aes(color = source)) +
-#   geom_line(aes(color = source)) +
-#   final_theme +
-#   coord_cartesian(ylim = c(7, 27),
-#                   xlim = c(1980, 2020)) +
-#   scale_color_colorblind() +
-#   labs(x = NULL, y = NULL, title = 'September') +
-#   theme(legend.position = 'none')  
-# sep_inter
-# 
-# 
-# oct_inter <- temp_monthly_median %>% 
-#   filter(month == 10) %>% 
-#   ggplot(., aes(x = year, y = value))+
-#   geom_point(aes(color = source)) +
-#   geom_line(aes(color = source)) +
-#   final_theme +
-#   coord_cartesian(ylim = c(7, 27),
-#                   xlim = c(1980, 2020)) +
-#   scale_color_colorblind() +
-#   labs(x = NULL, y = NULL, title = 'October') +
-#   theme(legend.position = 'none')  
-# oct_inter
-# 
-# #set up png device
-# png(file.path(figdir, 'application_monthly_median_temp_cloud_together_interconnected.png'),
-#     width=9,height=6, units = 'in', res = 300)
-# gridExtra::grid.arrange(may_inter, june_inter, jul_inter, aug_inter, sep_inter, oct_inter,
-#                         nrow = 2,
-#                         left = 'lake surface temperature\ndegrees C',
-#                         bottom = 'black = in-situ   yellow = Landsat')
-# 
-# #Close pdf graphics device
-# dev.off()
+FigH_labels
 
-
-
+ggsave(file.path(figdir, 'FigH_application_monthly_median_temp_kurtosis_together.jpg'), 
+          width=9,
+          height=6, 
+          units = 'in', 
+          dpi = 300)
