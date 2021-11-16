@@ -1,107 +1,161 @@
 ---
 title: 'Appendix: Landsat Filters'
 author: "B. Steele"
-date: "11/15/2021"
-output: html_document
+date: "2021-11-16"
+output: word_document
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 
 # read in libraries and functions
-source('scripts/R_library.R')
+source('R_library.R')
+
+#print r version
+R.version$version.string
 
 # point to directories
 datadir = '~/GitHub/ids-ne-lakes/data/'
-C1_datadir <- '~/GitHub/ids-ne-lakes/data/colab-output/C1/'
 C2_datadir <- '~/GitHub/ids-ne-lakes/data/colab-output/C2/'
-fig_dir <- '~/GitHub/ids-ne-lakes/figures/'
-
 ```
 
-Read in the data and filter into separate datasets.
-```{r cars}
+# Background:
 
-C2ST <- read.csv(file.path(C2_datadir,paste0('sunapee_paired_C2_QAQCflag_v2021-11-1.csv')), row.names = F)
+Upon inspection of the Colab-exported histograms, it seemed clear that
+some of the ranges of data seemed ecologically unfeasible with some
+displaying a range of 20 degrees C or more over the surface of Lake
+Sunapee. In this appendix, we explore some of the additional quality
+assurance filters that we explored that may be helpful for others using
+this tool.
 
+For example, here are some histograms that looked awry, one each from
+Landsat missions 4, 5, 7, and 8:
+
+![Landast 4:
+1990-07-21](C:/Users/steeleb/Documents/GitHub/ids-ne-lakes/data/colab-output/C2/histograms/LT04_L1TP_013030_19900721_20200915_02_T1_histo.png){width="3in"}![Landast
+5:
+1998-07-23](C:/Users/steeleb/Documents/GitHub/ids-ne-lakes/data/colab-output/C2/histograms/LT05_L1TP_013030_19880723_20200917_02_T1_histo.png){width="3in"}
+
+![Landast 7:
+2018-05-31](C:/Users/steeleb/Documents/GitHub/ids-ne-lakes/data/colab-output/C2/histograms/LE07_L1TP_013030_20180531_20200829_02_T1_histo.png){width="3in"}![Landast
+8:
+2020-09-17](C:/Users/steeleb/Documents/GitHub/ids-ne-lakes/data/colab-output/C2/histograms/LC08_L1TP_013030_20200917_20201005_02_T1_histo.png){width="3in"}
+
+In addition to the possible range-of-value issues shown above, there
+were clear bimodal distributions that would not suit our analysis of
+using a single median value to describe the scene, as well as scenes
+with negative temperatures reported even though pixels classified as
+snow or ice were filtered out in the Colab script. Note that bimodal
+distributions in surface temperature across a lake surface are certainly
+ecologically possible outcomes and may be useful for some systems or
+analyses. We tried to filter out the scenes with presumed atmospheric
+interference (indicated by grossly large estimated temperature ranges)
+using measures from the extensive *in-situ* data network at Lake Sunapee
+and from statistical measures of distributions, namely kurtosis, or the
+'tailedness' of the distribution. Knowing that we did not filter for
+clouds or cloud shadows, and given that there is documented interference
+with the surface temperature product, we also used a cloud filter to
+eliminate some scenes.
+
+# Methods
+
+The filters we explored were (listed in order of increased stringency
+based on the number of scenes eliminated from analysis):
+
+-   **freeze**: removing all scenes whose minimum temperature was below
+    0
+
+-   **IQR**: *freeze* filter and removing scenes that reported
+    interquantile ranges greater than 110% in a summary of the *in-situ*
+    record
+
+-   **kurtosis**: removing any scenes whose histogram has a kurtosis value
+    less than 2.
+
+-   **cloud**: *freeze* filter and removing scenes with cloud cover
+    greater than 40%. Cloud cover is a known issue with the surface
+    temperature product.
+
+-   **range**: *freeze* filter and removing scenes that reported ranges
+    greater than 110% obeserved in a summary of the *in-situ* record
+
+## Load, summarize, and filter data
+
+```{r load data}
+#read in previously collated and filtered in-situ data
+insitu <- read.csv(paste0(datadir, 'insitu_temp_data_v2021-10-20.csv')) %>% 
+  filter(!is.na(lat_dd)) %>% 
+  mutate(datetime = as.POSIXct(datetime, tz = 'Etc/GMT+5'))
+
+#read in Collection 2 paired data, an output from the Colab Notebook
+C2ST <- read.csv(file.path(C2_datadir,paste0('C2_v2_temp_landsat_paired.csv')))
+```
+
+In order to define the maximum acceptable Landast range and
+interquantile range from the *in-situ* data, we limit the *in-situ* data
+to those values measured between the hours of 9 and 11 am, the
+approximate time of Landsat flyover and aggregate to a daily value. From
+these values we find the maximum range and interquantile range of
+observed data.
+
+```{r}
+# Summarize in-situ to define spread and IQR limits ####
+
+# get range per day during hours of flyover
+range_per_date <- insitu %>% 
+  mutate(hour = as.numeric(format(datetime, '%H')),
+         date = as.Date(datetime)) %>% 
+  filter(hour >= 9 & hour < 11) %>% 
+  group_by(date) %>% 
+  summarize(temp_range = max(temp_degC) - min(temp_degC),
+            IQR = IQR(temp_degC, na.rm = T),
+            n_locs = length(unique(location)))
+
+#save max observed spread and IQR for further filtering
+max_spread <- max(range_per_date$temp_range, na.rm = T)
+print('Maximium spread observed is:')
+max_spread
+max_IQR <- max(range_per_date$IQR, na.rm = T)
+print('Maximium interquantile range observed is:')
+max_IQR
+```
+
+```{r flag}
+# Flag C2 data for freezing temps, spread P/F, IQR P/F ####
+C2ST <- C2ST %>% 
+  mutate(freeze_QAQC = case_when(surface_temp_min < 0 ~ 'F', #pass/fail for freezing temps
+                                 TRUE ~ 'P')) %>% 
+  mutate(temp_spread = round(surface_temp_max, digits = 1) - round(surface_temp_min, digits = 1)) %>% #calc temp spread; pass/fail for temp spread
+  mutate(spread_QAQC = case_when(temp_spread < max_spread*1.1 ~ 'P',
+                                 TRUE ~ 'F')) %>% 
+  mutate(IQR = round(surface_temp_p75, digits = 1) - round(surface_temp_p25, digits = 1))  %>%  #calc IQR; pass/fail for temp IQR
+  mutate(IQR_QAQC = case_when(IQR < max_IQR*1.1 ~ 'P',
+                              TRUE ~ 'F'))
+
+# filtered datasets
 C2ST_freeze <- C2ST %>% 
   filter(freeze_QAQC == 'P')
-
-C2ST_freeze %>% 
-  group_by(LSmission) %>% 
-  summarize(count = length(LSmission))
 
 C2ST_maxrange <- C2ST %>% 
   filter(freeze_QAQC == 'P' & 
            spread_QAQC == 'P')
 
-C2ST_maxrange %>% 
-  group_by(LSmission) %>% 
-  summarize(count = length(LSmission))
-
 C2ST_maxIQR <- C2ST %>% 
   filter(freeze_QAQC == 'P' & 
            IQR_QAQC == 'P')
 
-C2ST_maxIQR %>% 
-  group_by(LSmission) %>% 
-  summarize(count = length(LSmission))
-
 C2ST_cloud <- C2ST %>% 
   filter(freeze_QAQC == 'P' & cloud_cover <40)
-
-C2ST_cloud %>% 
-  group_by(LSmission) %>% 
-  summarize(count = length(LSmission))
-```
-
-
-
-```{r pressure, echo=FALSE}
-C2ST_freeze <- C2ST %>% 
-  filter(freeze_QAQC == 'P')
-
-C2ST_freeze %>% 
-  group_by(LSmission) %>% 
-  summarize(count = length(LSmission))
-
-C2ST_maxrange <- C2ST %>% 
-  filter(freeze_QAQC == 'P' & 
-           spread_QAQC == 'P')
-
-C2ST_maxrange %>% 
-  group_by(LSmission) %>% 
-  summarize(count = length(LSmission))
-
-C2ST_maxIQR <- C2ST %>% 
-  filter(freeze_QAQC == 'P' & 
-           IQR_QAQC == 'P')
-
-C2ST_maxIQR %>% 
-  group_by(LSmission) %>% 
-  summarize(count = length(LSmission))
-
-C2ST_cloud <- C2ST %>% 
-  filter(freeze_QAQC == 'P' & cloud_cover <40)
-
-C2ST_cloud %>% 
-  group_by(LSmission) %>% 
-  summarize(count = length(LSmission))
 
 C2ST_kurtosis <- C2ST %>% 
   filter(surface_temp_kurtosis > 2)
+```
 
-C2ST_kurtosis %>% 
-  group_by(LSmission) %>% 
-  summarize(count = length(LSmission))
-
+```{r}
 # Deming Regressions ####
-
-# deming regression for C1
-C1_deming = deming::deming(C1SC$surface_temp_median ~ C1SC$is_temp_med)
-C1_deming_forresid = mcreg(x = C1SC$is_temp_med, y = C1SC$surface_temp_median, method.reg = 'Deming')
-C1SC$opt_resid = MCResult.getResiduals(C1_deming_forresid)$optimized
-C1SC$filter = 'none'
 
 # deming regression for C2
 C2_deming = deming::deming(C2ST$surface_temp_median ~ C2ST$is_temp_med)
@@ -150,59 +204,16 @@ C2_kurtosis_deming_forresid = mcreg(x = C2ST_kurtosis$is_temp_med,
                                  method.reg = 'Deming')
 C2ST_kurtosis$opt_resid = MCResult.getResiduals(C2_kurtosis_deming_forresid)$optimized
 C2ST_kurtosis$filter = 'kurtosis'
-
-
-C1_deming
-cor(C1SC$surface_temp_median, C1SC$is_temp_med)
-
-C2_deming
-cor(C2ST$surface_temp_median, C2ST$is_temp_med)
-
-C2_freeze_deming
-cor(C2ST_freeze$surface_temp_median, C2ST_freeze$is_temp_med)
-
-C2_maxrange_deming
-cor(C2ST_maxrange$surface_temp_median, C2ST_maxrange$is_temp_med)
-
-C2_maxIQR_deming
-cor(C2ST_maxIQR$surface_temp_median, C2ST_maxIQR$is_temp_med)
-
-C2_cloud_deming
-cor(C2ST_cloud$surface_temp_median, C2ST_cloud$is_temp_med)
-
-C2_kurtosis_deming
-cor(C2ST_kurtosis$surface_temp_median, C2ST_kurtosis$is_temp_med)
 ```
 
-```{r}
-# Plot Deming regression for all filters ####
-FigC_a <- ggplot(C1SC, aes(x = is_temp_med, y = surface_temp_median)) +
-  geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
-  geom_point() +
-  #add deming regression and prediction intervals for C1
-  geom_abline(intercept = C1_deming$coefficients[1], slope = C1_deming$coefficients[2], size = 0.75) +
-  geom_abline(intercept = C1_deming$ci[1,1], slope = C1_deming$ci[2,1], linetype = 3, size = 0.75) +
-  geom_abline(intercept = C1_deming$ci[1,2], slope = C1_deming$ci[2,2], linetype = 3, size = 0.75) +
-  geom_text(label = paste0('r = ', round(cor(C1SC$surface_temp_median, C1SC$is_temp_med), digits = 3)),
-            x = 2,
-            y = 25,
-            size = 4,
-            hjust = 0)+
-  geom_text(label = paste0('n = ', length(C1SC$date)),
-            x = 2,
-            y = 23,
-            size = 4,
-            hjust = 0)+
-  labs(x = '',
-       y = '\n',
-       title = 'Collection 1',
-       subtitle = 'single-channel algorithm') +
-  final_theme +
-  coord_cartesian(xlim = c(0, 27),
-                  ylim = c(0, 27))
-FigC_a
+# Presentation and discussion of filter performance
 
-FigC_b <- ggplot(C2ST, aes(x = is_temp_med, y = surface_temp_median)) +
+## Comparison of filter performance
+
+```{r, fig.dim=c(10, 6)}
+# Plot Deming regression for all filters to examine performance ####
+
+DemingFigure_a <- ggplot(C2ST, aes(x = is_temp_med, y = surface_temp_median)) +
   geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
   geom_point() +
   #add deming regression and prediction intervals for C2
@@ -220,15 +231,15 @@ FigC_b <- ggplot(C2ST, aes(x = is_temp_med, y = surface_temp_median)) +
             size = 4,
             hjust = 0)+
   labs(x = '',
-       y = '\n',
+       y = 'median Landsat-derived\nsurface temperature (deg C)',
        title = 'Collection 2',
        subtitle = '') +
-  final_theme +
+  theme_bw()+
+  theme(plot.title = element_text(hjust = 0.5)) +
   coord_cartesian(xlim = c(0, 27),
                   ylim = c(0, 27))
-FigC_b
 
-FigC_c <- ggplot(C2ST_freeze, aes(x = is_temp_med, y = surface_temp_median)) +
+DemingFigure_b <- ggplot(C2ST_freeze, aes(x = is_temp_med, y = surface_temp_median)) +
   geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
   geom_point() +
   #add deming regression and prediction intervals for C2 filtered for freezing mins
@@ -249,38 +260,13 @@ FigC_c <- ggplot(C2ST_freeze, aes(x = is_temp_med, y = surface_temp_median)) +
        y = '\n',
        title = 'Collection 2',
        subtitle = 'freeze') +
-  final_theme +
+    theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5)) +
   coord_cartesian(xlim = c(0, 27),
                   ylim = c(0, 27))
-FigC_c
 
-FigC_f <- ggplot(C2ST_maxrange, aes(x = is_temp_med, y = surface_temp_median)) +
-  geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
-  geom_point() +
-  #add deming regression and prediction intervals for C2 filtered for sub zero and maxrange
-  geom_abline(intercept = C2_maxrange_deming$coefficients[1], slope = C2_maxrange_deming$coefficients[2], size = 0.75) +
-  geom_abline(intercept = C2_maxrange_deming$ci[1,1], slope = C2_maxrange_deming$ci[2,1], linetype = 3, size = 0.75) +
-  geom_abline(intercept = C2_maxrange_deming$ci[1,2], slope = C2_maxrange_deming$ci[2,2], linetype = 3, size = 0.75) +
-  geom_text(label = paste0('r = ', round(cor(C2ST_maxrange$surface_temp_median, C2ST_maxrange$is_temp_med), digits = 3)),
-            x = 2,
-            y = 25,
-            size = 4,
-            hjust = 0)+
-  geom_text(label = paste0('n = ', length(C2ST_maxrange$date)),
-            x = 2,
-            y = 23,
-            size = 4,
-            hjust = 0)+
-  labs(x = expression(bold(paste(italic('in-situ'), ' median water temp (deg C)'))),
-       y = '\n',
-       title = 'Collection 2',
-       subtitle = 'range') +
-  final_theme +
-  coord_cartesian(xlim = c(0, 27),
-                  ylim = c(0, 27))
-FigC_f
-
-FigC_d <- ggplot(C2ST_maxIQR, aes(x = is_temp_med, y = surface_temp_median)) +
+DemingFigure_c <- ggplot(C2ST_maxIQR, aes(x = is_temp_med, y = surface_temp_median)) +
   geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
   geom_point() +
   #add deming regression and prediction intervals for C2 filtered for sub zero and maxIQR
@@ -297,16 +283,44 @@ FigC_d <- ggplot(C2ST_maxIQR, aes(x = is_temp_med, y = surface_temp_median)) +
             y = 23,
             size = 4,
             hjust = 0)+
+  labs(x = '',
+       y = '\n',
+       title = 'Collection 2',
+       subtitle = 'IQR') +
+    theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5)) +
+  coord_cartesian(xlim = c(0, 27),
+                  ylim = c(0, 27))
+
+DemingFigure_d <- ggplot(C2ST_kurtosis, aes(x = is_temp_med, y = surface_temp_median)) +
+  geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
+  geom_point() +
+  #add deming regression and prediction intervals for C2 filtered for sub zero and kurtosis
+  geom_abline(intercept = C2_kurtosis_deming$coefficients[1], slope = C2_kurtosis_deming$coefficients[2], size = 0.75) +
+  geom_abline(intercept = C2_kurtosis_deming$ci[1,1], slope = C2_kurtosis_deming$ci[2,1], linetype = 3, size = 0.75) +
+  geom_abline(intercept = C2_kurtosis_deming$ci[1,2], slope = C2_kurtosis_deming$ci[2,2], linetype = 3, size = 0.75) +
+  geom_text(label = paste0('r = ', round(cor(C2ST_kurtosis$surface_temp_median, C2ST_kurtosis$is_temp_med), digits = 3)),
+            x = 2,
+            y = 25,
+            size = 4,
+            hjust = 0)+
+  geom_text(label = paste0('n = ', length(C2ST_kurtosis$date)),
+            x = 2,
+            y = 23,
+            size = 4,
+            hjust = 0)+
   labs(x = expression(bold(paste(italic('in-situ'), ' median water temp (deg C)'))),
        y = 'median Landsat-derived\nsurface temperature (deg C)',
        title = 'Collection 2',
-       subtitle = 'IQR') +
-  final_theme +
+       subtitle = 'kurtosis') +
+    theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5)) +
   coord_cartesian(xlim = c(0, 27),
                   ylim = c(0, 27))
-FigC_d
 
-FigC_e <- ggplot(C2ST_cloud, aes(x = is_temp_med, y = surface_temp_median)) +
+DemingFigure_e <- ggplot(C2ST_cloud, aes(x = is_temp_med, y = surface_temp_median)) +
   geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
   geom_point() +
   #add deming regression and prediction intervals for C2 filtered for sub zero and cloud
@@ -327,24 +341,25 @@ FigC_e <- ggplot(C2ST_cloud, aes(x = is_temp_med, y = surface_temp_median)) +
        y = '\n',
        title = 'Collection 2',
        subtitle = 'cloud') +
-  final_theme +
+    theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5)) +
   coord_cartesian(xlim = c(0, 27),
                   ylim = c(0, 27))
-FigC_e
 
-FigC_g <- ggplot(C2ST_kurtosis, aes(x = is_temp_med, y = surface_temp_median)) +
+DemingFigure_f <- ggplot(C2ST_maxrange, aes(x = is_temp_med, y = surface_temp_median)) +
   geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
   geom_point() +
-  #add deming regression and prediction intervals for C2 filtered for sub zero and kurtosis
-  geom_abline(intercept = C2_kurtosis_deming$coefficients[1], slope = C2_kurtosis_deming$coefficients[2], size = 0.75) +
-  geom_abline(intercept = C2_kurtosis_deming$ci[1,1], slope = C2_kurtosis_deming$ci[2,1], linetype = 3, size = 0.75) +
-  geom_abline(intercept = C2_kurtosis_deming$ci[1,2], slope = C2_kurtosis_deming$ci[2,2], linetype = 3, size = 0.75) +
-  geom_text(label = paste0('r = ', round(cor(C2ST_kurtosis$surface_temp_median, C2ST_kurtosis$is_temp_med), digits = 3)),
+  #add deming regression and prediction intervals for C2 filtered for sub zero and maxrange
+  geom_abline(intercept = C2_maxrange_deming$coefficients[1], slope = C2_maxrange_deming$coefficients[2], size = 0.75) +
+  geom_abline(intercept = C2_maxrange_deming$ci[1,1], slope = C2_maxrange_deming$ci[2,1], linetype = 3, size = 0.75) +
+  geom_abline(intercept = C2_maxrange_deming$ci[1,2], slope = C2_maxrange_deming$ci[2,2], linetype = 3, size = 0.75) +
+  geom_text(label = paste0('r = ', round(cor(C2ST_maxrange$surface_temp_median, C2ST_maxrange$is_temp_med), digits = 3)),
             x = 2,
             y = 25,
             size = 4,
             hjust = 0)+
-  geom_text(label = paste0('n = ', length(C2ST_kurtosis$date)),
+  geom_text(label = paste0('n = ', length(C2ST_maxrange$date)),
             x = 2,
             y = 23,
             size = 4,
@@ -352,29 +367,25 @@ FigC_g <- ggplot(C2ST_kurtosis, aes(x = is_temp_med, y = surface_temp_median)) +
   labs(x = expression(bold(paste(italic('in-situ'), ' median water temp (deg C)'))),
        y = '\n',
        title = 'Collection 2',
-       subtitle = 'kurtosis') +
-  final_theme +
+       subtitle = 'range') +
+    theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5)) +
   coord_cartesian(xlim = c(0, 27),
                   ylim = c(0, 27))
-FigC_g
 
 
-FigC_plot <- plot_grid(FigC_a, FigC_b, FigC_c, FigC_d, FigC_g, FigC_e,NULL,
-                   FigC_f,NULL,
+DemingFigure <- plot_grid(DemingFigure_a, DemingFigure_b, DemingFigure_c, DemingFigure_d, DemingFigure_e, DemingFigure_f,
                    ncol = 3,
                    labels = c('a', 'b', 'c', 'd', 'e', 'f', '', 'g', ''),
                    label_x = 0.15)
 
-FigC_plot
-
-ggsave(file.path(fig_dir, 'FigureC_deming_filters.jpg'), 
-       dpi = 300,
-       height = 12,
-       width = 12,
-       units = 'in')
+DemingFigure
 ```
 
-```{r}
+## Summarize the slope and intercepts for each of the Deming regressions
+
+```{r, fig.dim = c(8, 4)}
 # Plot slope and intercept with 95%ci ####
 slope_int_table <- NULL
 
@@ -427,7 +438,7 @@ slope_fig <- slope_int_table %>%
   labs(x = NULL,
        y = 'estimated slope') +
   coord_cartesian(ylim = c(0.85, 1.15)) +
-  final_theme
+  theme_bw()
 int_fig <- slope_int_table %>% 
   filter(var == 'intercept') %>% 
   ggplot(., aes(x = model, y = value)) +
@@ -437,18 +448,11 @@ int_fig <- slope_int_table %>%
   labs(x = NULL,
        y = 'estmiated intercept') +
   coord_cartesian(ylim = c(-3.2, 0)) +
-  final_theme
+  theme_bw()
 
 slope_int_fig <- plot_grid(slope_fig, int_fig,
                            ncol = 1,
-                           labels = c('a', 'b'))
+                           labels = c('a', 'b'),
+                           label_size = 12)
 slope_int_fig
-
-ggsave(file.path(fig_dir, 'FigureF_slopeintercept.jpg'), 
-       dpi = 300,
-       height = 6,
-       width = 8,
-       units = 'in')
-
 ```
-
