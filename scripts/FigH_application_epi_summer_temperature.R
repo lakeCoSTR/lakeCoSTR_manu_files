@@ -17,7 +17,12 @@ lmp_temp_deep <- lmp %>%
 # load all LS data, filter for freeze and cloud cover
 ls <- read.csv(file.path(datadir, 'colab-output/C2/C2_v2_temp_stats.csv')) %>% 
   mutate(date = substrRight(`system.index`, 8),
-         date = as.Date(date, format = '%Y%m%d'))
+         date = as.Date(date, format = '%Y%m%d')) %>% 
+  mutate(LSmission = case_when(grepl('LT05', `system.index`) ~ 'LS 5',
+                               grepl('LT04', `system.index`) ~ 'LS 4',
+                               grepl('LE07', `system.index`) ~ 'LS 7',
+                               grepl('LC08', `system.index`) ~ 'LS 8',
+                               TRUE ~ NA_character_)) 
 ls_kurtosis <- ls %>% 
   filter(surface_temp_kurtosis >2 )
 

@@ -55,49 +55,25 @@ C2ST <- read_csv(file.path(C2_datadir, 'C2_v2_temp_landsat_paired.csv')) %>%
          doy = format(date, '%j'))
 head(C2ST)
 
-
-#load in all high-frequency insitu data for historical data analysis
-insitu <- read.csv(paste0(datadir, 'insitu_temp_data_v2021-10-20.csv')) %>% 
-  filter(!is.na(lat_dd)) %>% 
-  mutate(datetime = as.POSIXct(datetime, tz='Etc/GMT+5'))
-
-# Summarize in-situ to define spread and IQR limits ####
-
-# get range per day during hours of flyover
-range_per_date <- insitu %>% 
-  mutate(hour = as.numeric(format(datetime, '%H')),
-         date = as.Date(datetime)) %>% 
-  filter(hour >= 9 & hour < 11) %>% 
-  group_by(date) %>% 
-  summarize(temp_range = max(temp_degC) - min(temp_degC),
-            IQR = IQR(temp_degC, na.rm = T),
-            n_locs = length(unique(location)))
-
-#save max observed spread and IQR for further filtering
-max_spread <- max(range_per_date$temp_range, na.rm = T)
-max_IQR <- max(range_per_date$IQR, na.rm = T)
-
-# Flag C2 data for freezing temps, spread P/F, IQR P/F ####
-C2ST <- C2ST %>% 
-  mutate(freeze_QAQC = case_when(surface_temp_min < 0 ~ 'F', #pass/fail for freezing temps
-                                 TRUE ~ 'P')) %>% 
-  mutate(temp_spread = round(surface_temp_max, digits = 1) - round(surface_temp_min, digits = 1)) %>% #calc temp spread; pass/fail for temp spread
-  mutate(spread_QAQC = case_when(temp_spread < max_spread*1.1 ~ 'P',
-                                 TRUE ~ 'F')) %>% 
-  mutate(IQR = round(surface_temp_p75, digits = 1) - round(surface_temp_p25, digits = 1))  %>%  #calc IQR; pass/fail for temp IQR
-  mutate(IQR_QAQC = case_when(IQR < max_IQR*1.1 ~ 'P',
-                              TRUE ~ 'F'))
-write.csv(C2ST, file.path(C2_datadir,paste0('sunapee_paired_C2_QAQCflag_v', Sys.Date(), '.csv')), row.names = F)
-                       
+#create filtered dataframes
 C1SC_kurtosis <- C1SC %>% 
   filter(surface_temp_kurtosis >2)
+
+C2ST_kurtosis <- C2ST %>% 
+  filter(surface_temp_kurtosis > 2)
+
+#summarize datasets
+C1SC %>% 
+  group_by(LSmission) %>% 
+  summarize(count = length(LSmission))
+
+C2ST %>% 
+  group_by(LSmission) %>% 
+  summarize(count = length(LSmission))
 
 C1SC_kurtosis %>% 
   group_by(LSmission) %>% 
   summarize(count = length(LSmission))
-
-C2ST_kurtosis <- C2ST %>% 
-  filter(surface_temp_kurtosis > 2)
 
 C2ST_kurtosis %>% 
   group_by(LSmission) %>% 
