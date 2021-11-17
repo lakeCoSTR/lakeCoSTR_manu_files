@@ -62,6 +62,23 @@ C1SC_kurtosis <- C1SC %>%
 C2ST_kurtosis <- C2ST %>% 
   filter(surface_temp_kurtosis > 2)
 
+#summarize datasets
+C1SC %>% 
+  group_by(LSmission) %>% 
+  summarize(count = length(LSmission))
+
+C2ST %>% 
+  group_by(LSmission) %>% 
+  summarize(count = length(LSmission))
+
+C1SC_kurtosis %>% 
+  group_by(LSmission) %>% 
+  summarize(count = length(LSmission))
+
+C2ST_kurtosis %>% 
+  group_by(LSmission) %>% 
+  summarize(count = length(LSmission))
+
 # Deming Regressions ####
 
 # deming regression for C1
