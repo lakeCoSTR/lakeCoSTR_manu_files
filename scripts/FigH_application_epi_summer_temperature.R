@@ -215,7 +215,6 @@ summary(lm_source_aug)
 all_8_lm
 #slope and intercept sig; plot one line for the two groups of data
 car::durbinWatsonTest(lm(value~year, data = aug_data))
-#confirms autocorrelation
 
 lm_source_sep_iva <- lm(value ~ year+source+year*source, data = sep_data)
 summary(lm_source_sep_iva)
@@ -229,7 +228,6 @@ ls_9_lm
 ls_9_data <- sep_data %>% 
   filter(source == 'landsat')
 car::durbinWatsonTest(lm(value~year, data = ls_9_data))
-#confirms autocorrelation
 
 lm_source_oct_iva <- lm(value ~ year+source+year*source, data = oct_data)
 summary(lm_source_oct_iva)
@@ -240,7 +238,6 @@ summary(lm_source_oct)
 all_10_lm
 #plot one line 
 car::durbinWatsonTest(lm(value~year, data = oct_data))
-#confirms autocorrelation
 
 # IVA results to table ####
 iva_table <- NULL
