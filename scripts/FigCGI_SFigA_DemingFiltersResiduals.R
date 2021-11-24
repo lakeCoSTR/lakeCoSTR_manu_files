@@ -493,10 +493,10 @@ write.csv(alldata_error, file.path(C2_datadir, 'LS_deming_predictionerror_C1C2_s
 
 head(alldata_error)
 
-missionmonth_biasmae <- alldata_error %>% 
+kurtosis_biasmae <- alldata_error %>% 
   filter(month != 'All data' & (variable == 'mae' | variable == 'bias')) %>% 
   select(-`All missions`) %>% 
-  filter(collection == 2) %>% 
+  filter(collection == 2 & filter == 'kurtosis') %>% 
   pivot_longer(cols = c(`LS 5`:`LS 8`),
                names_to = 'mission',
                values_to = 'value') %>% 
@@ -507,21 +507,21 @@ missionmonth_biasmae <- alldata_error %>%
 
 
 
-ggplot(missionmonth_biasmae, aes(x = month, y = value)) +
+ggplot(kurtosis_biasmae, aes(x = month, y = value)) +
   geom_point(aes(color = mission)) +
-  facet_grid(c_filter ~ variable)+
+  facet_grid(. ~ variable)+
   final_theme+
   scale_color_colorblind()
 
 month <- (c('05', '06', '07', '08', '09', '10', '11'))
 month_list <- as.data.frame(month)
 
-FigGI_a <- missionmonth_biasmae %>% 
-  filter(variable == 'bias' & c_filter == 'C2') %>% 
+FigGI_a <- kurtosis_biasmae %>% 
+  filter(variable == 'bias') %>% 
   ggplot(., aes(x = month, y = value)) +
   geom_point(aes(shape = mission), size =2) +
-  labs(x = '',
-       y = '') +
+  labs(x = NULL,
+       y = NULL) +
   geom_abline(intercept = 0,
               slope = 0, 
               lty = 2) +
@@ -532,55 +532,23 @@ FigGI_a <- missionmonth_biasmae %>%
   scale_color_colorblind()
 FigGI_a
 
-FigGI_c <- missionmonth_biasmae %>% 
-  filter(variable == 'bias' & c_filter == 'C2 kurtosis') %>% 
-  ggplot(., aes(x = month, y = value)) +
-  geom_point(aes(shape = mission), size =2) +
-  labs(x = '',
-       y = '') +
-  final_theme+
-  coord_cartesian(ylim = c(-2, 2)) +
-  geom_abline(intercept = 0,
-              slope = 0, 
-              lty = 2) +
-  theme(legend.position = 'none') +
-  theme(axis.title=element_text(size=10,face="bold")) +
-  scale_color_colorblind()
-FigGI_c
-
-FigGI_b <- missionmonth_biasmae %>% 
-  filter(variable == 'mae' & c_filter == 'C2') %>% 
+FigGI_b <- kurtosis_biasmae %>% 
+  filter(variable == 'mae') %>% 
   ggplot(., aes(x = month, y = value)) +
   geom_point(aes(shape = mission), size =2) +
   coord_cartesian(ylim = c(0, 2)) +
   geom_abline(intercept = 0,
               slope = 0, 
               lty = 2) +
-  labs(x = '',
-       y = '') +
+  labs(x = NULL,
+       y = NULL) +
   final_theme+
   theme(axis.title=element_text(size=10,face="bold")) +
   theme(legend.position = 'none') +
   scale_color_colorblind()
 FigGI_b
 
-FigGI_d <- missionmonth_biasmae %>% 
-  filter(variable == 'mae' & c_filter == 'C2 kurtosis') %>% 
-  ggplot(., aes(x = month, y = value)) +
-  geom_point(aes(shape = mission), size =2) +
-  coord_cartesian(ylim = c(0, 2)) +
-  geom_abline(intercept = 0,
-              slope = 0, 
-              lty = 2) +
-  labs(x = '',
-       y = '') +
-  final_theme+
-  theme(axis.title=element_text(size=10,face="bold")) +
-  theme(legend.position = 'none') +
-  scale_color_colorblind()
-FigGI_d
-
-forlegend <- missionmonth_biasmae %>% 
+forlegend <- kurtosis_biasmae %>% 
   filter(variable == 'mae' & c_filter == 'C2 kurtosis') %>% 
   ggplot(., aes(x = month, y = value)) +
   geom_point(aes(shape = mission), size =2) +
@@ -602,22 +570,8 @@ figure_title_mae <- ggdraw() + draw_label('   mean absolute error', fontface = '
 figure_title <- plot_grid(figure_title_bias, figure_title_mae, nrow = 1)
 figure_title
 
-nofilter <- plot_grid(FigGI_a, FigGI_b,
-                      labels = c('a', 'b'),
+kurtosis <- plot_grid(FigGI_a, FigGI_b,
                       ncol = 2)
-nofilter_title <- ggdraw() + draw_label("Collection 2", fontface='bold')
-nofilter <- plot_grid(nofilter_title, nofilter,
-                      nrow = 2,
-                      rel_heights = c(0.1, 1))
-nofilter
-
-kurtosis <- plot_grid(FigGI_c, FigGI_d,
-                      labels = c('c', 'd'),
-                      ncol = 2)
-kurtosis_title <- ggdraw() + draw_label("Collection 2 - kurtosis", fontface='bold')
-kurtosis <- plot_grid(kurtosis_title, kurtosis,
-                 nrow = 2,
-                 rel_heights = c(0.1, 1))
 kurtosis
 
 x_lab = ggdraw() + draw_label(label = 'month', fontface = 'bold')
@@ -626,21 +580,20 @@ y_lab = ggdraw() + draw_label(label = 'water temperature (deg C)',
                               fontface = 'bold')
 
 FigGI <- plot_grid(figure_title,
-                   nofilter,
                    kurtosis,
-                   rel_heights = c(0.05, 1, 1),
+                   rel_heights = c(0.1, 1),
                    ncol =1)
 FigGI
 
 FigGI_label = plot_grid(y_lab, FigGI,
                         NULL, x_lab,
-                        rel_heights = c(1.1, 0.05),
-                        rel_widths = c(0.05, 1.1))
+                        rel_heights = c(1, 0.1),
+                        rel_widths = c(0.1, 1))
 
 FigGI_label
 
 plot_grid(FigGI_label, leg, rel_widths = c(0.9,0.1 ))
 
 ggsave(file.path(fig_dir, 'FigGI_errorbymission.jpg'), 
-       height = 6, width = 8, units = 'in', dpi = 300)
+       height = 4, width = 8, units = 'in', dpi = 300)
 

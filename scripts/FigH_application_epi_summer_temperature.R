@@ -174,8 +174,9 @@ oct_data <- temp_monthly_median %>%
 nov_data <- temp_monthly_median %>% 
   filter(month == 11)
 
-
 # iva and multivariate linear models ####
+
+## MAY ####
 lm_source_may_iva <- lm(value ~ year+source+year*source, data = may_data)
 summary(lm_source_may_iva)
 #no sig diff in slope
@@ -186,6 +187,7 @@ is_5_lm
 ls_5_lm
 # no sig slope for either group; no slope
 
+## JUN ####
 lm_source_jun_iva <- lm(value ~ year+source+year*source, data = jun_data)
 summary(lm_source_jun_iva)
 #no sig diff in slope
@@ -195,6 +197,7 @@ summary(lm_source_jun)
 all_6_lm
 #no sig slope
 
+## JULY ####
 lm_source_jul_iva <- lm(value ~ year+source+year*source, data = jul_data)
 summary(lm_source_jul_iva)
 # no sig diff in slope; intercept and slope are sig
@@ -206,6 +209,7 @@ all_7_lm
 car::durbinWatsonTest(lm(value~year, data = jul_data))
 #confirms autocorrelation
 
+## AUG ####
 lm_source_aug_iva <- lm(value ~ year+source+year*source, data = aug_data)
 summary(lm_source_aug_iva)
 # no sig diff in slope
@@ -216,6 +220,7 @@ all_8_lm
 #slope and intercept sig; plot one line for the two groups of data
 car::durbinWatsonTest(lm(value~year, data = aug_data))
 
+## SEPT ####
 lm_source_sep_iva <- lm(value ~ year+source+year*source, data = sep_data)
 summary(lm_source_sep_iva)
 # there is a significant difference in slope
@@ -229,6 +234,7 @@ ls_9_data <- sep_data %>%
   filter(source == 'landsat')
 car::durbinWatsonTest(lm(value~year, data = ls_9_data))
 
+## OCT ####
 lm_source_oct_iva <- lm(value ~ year+source+year*source, data = oct_data)
 summary(lm_source_oct_iva)
 #no diff in slope
@@ -258,12 +264,67 @@ iva_table$multreg_pval <- c(summary(lm_source_may)$coefficients[3,4],
                            summary(lm_source_sep)$coefficients[3,4],
                            summary(lm_source_oct)$coefficients[3,4])
 
+iva_table$alldata_slope <- c(all_5_lm$coefficients[2,1],
+                             all_6_lm$coefficients[2,1],
+                             all_7_lm$coefficients[2,1],
+                             all_8_lm$coefficients[2,1],
+                             all_9_lm$coefficients[2,1],
+                             all_10_lm$coefficients[2,1])
+
+iva_table$alldata_slope_lower <- c(confint(lm(value~year, data = may_data),'year',level=0.95)[1],
+                                   confint(lm(value~year, data = jun_data),'year',level=0.95)[1],
+                                   confint(lm(value~year, data = jul_data),'year',level=0.95)[1],
+                                   confint(lm(value~year, data = aug_data),'year',level=0.95)[1],
+                                   confint(lm(value~year, data = sep_data),'year',level=0.95)[1],
+                                   confint(lm(value~year, data = oct_data),'year',level=0.95)[1])
+iva_table$alldata_slope_upper <- c(confint(lm(value~year, data = may_data),'year',level=0.95)[2],
+                                   confint(lm(value~year, data = jun_data),'year',level=0.95)[2],
+                                   confint(lm(value~year, data = jul_data),'year',level=0.95)[2],
+                                   confint(lm(value~year, data = aug_data),'year',level=0.95)[2],
+                                   confint(lm(value~year, data = sep_data),'year',level=0.95)[2],
+                                   confint(lm(value~year, data = oct_data),'year',level=0.95)[2])
+
 iva_table$alldata_slope_pval <- c(all_5_lm$coefficients[2,4],
                                   all_6_lm$coefficients[2,4],
                                   all_7_lm$coefficients[2,4],
                                   all_8_lm$coefficients[2,4],
                                   all_9_lm$coefficients[2,4],
                                   all_10_lm$coefficients[2,4])
+
+iva_table$alldata_DW_stat <- c(car::durbinWatsonTest(lm(value~year, data = may_data))$dw,
+                               car::durbinWatsonTest(lm(value~year, data = jun_data))$dw,
+                               car::durbinWatsonTest(lm(value~year, data = jul_data))$dw,
+                               car::durbinWatsonTest(lm(value~year, data = aug_data))$dw,
+                               car::durbinWatsonTest(lm(value~year, data = sep_data))$dw,
+                               car::durbinWatsonTest(lm(value~year, data = oct_data))$dw)
+
+iva_table$alldata_DW_pval <- c(car::durbinWatsonTest(lm(value~year, data = may_data))$p,
+                               car::durbinWatsonTest(lm(value~year, data = jun_data))$p,
+                               car::durbinWatsonTest(lm(value~year, data = jul_data))$p,
+                               car::durbinWatsonTest(lm(value~year, data = aug_data))$p,
+                               car::durbinWatsonTest(lm(value~year, data = sep_data))$p,
+                               car::durbinWatsonTest(lm(value~year, data = oct_data))$p)
+
+iva_table$ls_slope <- c(ls_5_lm$coefficients[2,1],
+                             ls_6_lm$coefficients[2,1],
+                             ls_7_lm$coefficients[2,1],
+                             ls_8_lm$coefficients[2,1],
+                             ls_9_lm$coefficients[2,1],
+                             ls_10_lm$coefficients[2,1])
+
+iva_table$ls_slope_lower <- c(confint(lm(value~year, data = may_data[may_data$source == 'landsat',]), 'year', level = 0.95)[1],
+                              confint(lm(value~year, data = jun_data[jun_data$source == 'landsat',]), 'year', level = 0.95)[1],
+                              confint(lm(value~year, data = jul_data[jul_data$source == 'landsat',]), 'year', level = 0.95)[1],
+                              confint(lm(value~year, data = aug_data[aug_data$source == 'landsat',]), 'year', level = 0.95)[1],
+                              confint(lm(value~year, data = sep_data[sep_data$source == 'landsat',]), 'year', level = 0.95)[1],
+                              confint(lm(value~year, data = oct_data[oct_data$source == 'landsat',]), 'year', level = 0.95)[1])
+
+iva_table$ls_slope_upper <- c(confint(lm(value~year, data = may_data[may_data$source == 'landsat',]), 'year', level = 0.95)[2],
+                              confint(lm(value~year, data = jun_data[jun_data$source == 'landsat',]), 'year', level = 0.95)[2],
+                              confint(lm(value~year, data = jul_data[jul_data$source == 'landsat',]), 'year', level = 0.95)[2],
+                              confint(lm(value~year, data = aug_data[aug_data$source == 'landsat',]), 'year', level = 0.95)[2],
+                              confint(lm(value~year, data = sep_data[sep_data$source == 'landsat',]), 'year', level = 0.95)[2],
+                              confint(lm(value~year, data = oct_data[oct_data$source == 'landsat',]), 'year', level = 0.95)[2])
 
 iva_table$ls_slope_pval <- c(ls_5_lm$coefficients[2,4],
                              ls_6_lm$coefficients[2,4],
@@ -272,34 +333,97 @@ iva_table$ls_slope_pval <- c(ls_5_lm$coefficients[2,4],
                              ls_9_lm$coefficients[2,4],
                              ls_10_lm$coefficients[2,4])
 
+iva_table$ls_DW_stat <- c(car::durbinWatsonTest(lm(value~year, data = may_data[may_data$source == 'landsat',]))$dw,
+                               car::durbinWatsonTest(lm(value~year, data = jun_data[jun_data$source == 'landsat',]))$dw,
+                               car::durbinWatsonTest(lm(value~year, data = jul_data[jul_data$source == 'landsat',]))$dw,
+                               car::durbinWatsonTest(lm(value~year, data = aug_data[aug_data$source == 'landsat',]))$dw,
+                               car::durbinWatsonTest(lm(value~year, data = sep_data[sep_data$source == 'landsat',]))$dw,
+                               car::durbinWatsonTest(lm(value~year, data = oct_data[oct_data$source == 'landsat',]))$dw)
+
+iva_table$ls_DW_pval <- c(car::durbinWatsonTest(lm(value~year, data = may_data[may_data$source == 'landsat',]))$p,
+                          car::durbinWatsonTest(lm(value~year, data = jun_data[jun_data$source == 'landsat',]))$p,
+                          car::durbinWatsonTest(lm(value~year, data = jul_data[jul_data$source == 'landsat',]))$p,
+                          car::durbinWatsonTest(lm(value~year, data = aug_data[aug_data$source == 'landsat',]))$p,
+                          car::durbinWatsonTest(lm(value~year, data = sep_data[sep_data$source == 'landsat',]))$p,
+                          car::durbinWatsonTest(lm(value~year, data = oct_data[oct_data$source == 'landsat',]))$p)
+
+iva_table$is_slope <- c(is_5_lm$coefficients[2,1],
+                             is_6_lm$coefficients[2,1],
+                             is_7_lm$coefficients[2,1],
+                             is_8_lm$coefficients[2,1],
+                             is_9_lm$coefficients[2,1],
+                             is_10_lm$coefficients[2,1])
+
+iva_table$is_slope_lower <- c(confint(lm(value~year, data = may_data[may_data$source == 'in-situ',]), 'year', level = 0.95)[1],
+                              confint(lm(value~year, data = jun_data[jun_data$source == 'in-situ',]), 'year', level = 0.95)[1],
+                              confint(lm(value~year, data = jul_data[jul_data$source == 'in-situ',]), 'year', level = 0.95)[1],
+                              confint(lm(value~year, data = aug_data[aug_data$source == 'in-situ',]), 'year', level = 0.95)[1],
+                              confint(lm(value~year, data = sep_data[sep_data$source == 'in-situ',]), 'year', level = 0.95)[1],
+                              confint(lm(value~year, data = oct_data[oct_data$source == 'in-situ',]), 'year', level = 0.95)[1])
+
+iva_table$is_slope_upper <- c(confint(lm(value~year, data = may_data[may_data$source == 'in-situ',]), 'year', level = 0.95)[2],
+                              confint(lm(value~year, data = jun_data[jun_data$source == 'in-situ',]), 'year', level = 0.95)[2],
+                              confint(lm(value~year, data = jul_data[jul_data$source == 'in-situ',]), 'year', level = 0.95)[2],
+                              confint(lm(value~year, data = aug_data[aug_data$source == 'in-situ',]), 'year', level = 0.95)[2],
+                              confint(lm(value~year, data = sep_data[sep_data$source == 'in-situ',]), 'year', level = 0.95)[2],
+                              confint(lm(value~year, data = oct_data[oct_data$source == 'in-situ',]), 'year', level = 0.95)[2])
+
 iva_table$is_slope_pval <- c(is_5_lm$coefficients[2,4],
                              is_6_lm$coefficients[2,4],
                              is_7_lm$coefficients[2,4],
                              is_8_lm$coefficients[2,4],
                              is_9_lm$coefficients[2,4],
                              is_10_lm$coefficients[2,4])
+
+iva_table$is_DW_stat <- c(car::durbinWatsonTest(lm(value~year, data = may_data[may_data$source == 'in-situ',]))$dw,
+                          car::durbinWatsonTest(lm(value~year, data = jun_data[jun_data$source == 'in-situ',]))$dw,
+                          car::durbinWatsonTest(lm(value~year, data = jul_data[jul_data$source == 'in-situ',]))$dw,
+                          car::durbinWatsonTest(lm(value~year, data = aug_data[aug_data$source == 'in-situ',]))$dw,
+                          car::durbinWatsonTest(lm(value~year, data = sep_data[sep_data$source == 'in-situ',]))$dw,
+                          car::durbinWatsonTest(lm(value~year, data = oct_data[oct_data$source == 'in-situ',]))$dw)
+
+iva_table$is_DW_pval <- c(car::durbinWatsonTest(lm(value~year, data = may_data[may_data$source == 'in-situ',]))$p,
+                          car::durbinWatsonTest(lm(value~year, data = jun_data[jun_data$source == 'in-situ',]))$p,
+                          car::durbinWatsonTest(lm(value~year, data = jul_data[jul_data$source == 'in-situ',]))$p,
+                          car::durbinWatsonTest(lm(value~year, data = aug_data[aug_data$source == 'in-situ',]))$p,
+                          car::durbinWatsonTest(lm(value~year, data = sep_data[sep_data$source == 'in-situ',]))$p,
+                          car::durbinWatsonTest(lm(value~year, data = oct_data[oct_data$source == 'in-situ',]))$p)
+
 iva_table <- as.data.frame(iva_table) 
 iva_table <- iva_table %>% 
-  mutate_at(vars(iva_pval:is_slope_pval),
+  mutate_at(vars(iva_pval:is_DW_pval),
             ~ round(., digits = 3))
 
 # recode table values where they are irrelevant
 iva_table_recode <- iva_table %>% 
-  mutate(multreg_pval = case_when(iva_pval <0.05 ~ NA_real_,
-                                  TRUE ~ multreg_pval),
-         alldata_slope_pval = case_when(multreg_pval <0.05 ~NA_real_,
+  mutate_at(vars(multreg_pval),
+            ~ case_when(iva_pval <0.05 ~ NA_real_,
+                                  TRUE ~ .)) %>% 
+  mutate_at(vars(alldata_slope_pval, alldata_slope, alldata_slope_lower, alldata_slope_upper, alldata_DW_stat, alldata_DW_pval),
+            ~ case_when(multreg_pval <0.05 ~NA_real_,
                                         iva_pval <0.05~NA_real_,
-                                        is.na(multreg_pval) ~ alldata_slope_pval,
-                                        TRUE ~ alldata_slope_pval),
-         is_slope_pval = case_when(iva_pval <0.05 ~ is_slope_pval,
-                                   multreg_pval < 0.05 ~ is_slope_pval,
-                                   TRUE ~ NA_real_),
-         ls_slope_pval = case_when(iva_pval <0.05 ~ ls_slope_pval,
-                                   multreg_pval < 0.05 ~ ls_slope_pval,
-                                   TRUE ~ NA_real_))
-
-
+                                        is.na(multreg_pval) ~ .,
+                                        TRUE ~ .)) %>% 
+  mutate_at(vars(is_slope_pval, is_slope, is_slope_lower, is_slope_upper, is_DW_stat, is_DW_pval),
+            ~ case_when(iva_pval <0.05 ~ .,
+                                   multreg_pval < 0.05 ~ .,
+                                   TRUE ~ NA_real_)) %>% 
+  mutate_at(vars(ls_slope_pval, ls_slope, ls_slope_lower, ls_slope_upper, ls_DW_stat, ls_DW_pval),
+            ~ case_when(iva_pval <0.05 ~ .,
+                                   multreg_pval < 0.05 ~ .,
+                                   TRUE ~ NA_real_)) %>% 
+  mutate_at(vars(alldata_slope, alldata_slope_upper, alldata_slope_lower, alldata_DW_stat, alldata_DW_pval),
+            ~ case_when(alldata_slope_pval >= 0.05 ~ NA_real_,
+                        TRUE ~ .)) %>% 
+  mutate_at(vars(ls_slope, ls_slope_upper, ls_slope_lower, ls_DW_stat, ls_DW_pval),
+            ~ case_when(ls_slope_pval >= 0.05 ~ NA_real_,
+                        TRUE ~ .)) %>% 
+  mutate_at(vars(is_slope, is_slope_upper, is_slope_lower, is_DW_stat, is_DW_pval),
+            ~ case_when(is_slope_pval >= 0.05 ~ NA_real_,
+                        TRUE ~ .)) 
 iva_table_recode
+
+write.csv(iva_table_recode, file.path(figdir, 'TableB_IVA_slope_results.csv'), row.names = F)
 
 #### plot on same axes with separate lines ####
 may_is <- may_data %>% 

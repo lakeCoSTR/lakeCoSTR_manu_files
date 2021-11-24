@@ -1,0 +1,7 @@
+"month","iva_pval","multreg_pval","alldata_slope","alldata_slope_lower","alldata_slope_upper","alldata_slope_pval","alldata_DW_stat","alldata_DW_pval","ls_slope","ls_slope_lower","ls_slope_upper","ls_slope_pval","ls_DW_stat","ls_DW_pval","is_slope","is_slope_lower","is_slope_upper","is_slope_pval","is_DW_stat","is_DW_pval"
+"May",0.741,0,NA,NA,NA,NA,NA,NA,NA,NA,NA,0.299,NA,NA,NA,NA,NA,0.829,NA,NA
+"June",0.424,0.594,NA,NA,NA,0.237,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"July",0.063,0.842,0.083,0.045,0.12,0,1.668,0.156,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"August",0.15,0.534,0.069,0.035,0.103,0,1.688,0.218,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"September",0.045,NA,NA,NA,NA,NA,NA,NA,0.103,0.049,0.156,0.001,1.766,0.438,NA,NA,NA,0.723,NA,NA
+"October",0.188,0.068,0.077,0.013,0.141,0.019,1.745,0.332,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
