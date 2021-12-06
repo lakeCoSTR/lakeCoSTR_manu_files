@@ -5,6 +5,7 @@ source('scripts/R_library.R')
 # point to directories
 C1_datadir <- '~/GitHub/ids-ne-lakes/data/colab-output/C1/'
 C2_datadir <- '~/GitHub/ids-ne-lakes/data/colab-output/C2/'
+figdir <- '~/GitHub/ids-ne-lakes/figures/'
 
 ## load and summarize valid landsat data ####
 C1 <- read.csv(file.path(C1_datadir, 'C1_SCA_v2_temp_stats.csv')) %>% 
@@ -38,7 +39,7 @@ mission_summary <- alldata %>%
   summarise(count = length(LSmission)) %>% 
   pivot_wider(names_from = collection,
               values_from = count) %>% 
-  mutate(perc_change = round(((C2-C1)/C1)*100, digits = 1))
+  mutate(perc_change_C1_C2 = round(((C2-C1)/C1)*100, digits = 1))
 
 #calculate percentage change with kurtosis filter
 C1_kurt = C1 %>% 
@@ -62,53 +63,50 @@ mission_summary_kurt <- C2_mission %>%
   summarise(count = length(LSmission)) %>% 
   pivot_wider(names_from = filter,
               values_from = count) %>% 
-  mutate(perc_change = round(((kurtosis-none)/abs(none))*100, digits = 1))
-
-decade_summary_kurt <- C2_mission %>% 
-  group_by(decade, filter) %>% 
-  summarise(count = length(decade)) %>% 
-  pivot_wider(names_from = filter,
-              values_from = count) %>% 
-  mutate(perc_change = round(((kurtosis-none)/abs(none))*100, digits = 1))
+  mutate(perc_change_kurt = round(((kurtosis-none)/abs(none))*100, digits = 1))
 
 month_summary_kurt <- C2_mission %>% 
   group_by(month, filter) %>% 
   summarise(count = length(month)) %>% 
   pivot_wider(names_from = filter,
               values_from = count) %>% 
-  mutate(perc_change = round(((kurtosis-none)/abs(none))*100, digits = 1))
+  mutate(perc_change_kurtmonth = round(((kurtosis-none)/abs(none))*100, digits = 1))
 
-## load and analyze LS-IS matches ####
-C1match <- read_csv(file.path(C1_datadir, 'C1_temp_landsat_paired.csv')) %>% 
-  mutate(date = as.Date(substrRight(`system:index`, 8), format = '%Y%m%d')) %>% 
-  mutate(LSmission = case_when(grepl('LT05', `system:index`) ~ 'LS 5',
-                               grepl('LT04', `system:index`) ~ 'LS 4',
-                               grepl('LE07', `system:index`) ~ 'LS 7',
-                               grepl('LC08', `system:index`) ~ 'LS 8',
-                               TRUE ~ NA_character_),
-         collection = 'C1',
-         filter = 'none')
+tableb <- full_join(mission_summary, mission_summary_kurt)
 
-C2match <- read_csv(file.path(C2_datadir, 'C2_v2_temp_landsat_paired.csv')) %>% 
-  mutate(date = as.Date(substrRight(`system:index`, 8), format = '%Y%m%d')) %>% 
-  mutate(LSmission = case_when(grepl('LT05', `system:index`) ~ 'LS 5',
-                               grepl('LT04', `system:index`) ~ 'LS 4',
-                               grepl('LE07', `system:index`) ~ 'LS 7',
-                               grepl('LC08', `system:index`) ~ 'LS 8',
-                               TRUE ~ NA_character_),
-         collection = 'C2',
-         filter = 'none')
+write.csv(tableb, file.path(figdir, 'TableB_C1C2filtercount.csv'), row.names = F)
 
-
-#calculate percentage change in matches
-allmatchdata <- full_join(C1match, C2match)
-mission_summary_matches <- allmatchdata %>% 
-  group_by(LSmission, collection) %>% 
-  summarise(count = length(LSmission)) %>% 
-  pivot_wider(names_from = collection,
-              values_from = count) %>% 
-  mutate(perc_change = round(((C2-C1)/C1)*100, digits = 1))
-
+# ## load and analyze LS-IS matches ####
+# C1match <- read_csv(file.path(C1_datadir, 'C1_temp_landsat_paired.csv')) %>% 
+#   mutate(date = as.Date(substrRight(`system:index`, 8), format = '%Y%m%d')) %>% 
+#   mutate(LSmission = case_when(grepl('LT05', `system:index`) ~ 'LS 5',
+#                                grepl('LT04', `system:index`) ~ 'LS 4',
+#                                grepl('LE07', `system:index`) ~ 'LS 7',
+#                                grepl('LC08', `system:index`) ~ 'LS 8',
+#                                TRUE ~ NA_character_),
+#          collection = 'C1',
+#          filter = 'none')
+# 
+# C2match <- read_csv(file.path(C2_datadir, 'C2_v2_temp_landsat_paired.csv')) %>% 
+#   mutate(date = as.Date(substrRight(`system:index`, 8), format = '%Y%m%d')) %>% 
+#   mutate(LSmission = case_when(grepl('LT05', `system:index`) ~ 'LS 5',
+#                                grepl('LT04', `system:index`) ~ 'LS 4',
+#                                grepl('LE07', `system:index`) ~ 'LS 7',
+#                                grepl('LC08', `system:index`) ~ 'LS 8',
+#                                TRUE ~ NA_character_),
+#          collection = 'C2',
+#          filter = 'none')
+# 
+# 
+# #calculate percentage change in matches
+# allmatchdata <- full_join(C1match, C2match)
+# mission_summary_matches <- allmatchdata %>% 
+#   group_by(LSmission, collection) %>% 
+#   summarise(count = length(LSmission)) %>% 
+#   pivot_wider(names_from = collection,
+#               values_from = count) %>% 
+#   mutate(perc_change = round(((C2-C1)/C1)*100, digits = 1))
+# 
 
 
 

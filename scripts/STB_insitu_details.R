@@ -6,6 +6,7 @@
 source('scripts/R_library.R')
 
 datadir = 'data/'
+figdir = 'figures/'
 
 #load in all high-frequency insitu data for historical data analysis
 insitu <- read.csv(paste0(datadir, 'insitu_temp_data_v2021-10-20.csv')) %>% 
@@ -75,5 +76,5 @@ insitu %>%
   pivot_longer(!c(year, location), names_to = 'variable', values_to = 'value') %>% 
   pivot_wider(id_cols = c(year, variable, value),
               names_from = c(location, variable)) %>% 
-  write.csv(., file.path(datadir, 'insitu_data_extent_summary.csv'), row.names = F)
+  write.csv(., file.path(figdir, 'STB_insitu_data_extent_summary.csv'), row.names = F)
 

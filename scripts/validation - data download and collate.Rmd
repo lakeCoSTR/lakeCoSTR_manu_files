@@ -22,6 +22,7 @@ dir.create('~/GitHub/ids-ne-lakes/data/temporary')
 temp_dumpdir = '~/GitHub/ids-ne-lakes/data/temporary'
 
 dumpdir = '~/GitHub/ids-ne-lakes/data/'
+figdir = '~/GitHub/ids-ne-lakes/figures/'
 ```
 
 ## Read in files from EDI and filter for desired data
@@ -1563,7 +1564,7 @@ all_temp_filtered <- all_temp_filtered %>%
 ```{r}
 all_temp_filtered %>% 
   mutate(datetime = as.character(datetime)) %>% 
-  write_csv(., paste0(dumpdir, 'insitu_temp_data_v', Sys.Date(), '.csv'))
+  write_csv(., paste0(figdir, 'STB_insitu_temp_data_v', Sys.Date(), '.csv'))
 ```
 
 

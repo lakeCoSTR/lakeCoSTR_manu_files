@@ -1,6 +1,6 @@
-# this script creates Figure C, which compares deming regression and residuals by x using varying QAQC filters
+# this script creates Figures in the Herrick, Steele, et al MS
 
-# last modified 2021-11-15
+# last modified 2021-12-06
 # written by B. Steele 
 
 # Set up Workspace ####
@@ -90,17 +90,17 @@ C1SC$filter = 'none'
 C1_deming
 cor(C1SC$surface_temp_median, C1SC$is_temp_med)
 
-#deming regress for C1 with kurtosis >= 2
-C1_kurtosis_deming = deming::deming(C1SC_kurtosis$surface_temp_median ~ 
-                                      C1SC_kurtosis$is_temp_med)
-C1_kurtosis_deming_forresid = mcreg(x = C1SC_kurtosis$is_temp_med, 
-                                    y = C1SC_kurtosis$surface_temp_median, 
-                                    method.reg = 'Deming')
-C1SC_kurtosis$opt_resid = MCResult.getResiduals(C1_kurtosis_deming_forresid)$optimized
-C1SC_kurtosis$filter = 'kurtosis'
-
-C1_kurtosis_deming
-cor(C1SC_kurtosis$surface_temp_median, C1SC_kurtosis$is_temp_med)
+# #deming regress for C1 with kurtosis >= 2
+# C1_kurtosis_deming = deming::deming(C1SC_kurtosis$surface_temp_median ~ 
+#                                       C1SC_kurtosis$is_temp_med)
+# C1_kurtosis_deming_forresid = mcreg(x = C1SC_kurtosis$is_temp_med, 
+#                                     y = C1SC_kurtosis$surface_temp_median, 
+#                                     method.reg = 'Deming')
+# C1SC_kurtosis$opt_resid = MCResult.getResiduals(C1_kurtosis_deming_forresid)$optimized
+# C1SC_kurtosis$filter = 'kurtosis'
+# 
+# C1_kurtosis_deming
+# cor(C1SC_kurtosis$surface_temp_median, C1SC_kurtosis$is_temp_med)
 
 
 # deming regression for C2
@@ -126,7 +126,7 @@ cor(C2ST_kurtosis$surface_temp_median, C2ST_kurtosis$is_temp_med)
 
 # Join all Deming data ####
 all_surface_temp <- full_join(C1SC, C2ST) %>% 
-  full_join(., C1SC_kurtosis) %>% 
+  # full_join(., C1SC_kurtosis) %>% 
   full_join(., C2ST_kurtosis) %>% 
   mutate(collection = as.factor(collection),
          filter = as.factor(filter))
@@ -149,8 +149,17 @@ FigC_a <- ggplot(C1SC, aes(x = is_temp_med, y = surface_temp_median)) +
             y = 23,
             size = 4,
             hjust = 0)+
-  labs(x = '',
-       y = '\n',
+  geom_text(label = paste0('y = ', 
+                           round(C1_deming$coefficients[1], digits = 2), 
+                           ' + ', 
+                           round(C1_deming$coefficients[2], digits = 2), 
+                           ' * x'),
+            x = 2,
+            y = 27,
+            size = 4,
+            hjust = 0) +
+  labs(x = NULL,
+       y = NULL,
        title = 'Collection 1',
        subtitle = 'single-channel algorithm') +
   final_theme +
@@ -175,8 +184,17 @@ FigC_b <- ggplot(C2ST, aes(x = is_temp_med, y = surface_temp_median)) +
             y = 23,
             size = 4,
             hjust = 0)+
-  labs(x = '',
-       y = '\n',
+  geom_text(label = paste0('y = ', 
+                           round(C2_deming$coefficients[1], digits = 2), 
+                           ' + ', 
+                           round(C2_deming$coefficients[2], digits = 2), 
+                           ' * x'),
+            x = 2,
+            y = 27,
+            size = 4,
+            hjust = 0) +
+  labs(x = NULL,
+       y = NULL,
        title = 'Collection 2',
        subtitle = 'surface temperature product') +
   final_theme +
@@ -184,31 +202,31 @@ FigC_b <- ggplot(C2ST, aes(x = is_temp_med, y = surface_temp_median)) +
                   ylim = c(0, 27))
 FigC_b
 
-FigC_c <- ggplot(C1SC_kurtosis, aes(x = is_temp_med, y = surface_temp_median)) +
-  geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
-  geom_point() +
-  #add deming regression and prediction intervals for C2 filtered for sub zero and kurtosis
-  geom_abline(intercept = C1_kurtosis_deming$coefficients[1], slope = C1_kurtosis_deming$coefficients[2], size = 0.75) +
-  geom_abline(intercept = C1_kurtosis_deming$ci[1,1], slope = C1_kurtosis_deming$ci[2,1], linetype = 3, size = 0.75) +
-  geom_abline(intercept = C1_kurtosis_deming$ci[1,2], slope = C1_kurtosis_deming$ci[2,2], linetype = 3, size = 0.75) +
-  geom_text(label = paste0('r = ', round(cor(C1SC_kurtosis$surface_temp_median, C1SC_kurtosis$is_temp_med), digits = 3)),
-            x = 2,
-            y = 25,
-            size = 4,
-            hjust = 0)+
-  geom_text(label = paste0('n = ', length(C1SC_kurtosis$date)),
-            x = 2,
-            y = 23,
-            size = 4,
-            hjust = 0)+
-  labs(x = '',
-       y = '\n',
-       title = 'Collection 1',
-       subtitle = 'kurtosis filter') +
-  final_theme +
-  coord_cartesian(xlim = c(0, 27),
-                  ylim = c(0, 27))
-FigC_c
+# FigC_c <- ggplot(C1SC_kurtosis, aes(x = is_temp_med, y = surface_temp_median)) +
+#   geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
+#   geom_point() +
+#   #add deming regression and prediction intervals for C2 filtered for sub zero and kurtosis
+#   geom_abline(intercept = C1_kurtosis_deming$coefficients[1], slope = C1_kurtosis_deming$coefficients[2], size = 0.75) +
+#   geom_abline(intercept = C1_kurtosis_deming$ci[1,1], slope = C1_kurtosis_deming$ci[2,1], linetype = 3, size = 0.75) +
+#   geom_abline(intercept = C1_kurtosis_deming$ci[1,2], slope = C1_kurtosis_deming$ci[2,2], linetype = 3, size = 0.75) +
+#   geom_text(label = paste0('r = ', round(cor(C1SC_kurtosis$surface_temp_median, C1SC_kurtosis$is_temp_med), digits = 3)),
+#             x = 2,
+#             y = 25,
+#             size = 4,
+#             hjust = 0)+
+#   geom_text(label = paste0('n = ', length(C1SC_kurtosis$date)),
+#             x = 2,
+#             y = 23,
+#             size = 4,
+#             hjust = 0)+
+#   labs(x = '',
+#        y = '\n',
+#        title = 'Collection 1',
+#        subtitle = 'kurtosis filter') +
+#   final_theme +
+#   coord_cartesian(xlim = c(0, 27),
+#                   ylim = c(0, 27))
+# FigC_c
 
 FigC_d <- ggplot(C2ST_kurtosis, aes(x = is_temp_med, y = surface_temp_median)) +
   geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
@@ -227,8 +245,17 @@ FigC_d <- ggplot(C2ST_kurtosis, aes(x = is_temp_med, y = surface_temp_median)) +
             y = 23,
             size = 4,
             hjust = 0)+
-  labs(x = '',
-       y = '\n',
+  geom_text(label = paste0('y = ', 
+                           round(C2_kurtosis_deming$coefficients[1], digits = 2), 
+                           ' + ', 
+                           round(C2_kurtosis_deming$coefficients[2], digits = 2), 
+                           ' * x'),
+            x = 2,
+            y = 27,
+            size = 4,
+            hjust = 0) +
+  labs(x = NULL,
+       y = NULL,
        title = 'Collection 2',
        subtitle = 'kurtosis filter') +
   final_theme +
@@ -237,11 +264,16 @@ FigC_d <- ggplot(C2ST_kurtosis, aes(x = is_temp_med, y = surface_temp_median)) +
 FigC_d
 
 
-FigC_plot <- plot_grid(FigC_a, FigC_b, FigC_c, FigC_d,
-                   ncol = 2,
-                   labels = c('a', 'b', 'c', 'd'),
-                   label_y = 0.9,
-                   label_x = 0.1)
+FigC_plot <- plot_grid(FigC_a, FigC_b, 
+                       #FigC_c, 
+                       FigC_d,
+                   # ncol = 2,
+                   ncol = 3, 
+                   labels = c('a', 'b', 
+                              'c'
+                              #, 'd'
+                              ),
+                   label_y = 0.9)
 
 FigC_plot
 
@@ -262,7 +294,7 @@ FigC_label
 
 ggsave(file.path(fig_dir, 'FigureC_deming_filters.jpg'), 
        dpi = 300,
-       height = 10,
+       height = 4,
        width = 10,
        units = 'in')
 
@@ -389,7 +421,7 @@ ggsave(file.path(fig_dir, 'SFA_resid_summary_C2kurtosis_v12Nov2021.jpg'),
 
 
 
-# Calculate error for various models ####
+# Supplemental Table C and D Calculate error for various models ####
 alldata_error <- all_surface_temp %>% 
   group_by(collection, filter) %>% 
   summarise(mse = round(sum((opt_resid^2))/n(), digits = 2),
@@ -419,8 +451,13 @@ mission_error <- all_surface_temp %>%
   pivot_wider(names_from = c(LSmission),
               values_from = values) 
 
-alldata_error <- full_join(alldata_error, mission_error)
-alldata_error
+alldata_error <- full_join(alldata_error, mission_error) %>% 
+  mutate(filter = factor(filter, levels = c('none', 'kurtosis'))) %>% 
+  arrange(collection, filter, variable) 
+
+alldata_error %>% 
+  select(-month) %>% 
+  write.csv(., file.path(figdir, 'STC_deming_performance_bymission.csv'), row.names = F)
 
 month_mission_error <- all_surface_temp %>% 
   group_by(collection, month, LSmission, filter) %>% 
@@ -451,20 +488,23 @@ month_error <- all_surface_temp %>%
   pivot_wider(names_from = c(LSmission),
               values_from = values)
 
-month_error <- full_join(month_mission_error, month_error)
+month_error <- full_join(month_mission_error, month_error) %>% 
+  ungroup() %>% 
+  mutate(filter = factor(filter, levels = c('none', 'kurtosis'))) %>% 
+  arrange(month, collection, filter, variable) %>% 
+  filter(filter == 'kurtosis') %>% 
+  select(month, variable, `All missions`, `LS 5`, `LS 7`, `LS 8`)
 
-alldata_error <- full_join(alldata_error, month_error)
-
-write.csv(alldata_error, file.path(C2_datadir, 'LS_deming_predictionerror_C1C2_stats_v15Nov2021.csv'))
+write.csv(month_error, file.path(figdir, 'STD_deming_kurtosis_performancebymonth.csv'), row.names = F)
 
 # FigGI create point (by mission for bias, mae, rmse) faceted by model ####
 
 head(alldata_error)
 
-missionmonth_biasmae <- alldata_error %>% 
+kurtosis_biasmae <- alldata_error %>% 
   filter(month != 'All data' & (variable == 'mae' | variable == 'bias')) %>% 
   select(-`All missions`) %>% 
-  filter(collection == 2) %>% 
+  filter(collection == 2 & filter == 'kurtosis') %>% 
   pivot_longer(cols = c(`LS 5`:`LS 8`),
                names_to = 'mission',
                values_to = 'value') %>% 
@@ -475,21 +515,21 @@ missionmonth_biasmae <- alldata_error %>%
 
 
 
-ggplot(missionmonth_biasmae, aes(x = month, y = value)) +
+ggplot(kurtosis_biasmae, aes(x = month, y = value)) +
   geom_point(aes(color = mission)) +
-  facet_grid(c_filter ~ variable)+
+  facet_grid(. ~ variable)+
   final_theme+
   scale_color_colorblind()
 
 month <- (c('05', '06', '07', '08', '09', '10', '11'))
 month_list <- as.data.frame(month)
 
-FigGI_a <- missionmonth_biasmae %>% 
-  filter(variable == 'bias' & c_filter == 'C2') %>% 
+FigGI_a <- kurtosis_biasmae %>% 
+  filter(variable == 'bias') %>% 
   ggplot(., aes(x = month, y = value)) +
   geom_point(aes(shape = mission), size =2) +
-  labs(x = '',
-       y = '') +
+  labs(x = NULL,
+       y = NULL) +
   geom_abline(intercept = 0,
               slope = 0, 
               lty = 2) +
@@ -500,55 +540,23 @@ FigGI_a <- missionmonth_biasmae %>%
   scale_color_colorblind()
 FigGI_a
 
-FigGI_c <- missionmonth_biasmae %>% 
-  filter(variable == 'bias' & c_filter == 'C2 kurtosis') %>% 
-  ggplot(., aes(x = month, y = value)) +
-  geom_point(aes(shape = mission), size =2) +
-  labs(x = '',
-       y = '') +
-  final_theme+
-  coord_cartesian(ylim = c(-2, 2)) +
-  geom_abline(intercept = 0,
-              slope = 0, 
-              lty = 2) +
-  theme(legend.position = 'none') +
-  theme(axis.title=element_text(size=10,face="bold")) +
-  scale_color_colorblind()
-FigGI_c
-
-FigGI_b <- missionmonth_biasmae %>% 
-  filter(variable == 'mae' & c_filter == 'C2') %>% 
+FigGI_b <- kurtosis_biasmae %>% 
+  filter(variable == 'mae') %>% 
   ggplot(., aes(x = month, y = value)) +
   geom_point(aes(shape = mission), size =2) +
   coord_cartesian(ylim = c(0, 2)) +
   geom_abline(intercept = 0,
               slope = 0, 
               lty = 2) +
-  labs(x = '',
-       y = '') +
+  labs(x = NULL,
+       y = NULL) +
   final_theme+
   theme(axis.title=element_text(size=10,face="bold")) +
   theme(legend.position = 'none') +
   scale_color_colorblind()
 FigGI_b
 
-FigGI_d <- missionmonth_biasmae %>% 
-  filter(variable == 'mae' & c_filter == 'C2 kurtosis') %>% 
-  ggplot(., aes(x = month, y = value)) +
-  geom_point(aes(shape = mission), size =2) +
-  coord_cartesian(ylim = c(0, 2)) +
-  geom_abline(intercept = 0,
-              slope = 0, 
-              lty = 2) +
-  labs(x = '',
-       y = '') +
-  final_theme+
-  theme(axis.title=element_text(size=10,face="bold")) +
-  theme(legend.position = 'none') +
-  scale_color_colorblind()
-FigGI_d
-
-forlegend <- missionmonth_biasmae %>% 
+forlegend <- kurtosis_biasmae %>% 
   filter(variable == 'mae' & c_filter == 'C2 kurtosis') %>% 
   ggplot(., aes(x = month, y = value)) +
   geom_point(aes(shape = mission), size =2) +
@@ -570,22 +578,8 @@ figure_title_mae <- ggdraw() + draw_label('   mean absolute error', fontface = '
 figure_title <- plot_grid(figure_title_bias, figure_title_mae, nrow = 1)
 figure_title
 
-nofilter <- plot_grid(FigGI_a, FigGI_b,
-                      labels = c('a', 'b'),
+kurtosis <- plot_grid(FigGI_a, FigGI_b,
                       ncol = 2)
-nofilter_title <- ggdraw() + draw_label("Collection 2", fontface='bold')
-nofilter <- plot_grid(nofilter_title, nofilter,
-                      nrow = 2,
-                      rel_heights = c(0.1, 1))
-nofilter
-
-kurtosis <- plot_grid(FigGI_c, FigGI_d,
-                      labels = c('c', 'd'),
-                      ncol = 2)
-kurtosis_title <- ggdraw() + draw_label("Collection 2 - kurtosis", fontface='bold')
-kurtosis <- plot_grid(kurtosis_title, kurtosis,
-                 nrow = 2,
-                 rel_heights = c(0.1, 1))
 kurtosis
 
 x_lab = ggdraw() + draw_label(label = 'month', fontface = 'bold')
@@ -594,21 +588,20 @@ y_lab = ggdraw() + draw_label(label = 'water temperature (deg C)',
                               fontface = 'bold')
 
 FigGI <- plot_grid(figure_title,
-                   nofilter,
                    kurtosis,
-                   rel_heights = c(0.05, 1, 1),
+                   rel_heights = c(0.1, 1),
                    ncol =1)
 FigGI
 
 FigGI_label = plot_grid(y_lab, FigGI,
                         NULL, x_lab,
-                        rel_heights = c(1.1, 0.05),
-                        rel_widths = c(0.05, 1.1))
+                        rel_heights = c(1, 0.1),
+                        rel_widths = c(0.1, 1))
 
 FigGI_label
 
 plot_grid(FigGI_label, leg, rel_widths = c(0.9,0.1 ))
 
 ggsave(file.path(fig_dir, 'FigGI_errorbymission.jpg'), 
-       height = 6, width = 8, units = 'in', dpi = 300)
+       height = 4, width = 8, units = 'in', dpi = 300)
 
