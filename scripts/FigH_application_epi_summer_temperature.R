@@ -26,6 +26,10 @@ ls <- read.csv(file.path(datadir, 'colab-output/C2/C2_v2_temp_stats.csv')) %>%
 ls_kurtosis <- ls %>% 
   filter(surface_temp_kurtosis >2 )
 
+november <- ls_kurtosis %>% 
+  mutate(month = as.numeric(format(date, '%m'))) %>% 
+  filter(month == 11)
+
 #### whole lake median by month and year ####
 lmp_temp_monthly_stats <- lmp_temp_deep %>% 
   mutate(month = as.numeric(format(as.Date(date), '%m')),

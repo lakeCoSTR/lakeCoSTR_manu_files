@@ -1,6 +1,6 @@
 # this script creates Figures in the Herrick, Steele, et al MS
 
-# last modified 2021-11-22
+# last modified 2021-12-06
 # written by B. Steele 
 
 # Set up Workspace ####
@@ -421,7 +421,7 @@ ggsave(file.path(fig_dir, 'SFA_resid_summary_C2kurtosis_v12Nov2021.jpg'),
 
 
 
-# Calculate error for various models ####
+# Supplemental Table C and D Calculate error for various models ####
 alldata_error <- all_surface_temp %>% 
   group_by(collection, filter) %>% 
   summarise(mse = round(sum((opt_resid^2))/n(), digits = 2),
@@ -451,8 +451,13 @@ mission_error <- all_surface_temp %>%
   pivot_wider(names_from = c(LSmission),
               values_from = values) 
 
-alldata_error <- full_join(alldata_error, mission_error)
-alldata_error
+alldata_error <- full_join(alldata_error, mission_error) %>% 
+  mutate(filter = factor(filter, levels = c('none', 'kurtosis'))) %>% 
+  arrange(collection, filter, variable) 
+
+alldata_error %>% 
+  select(-month) %>% 
+  write.csv(., file.path(figdir, 'STC_deming_performance_bymission.csv'), row.names = F)
 
 month_mission_error <- all_surface_temp %>% 
   group_by(collection, month, LSmission, filter) %>% 
@@ -483,11 +488,14 @@ month_error <- all_surface_temp %>%
   pivot_wider(names_from = c(LSmission),
               values_from = values)
 
-month_error <- full_join(month_mission_error, month_error)
+month_error <- full_join(month_mission_error, month_error) %>% 
+  ungroup() %>% 
+  mutate(filter = factor(filter, levels = c('none', 'kurtosis'))) %>% 
+  arrange(month, collection, filter, variable) %>% 
+  filter(filter == 'kurtosis') %>% 
+  select(month, variable, `All missions`, `LS 5`, `LS 7`, `LS 8`)
 
-alldata_error <- full_join(alldata_error, month_error)
-
-write.csv(alldata_error, file.path(C2_datadir, 'LS_deming_predictionerror_C1C2_stats_v22Nov2021.csv'))
+write.csv(month_error, file.path(figdir, 'STD_deming_kurtosis_performancebymonth.csv'), row.names = F)
 
 # FigGI create point (by mission for bias, mae, rmse) faceted by model ####
 
