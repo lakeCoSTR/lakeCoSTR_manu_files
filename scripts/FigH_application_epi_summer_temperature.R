@@ -272,17 +272,24 @@ write.csv(iva_table, file.path(figdir, 'STE_IVA_slope_results.csv'), row.names =
 
 
 # gather slope and CI data
-#### Left off here ####
+
 slope_table <- NULL
 
 slope_table$month <- c('May', 'June', 'July', 'August', 'September', 'October')
 
-slope_table$alldata_slope <- c(all_5_lm$coefficients[2,1],
-                             all_6_lm$coefficients[2,1],
-                             all_7_lm$coefficients[2,1],
-                             all_8_lm$coefficients[2,1],
-                             all_9_lm$coefficients[2,1],
-                             all_10_lm$coefficients[2,1])
+slope_table$alldata_pval <- c(summary(all_5_lm)$coefficients[2,4],
+                              summary(all_6_lm)$coefficients[2,4],
+                              summary(all_7_lm)$coefficients[2,4],
+                              summary(all_8_lm)$coefficients[2,4],
+                              summary(all_9_lm)$coefficients[2,4],
+                              summary(all_10_lm)$coefficients[2,4])
+
+slope_table$alldata_slope <- c(summary(all_5_lm)$coefficients[2,1],
+                               summary(all_6_lm)$coefficients[2,1],
+                               summary(all_7_lm)$coefficients[2,1],
+                               summary(all_8_lm)$coefficients[2,1],
+                               summary(all_9_lm)$coefficients[2,1],
+                               summary(all_10_lm)$coefficients[2,1])
 
 slope_table$alldata_slope_lower <- c(confint(lm(value~year, data = may_data),'year',level=0.95)[1],
                                    confint(lm(value~year, data = jun_data),'year',level=0.95)[1],
@@ -297,20 +304,19 @@ slope_table$alldata_slope_upper <- c(confint(lm(value~year, data = may_data),'ye
                                    confint(lm(value~year, data = sep_data),'year',level=0.95)[2],
                                    confint(lm(value~year, data = oct_data),'year',level=0.95)[2])
 
-slope_table$alldata_slope_pval <- c(all_5_lm$coefficients[2,4],
-                                  all_6_lm$coefficients[2,4],
-                                  all_7_lm$coefficients[2,4],
-                                  all_8_lm$coefficients[2,4],
-                                  all_9_lm$coefficients[2,4],
-                                  all_10_lm$coefficients[2,4])
+slope_table$ls_pval <- c(summary(ls_5_lm)$coefficients[2,4],
+                              summary(ls_6_lm)$coefficients[2,4],
+                              summary(ls_7_lm)$coefficients[2,4],
+                              summary(ls_8_lm)$coefficients[2,4],
+                              summary(ls_9_lm)$coefficients[2,4],
+                              summary(ls_10_lm)$coefficients[2,4])
 
-
-slope_table$ls_slope <- c(ls_5_lm$coefficients[2,1],
-                        ls_6_lm$coefficients[2,1],
-                        ls_7_lm$coefficients[2,1],
-                        ls_8_lm$coefficients[2,1],
-                        ls_9_lm$coefficients[2,1],
-                        ls_10_lm$coefficients[2,1])
+slope_table$ls_slope <- c(summary(ls_5_lm)$coefficients[2,1],
+                          summary(ls_6_lm)$coefficients[2,1],
+                          summary(ls_7_lm)$coefficients[2,1],
+                          summary(ls_8_lm)$coefficients[2,1],
+                          summary(ls_9_lm)$coefficients[2,1],
+                          summary(ls_10_lm)$coefficients[2,1])
 
 slope_table$ls_slope_lower <- c(confint(lm(value~year, data = may_data[may_data$source == 'landsat',]), 'year', level = 0.95)[1],
                               confint(lm(value~year, data = jun_data[jun_data$source == 'landsat',]), 'year', level = 0.95)[1],
@@ -326,19 +332,19 @@ slope_table$ls_slope_upper <- c(confint(lm(value~year, data = may_data[may_data$
                               confint(lm(value~year, data = sep_data[sep_data$source == 'landsat',]), 'year', level = 0.95)[2],
                               confint(lm(value~year, data = oct_data[oct_data$source == 'landsat',]), 'year', level = 0.95)[2])
 
-slope_table$ls_slope_pval <- c(ls_5_lm$coefficients[2,4],
-                             ls_6_lm$coefficients[2,4],
-                             ls_7_lm$coefficients[2,4],
-                             ls_8_lm$coefficients[2,4],
-                             ls_9_lm$coefficients[2,4],
-                             ls_10_lm$coefficients[2,4])
+slope_table$is_pval <- c(summary(is_5_lm)$coefficients[2,4],
+                         summary(is_6_lm)$coefficients[2,4],
+                         summary(is_7_lm)$coefficients[2,4],
+                         summary(is_8_lm)$coefficients[2,4],
+                         summary(is_9_lm)$coefficients[2,4],
+                         summary(is_10_lm)$coefficients[2,4])
 
-slope_table$is_slope <- c(is_5_lm$coefficients[2,1],
-                        is_6_lm$coefficients[2,1],
-                        is_7_lm$coefficients[2,1],
-                        is_8_lm$coefficients[2,1],
-                        is_9_lm$coefficients[2,1],
-                        is_10_lm$coefficients[2,1])
+slope_table$is_slope <- c(summary(is_5_lm)$coefficients[2,1],
+                          summary(is_6_lm)$coefficients[2,1],
+                          summary(is_7_lm)$coefficients[2,1],
+                          summary(is_8_lm)$coefficients[2,1],
+                          summary(is_9_lm)$coefficients[2,1],
+                          summary(is_10_lm)$coefficients[2,1])
 
 slope_table$is_slope_lower <- c(confint(lm(value~year, data = may_data[may_data$source == 'in-situ',]), 'year', level = 0.95)[1],
                               confint(lm(value~year, data = jun_data[jun_data$source == 'in-situ',]), 'year', level = 0.95)[1],
@@ -354,42 +360,30 @@ slope_table$is_slope_upper <- c(confint(lm(value~year, data = may_data[may_data$
                               confint(lm(value~year, data = sep_data[sep_data$source == 'in-situ',]), 'year', level = 0.95)[2],
                               confint(lm(value~year, data = oct_data[oct_data$source == 'in-situ',]), 'year', level = 0.95)[2])
 
-slope_table$is_slope_pval <- c(is_5_lm$coefficients[2,4],
-                             is_6_lm$coefficients[2,4],
-                             is_7_lm$coefficients[2,4],
-                             is_8_lm$coefficients[2,4],
-                             is_9_lm$coefficients[2,4],
-                             is_10_lm$coefficients[2,4])
+slope_table <- as.data.frame(slope_table)
 
-# recode table values where they are irrelevant
-slope_table_recode <- slope_table %>% 
-  mutate_at(vars(multreg_pval),
-            ~ case_when(iva_pval <0.05 ~ NA_real_,
-                        TRUE ~ .)) %>% 
-  mutate_at(vars(alldata_slope_pval, alldata_slope, alldata_slope_lower, alldata_slope_upper, alldata_DW_stat, alldata_DW_pval),
-            ~ case_when(multreg_pval <0.05 ~NA_real_,
-                        iva_pval <0.05~NA_real_,
-                        is.na(multreg_pval) ~ .,
-                        TRUE ~ .)) %>% 
-  mutate_at(vars(is_slope_pval, is_slope, is_slope_lower, is_slope_upper, is_DW_stat, is_DW_pval),
-            ~ case_when(iva_pval <0.05 ~ .,
-                        multreg_pval < 0.05 ~ .,
-                        TRUE ~ NA_real_)) %>% 
-  mutate_at(vars(ls_slope_pval, ls_slope, ls_slope_lower, ls_slope_upper, ls_DW_stat, ls_DW_pval),
-            ~ case_when(iva_pval <0.05 ~ .,
-                        multreg_pval < 0.05 ~ .,
-                        TRUE ~ NA_real_)) %>% 
-  mutate_at(vars(alldata_slope, alldata_slope_upper, alldata_slope_lower, alldata_DW_stat, alldata_DW_pval),
-            ~ case_when(alldata_slope_pval >= 0.05 ~ NA_real_,
-                        TRUE ~ .)) %>% 
-  mutate_at(vars(ls_slope, ls_slope_upper, ls_slope_lower, ls_DW_stat, ls_DW_pval),
-            ~ case_when(ls_slope_pval >= 0.05 ~ NA_real_,
-                        TRUE ~ .)) %>% 
-  mutate_at(vars(is_slope, is_slope_upper, is_slope_lower, is_DW_stat, is_DW_pval),
-            ~ case_when(is_slope_pval >= 0.05 ~ NA_real_,
-                        TRUE ~ .)) 
-slope_table_recode
+slope_table <-slope_table %>% 
+  pivot_longer(cols = alldata_pval:is_slope_upper, 
+               names_to = 'variable',
+               values_to = 'value') %>% 
+  mutate(dataset = case_when(grepl('all', variable) ~ 'all data',
+                             grepl('ls', variable) ~ 'landast',
+                             grepl('is', variable) ~ 'in-situ',
+                             TRUE ~ ''),
+         variable = case_when(grepl('lower', variable) ~ 'lower',
+                              grepl('upper', variable) ~ 'upper', 
+                              grepl('slope', variable) ~ 'slope',
+                              grepl('pval', variable) ~ 'p-value',
+                              TRUE ~ ''))
 
+slope_table <- slope_table %>% 
+  mutate(value = round(value, digits = 3)) %>% 
+  pivot_wider(names_from = 'variable',
+              values_from = 'value')
+
+slope_table
+
+write.csv(slope_table, file.path(figdir, 'STF_slope_table.csv'), row.names = F)
 
 #### plot on same axes with separate lines ####
 may_is <- may_data %>% 
@@ -438,8 +432,8 @@ jul <- temp_monthly_median %>%
   filter(month == 7) %>% 
   ggplot(., aes(x = year, y = value))+
   geom_point(aes(color = source)) +
-  geom_abline(slope = all_7_lm$coefficients[2, 1],
-              intercept = all_7_lm$coefficients[1,1],
+  geom_abline(slope = summary(all_7_lm)$coefficients[2, 1],
+              intercept = summary(all_7_lm)$coefficients[1,1],
               color = '#009E73') +
   final_theme +
   coord_cartesian(ylim = c(7, 27),
@@ -454,8 +448,8 @@ aug <- temp_monthly_median %>%
   filter(month == 8) %>% 
   ggplot(., aes(x = year, y = value))+
   geom_point(aes(color = source)) +
-  geom_abline(slope = all_8_lm$coefficients[2, 1],
-              intercept = all_8_lm$coefficients[1,1],
+  geom_abline(slope = summary(all_8_lm)$coefficients[2, 1],
+              intercept = summary(all_8_lm)$coefficients[1,1],
               color = '#009E73') +
   final_theme +
   coord_cartesian(ylim = c(7, 27),
@@ -472,8 +466,8 @@ sept <- temp_monthly_median %>%
   filter(month ==9) %>% 
   ggplot(., aes(x = year, y = value))+
   geom_point(aes(color = source)) +
-  geom_abline(slope = ls_9_lm$coefficients[2, 1],
-              intercept = ls_9_lm$coefficients[1,1],
+  geom_abline(slope = summary(ls_9_lm)$coefficients[2, 1],
+              intercept = summary(ls_9_lm)$coefficients[1,1],
               color = "#E69F00") +
   geom_abline(slope = 0,
               intercept = mean_sept_is,
@@ -490,8 +484,8 @@ oct <- temp_monthly_median %>%
   filter(month == 10) %>% 
   ggplot(., aes(x = year, y = value))+
   geom_point(aes(color = source)) +
-  geom_abline(slope = all_10_lm$coefficients[2, 1],
-              intercept = all_10_lm$coefficients[1,1],
+  geom_abline(slope = summary(all_10_lm)$coefficients[2, 1],
+              intercept = summary(all_10_lm)$coefficients[1,1],
               color = '#009E73') +
   final_theme +
   coord_cartesian(ylim = c(7, 27),
@@ -507,6 +501,7 @@ x_axis_title = ggdraw() + draw_label('year', size = 12, fontface = 'bold')
 legend = ggdraw() + draw_label('black = in-situ   yellow = landsat   green = all data', size = 12)
 
 FigH = plot_grid(may, june, jul, aug, sept, oct,
+                 labels = c('a', 'b', 'c', 'd', 'e', 'f'),
           ncol = 3)
 FigH
 
