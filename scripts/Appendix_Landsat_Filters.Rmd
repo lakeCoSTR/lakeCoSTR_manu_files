@@ -1,11 +1,11 @@
 ---
-title: 'Appendix: Landsat Filters'
-author: "B. Steele"
-date: "2021-11-16"
+title: 'Appendix S2: Landsat Filters'
+subtitle: 'lakeCoSTR: An open-source, interactive retrieval tool to facilitate use of the Landsat Collection 2 surface temperature product to estimate lake surface water temperatures'
+author: "*Herrick, C, Steele, BG*,  Brentrup, JA, Cook, B, Cottingham, KL, Ducey, M, Johnson, K, Lutz, DA, Palace, M, Sullivan, F, Thompson, M, Trout-Haney, JV, Weathers, KC"
 output: word_document
 editor_options: 
   markdown: 
-    wrap: 72
+    wrap: 90
 ---
 
 ```{r setup, include=FALSE}
@@ -28,59 +28,57 @@ Upon inspection of the Colab-exported histograms, it seemed clear that
 some of the ranges of data seemed ecologically unfeasible with some
 displaying a range of 20 degrees C or more over the surface of Lake
 Sunapee. In this appendix, we explore some of the additional quality
-assurance filters that we explored that may be helpful for others using
+assurance filters that we tried that may be helpful for others using
 this tool.
 
-For example, here are some histograms that looked awry, one each from
-Landsat missions 4, 5, 7, and 8:
-
-![Landast 4:
-1990-07-21](C:/Users/steeleb/Documents/GitHub/ids-ne-lakes/data/colab-output/C2/histograms/LT04_L1TP_013030_19900721_20200915_02_T1_histo.png){width="3in"}![Landast
+![Landsat 4:
+1990-07-21](C:/Users/steeleb/Documents/GitHub/ids-ne-lakes/data/colab-output/C2/histograms/LT04_L1TP_013030_19900721_20200915_02_T1_histo.png){width="3in"}![Landsat
 5:
 1998-07-23](C:/Users/steeleb/Documents/GitHub/ids-ne-lakes/data/colab-output/C2/histograms/LT05_L1TP_013030_19880723_20200917_02_T1_histo.png){width="3in"}
 
-![Landast 7:
-2018-05-31](C:/Users/steeleb/Documents/GitHub/ids-ne-lakes/data/colab-output/C2/histograms/LE07_L1TP_013030_20180531_20200829_02_T1_histo.png){width="3in"}![Landast
+![Landsat 7:
+2018-05-31](C:/Users/steeleb/Documents/GitHub/ids-ne-lakes/data/colab-output/C2/histograms/LE07_L1TP_013030_20180531_20200829_02_T1_histo.png){width="3in"}![Landsat
 8:
 2020-09-17](C:/Users/steeleb/Documents/GitHub/ids-ne-lakes/data/colab-output/C2/histograms/LC08_L1TP_013030_20200917_20201005_02_T1_histo.png){width="3in"}
 
-In addition to the possible range-of-value issues shown above, there
-were clear bimodal distributions that would not suit our analysis of
-using a single median value to describe the scene, as well as scenes
-with negative temperatures reported even though pixels classified as
-snow or ice were filtered out in the Colab script. Note that bimodal
+Figure S1. Four histograms, one from each Landsat Mission, exhibiting unusual frequency distributions as exported from the lakeCoSTR tool. 
+
+In addition to the possible range-of-value issues shown in Figure S1, there is also evidence of non-unimodal distributions. Because we were intersted in using a single median value to describe the scene, we determined these scenes were not suitable for our analysis.  Note that bimodal
 distributions in surface temperature across a lake surface are certainly
 ecologically possible outcomes and may be useful for some systems or
-analyses. We tried to filter out the scenes with presumed atmospheric
-interference (indicated by grossly large estimated temperature ranges)
-using measures from the extensive *in-situ* data network at Lake Sunapee
-and from statistical measures of distributions, namely kurtosis, or the
-'tailedness' of the distribution. Knowing that we did not filter for
-clouds or cloud shadows, and given that there is documented interference
-with the surface temperature product, we also used a cloud filter to
+analyses. There were also scenes
+with negative temperatures reported even though pixels classified as
+snow or ice were filtered out in the Colab script. 
+
+Our desire was to create a filter that would filter out the scenes with presumed atmospheric
+interference (indicated by grossly large estimated temperature ranges) or those that were not suitable for our analysis
+using measurements from the extensive *in-situ* data network at Lake Sunapee.
+We used statistical measures of distribution, including quartile values, ranges, and measurement of distribution kurtosis (the
+'tailedness' of the distribution). Knowing that we did not filter for
+clouds or cloud shadows explicitly in the tool, and given that there is documented interference
+with the surface temperature product (Cook, et al., 2014), we also tried a cloud filter to
 eliminate some scenes.
 
 # Methods
 
-The filters we explored were (listed in order of increased stringency
-based on the number of scenes eliminated from analysis):
+The filters we explored, listed in order of increased stringency
+based on the number of scenes eliminated from analysis, were:
 
 -   **freeze**: removing all scenes whose minimum temperature was below
-    0
+    0 degrees Celsius
 
--   **IQR**: *freeze* filter and removing scenes that reported
-    interquantile ranges greater than 110% in a summary of the *in-situ*
+-   **IQR**: *freeze* filter removing scenes that reported
+    interquartile temperature ranges greater than 110% in a summary of the *in-situ* temperature
     record
 
 -   **kurtosis**: removing any scenes whose histogram has a kurtosis value
-    less than 2.
+    less than 2
 
--   **cloud**: *freeze* filter and removing scenes with cloud cover
-    greater than 40%. Cloud cover is a known issue with the surface
-    temperature product.
+-   **cloud**: *freeze* filter plus removing scenes with cloud cover
+    greater than 40%
 
--   **range**: *freeze* filter and removing scenes that reported ranges
-    greater than 110% obeserved in a summary of the *in-situ* record
+-   **range**: *freeze* filter plus removing scenes that reported temperature ranges
+    greater than 110% observed in a summary of the *in-situ* temperature record
 
 ## Load, summarize, and filter data
 
@@ -94,12 +92,11 @@ insitu <- read.csv(paste0(datadir, 'insitu_temp_data_v2021-10-20.csv')) %>%
 C2ST <- read.csv(file.path(C2_datadir,paste0('C2_v2_temp_landsat_paired.csv')))
 ```
 
-In order to define the maximum acceptable Landast range and
-interquantile range from the *in-situ* data, we limit the *in-situ* data
-to those values measured between the hours of 9 and 11 am, the
-approximate time of Landsat flyover and aggregate to a daily value. From
-these values we find the maximum range and interquantile range of
-observed data.
+In order to define the maximum acceptable Landsat range from the *in-situ* data, we limited the validation dataset described in section 3.1.2 of the main text
+to those values measured between the hours of 9 and 11 am (the
+approximate time of Landsat flyover). These values were aggregated to daily values of range, interquartile range, and number of locations contributing the ranges. From
+the dail values we calculated the maximum range and interquartile range in the
+observed temperature data.
 
 ```{r}
 # Summarize in-situ to define spread and IQR limits ####
@@ -119,7 +116,7 @@ max_spread <- max(range_per_date$temp_range, na.rm = T)
 print('Maximium spread observed is:')
 max_spread
 max_IQR <- max(range_per_date$IQR, na.rm = T)
-print('Maximium interquantile range observed is:')
+print('Maximium interquartile range observed is:')
 max_IQR
 ```
 
@@ -382,6 +379,7 @@ DemingFigure <- plot_grid(DemingFigure_a, DemingFigure_b, DemingFigure_c, Deming
 
 DemingFigure
 ```
+Figure S2. Deming regressions for 6 datasets of Landsat Collection 2 surface temperature product 
 
 ## Summarize the slope and intercepts for each of the Deming regressions
 
@@ -456,3 +454,11 @@ slope_int_fig <- plot_grid(slope_fig, int_fig,
                            label_size = 12)
 slope_int_fig
 ```
+Figure S3.
+
+
+# Literature Citations
+
+Cook M, Schott JR, Mandel J, Raqueno N. Development of an Operational Calibration Methodology for the Landsat Thermal Data Archive and Initial Testing of the Atmospheric Compensation Component of a Land Surface Temperature (LST) Product from the Archive. Remote Sensing. 2014; 6(11):11244-11266. https://doi.org/10.3390/rs61111244
+
+Deming, W. E. 1943. Statistical adjustment of data. Dover Publications, 1985.
