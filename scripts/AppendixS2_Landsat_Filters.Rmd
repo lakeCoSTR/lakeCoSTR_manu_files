@@ -2,6 +2,7 @@
 title: 'Appendix S2: Landsat Filters'
 subtitle: 'lakeCoSTR: An open-source, interactive retrieval tool to facilitate use of the Landsat Collection 2 surface temperature product to estimate lake surface water temperatures'
 author: "*Herrick, C, Steele, BG*,  Brentrup, JA, Cook, B, Cottingham, KL, Ducey, M, Johnson, K, Lutz, DA, Palace, M, Sullivan, F, Thompson, M, Trout-Haney, JV, Weathers, KC"
+date: 'Ecosphere'
 output: word_document
 editor_options: 
   markdown: 
@@ -24,10 +25,11 @@ C2_datadir <- '~/GitHub/ids-ne-lakes/data/colab-output/C2/'
 
 # Background:
 
-Upon inspection of the Colab-exported histograms, it seemed clear that
-some of the ranges of data seemed ecologically unfeasible with some
-displaying a range of 20 degrees C or more over the surface of Lake
-Sunapee. In this appendix, we explore some of the additional quality
+Upon inspection of the lakeCoSTR-exported histograms, it was clear that
+some of the ranges of data seemed ecologically unfeasible,
+displaying a range of 20 degrees Celsius or more over the surface of Lake
+Sunapee. We assume that these types of spread are indicative of lingering 
+atmospheric correction issues or cloud effects. In this appendix, we explore some of the additional quality
 assurance filters that we tried that may be helpful for others using
 this tool.
 
@@ -43,17 +45,22 @@ this tool.
 
 Figure S1. Four histograms, one from each Landsat Mission, exhibiting unusual frequency distributions as exported from the lakeCoSTR tool. 
 
-In addition to the possible range-of-value issues shown in Figure S1, there is also evidence of non-unimodal distributions. Because we were intersted in using a single median value to describe the scene, we determined these scenes were not suitable for our analysis.  Note that bimodal
+In addition to the possible range-of-value issues shown in Figure S1, 
+there is also evidence of non-unimodal distributions. Because we were 
+intersted in using a single median value to describe the lake surface 
+temperature in a scene, we determined these scenes were not suitable for
+our analysis.  Note that bimodal
 distributions in surface temperature across a lake surface are certainly
-ecologically possible outcomes and may be useful for some systems or
-analyses. There were also scenes
+ecologically possible outcomes and may be true for some systems or useful for some
+analyses. Finally, There were also scenes
 with negative temperatures reported even though pixels classified as
 snow or ice were filtered out in the Colab script. 
 
-Our desire was to create a filter that would filter out the scenes with presumed atmospheric
-interference (indicated by grossly large estimated temperature ranges) or those that were not suitable for our analysis
-using measurements from the extensive *in-situ* data network at Lake Sunapee.
-We used statistical measures of distribution, including quartile values, ranges, and measurement of distribution kurtosis (the
+Our desire was to create a filter that would remove the Landsat scenes with presumed atmospheric
+interference (indicated by grossly large estimated temperature ranges) or those that were otherwise 
+not suitable for our analysis. We used measurements from the extensive *in-situ* data network at 
+Lake Sunapee to define some of these filters. We used statistical measures of distribution, including 
+quartile values, spread, and measurement of distribution kurtosis (the
 'tailedness' of the distribution). Knowing that we did not filter for
 clouds or cloud shadows explicitly in the tool, and given that there is documented interference
 with the surface temperature product (Cook, et al., 2014), we also tried a cloud filter to
@@ -67,17 +74,17 @@ based on the number of scenes eliminated from analysis, were:
 -   **freeze**: removing all scenes whose minimum temperature was below
     0 degrees Celsius
 
--   **IQR**: *freeze* filter removing scenes that reported
+-   **IQR**: removing scenes that reported
     interquartile temperature ranges greater than 110% in a summary of the *in-situ* temperature
     record
 
 -   **kurtosis**: removing any scenes whose histogram has a kurtosis value
     less than 2
 
--   **cloud**: *freeze* filter plus removing scenes with cloud cover
+-   **cloud**: removing scenes with cloud cover
     greater than 40%
 
--   **range**: *freeze* filter plus removing scenes that reported temperature ranges
+-   **range**: removing scenes that reported temperature ranges
     greater than 110% observed in a summary of the *in-situ* temperature record
 
 ## Load, summarize, and filter data
@@ -92,10 +99,11 @@ insitu <- read.csv(paste0(datadir, 'insitu_temp_data_v2021-10-20.csv')) %>%
 C2ST <- read.csv(file.path(C2_datadir,paste0('C2_v2_temp_landsat_paired.csv')))
 ```
 
-In order to define the maximum acceptable Landsat range from the *in-situ* data, we limited the validation dataset described in section 3.1.2 of the main text
-to those values measured between the hours of 9 and 11 am (the
-approximate time of Landsat flyover). These values were aggregated to daily values of range, interquartile range, and number of locations contributing the ranges. From
-the dail values we calculated the maximum range and interquartile range in the
+To define some filters, we used the validation dataset described in section 3.1.2 of the main text, filtered
+to those temperatures measured between the hours of 9 and 11 am (the
+approximate time of Landsat flyover). These values were aggregated to daily values of range, 
+interquartile range, and number of locations contributing the ranges. From
+these daily values, we calculated the maximum range and interquartile range from the
 observed temperature data.
 
 ```{r}
@@ -120,7 +128,7 @@ print('Maximium interquartile range observed is:')
 max_IQR
 ```
 
-```{r flag}
+```{r flag for spread and make datasets}
 # Flag C2 data for freezing temps, spread P/F, IQR P/F ####
 C2ST <- C2ST %>% 
   mutate(freeze_QAQC = case_when(surface_temp_min < 0 ~ 'F', #pass/fail for freezing temps
@@ -137,21 +145,19 @@ C2ST_freeze <- C2ST %>%
   filter(freeze_QAQC == 'P')
 
 C2ST_maxrange <- C2ST %>% 
-  filter(freeze_QAQC == 'P' & 
-           spread_QAQC == 'P')
+  filter(spread_QAQC == 'P')
 
 C2ST_maxIQR <- C2ST %>% 
-  filter(freeze_QAQC == 'P' & 
-           IQR_QAQC == 'P')
+  filter(IQR_QAQC == 'P')
 
 C2ST_cloud <- C2ST %>% 
-  filter(freeze_QAQC == 'P' & cloud_cover <40)
+  filter(cloud_cover <40)
 
 C2ST_kurtosis <- C2ST %>% 
   filter(surface_temp_kurtosis > 2)
 ```
 
-```{r}
+```{r perform deming regresions}
 # Deming Regressions ####
 
 # deming regression for C2
@@ -205,7 +211,17 @@ C2ST_kurtosis$filter = 'kurtosis'
 
 # Presentation and discussion of filter performance
 
-## Comparison of filter performance
+To analyze the performance of each of the filters, we performed a Deming regression (Deming, 1943) on each of the Landsat *in-situ* pair datasets filtered, as described above, from the output of the lakeCoSTR tool described in section 3.1.2 of the main text. 
+
+The considerations we made when comparing filter performance were: 
+
+1) number of valid scenes for validation
+2) Pearson correlation coefficient
+3) presence/absence of outliers
+4) slope and intercept of the regression line
+
+Scenes for validation ranged from 157 (no additional QAQC) to 71 (*in-situ* range filter). All datasets, including the unfiltered Collection 2 dataset, had acceptable Pearson correlation coefficients above 0.9 (Figure S2). The filters that reduced the outliers were the kurtosis filter, cloud filter, and the range filter. Of those, the kurtosis filter performed the best at reducing outliers. Of note, most outliers lie below the 1:1 line (Figure S2) - the presence of clouds and cloud shadows lowers the median temperature for each scene by reporting surface temperature values that are much cooler than in actuality.
+
 
 ```{r, fig.dim=c(10, 6)}
 # Plot Deming regression for all filters to examine performance ####
@@ -222,15 +238,14 @@ DemingFigure_a <- ggplot(C2ST, aes(x = is_temp_med, y = surface_temp_median)) +
             y = 25,
             size = 4,
             hjust = 0)+
-  geom_text(label = paste0('n = ', length(C2ST$date)),
+  geom_text(label = paste0('n = ', nrow(C2ST)),
             x = 2,
             y = 23,
             size = 4,
             hjust = 0)+
   labs(x = '',
        y = 'median Landsat-derived\nsurface temperature (deg C)',
-       title = 'Collection 2',
-       subtitle = '') +
+       title = 'no filter') +
   theme_bw()+
   theme(plot.title = element_text(hjust = 0.5)) +
   coord_cartesian(xlim = c(0, 27),
@@ -248,15 +263,14 @@ DemingFigure_b <- ggplot(C2ST_freeze, aes(x = is_temp_med, y = surface_temp_medi
             y = 25,
             size = 4,
             hjust = 0)+
-  geom_text(label = paste0('n = ', length(C2ST_freeze$date)),
+  geom_text(label = paste0('n = ', nrow(C2ST_freeze)),
             x = 2,
             y = 23,
             size = 4,
             hjust = 0)+
   labs(x = '',
        y = '\n',
-       title = 'Collection 2',
-       subtitle = 'freeze') +
+       title = 'freeze filter') +
     theme_bw() +
   theme(plot.title = element_text(hjust = 0.5),
         plot.subtitle = element_text(hjust = 0.5)) +
@@ -275,15 +289,14 @@ DemingFigure_c <- ggplot(C2ST_maxIQR, aes(x = is_temp_med, y = surface_temp_medi
             y = 25,
             size = 4,
             hjust = 0)+
-  geom_text(label = paste0('n = ', length(C2ST_maxIQR$date)),
+  geom_text(label = paste0('n = ', nrow(C2ST_maxIQR)),
             x = 2,
             y = 23,
             size = 4,
             hjust = 0)+
   labs(x = '',
        y = '\n',
-       title = 'Collection 2',
-       subtitle = 'IQR') +
+       title = 'IQR filter') +
     theme_bw() +
   theme(plot.title = element_text(hjust = 0.5),
         plot.subtitle = element_text(hjust = 0.5)) +
@@ -302,15 +315,14 @@ DemingFigure_d <- ggplot(C2ST_kurtosis, aes(x = is_temp_med, y = surface_temp_me
             y = 25,
             size = 4,
             hjust = 0)+
-  geom_text(label = paste0('n = ', length(C2ST_kurtosis$date)),
+  geom_text(label = paste0('n = ', nrow(C2ST_kurtosis)),
             x = 2,
             y = 23,
             size = 4,
             hjust = 0)+
-  labs(x = expression(bold(paste(italic('in-situ'), ' median water temp (deg C)'))),
+  labs(x = '',
        y = 'median Landsat-derived\nsurface temperature (deg C)',
-       title = 'Collection 2',
-       subtitle = 'kurtosis') +
+       title = 'kurtosis filter') +
     theme_bw() +
   theme(plot.title = element_text(hjust = 0.5),
         plot.subtitle = element_text(hjust = 0.5)) +
@@ -329,15 +341,14 @@ DemingFigure_e <- ggplot(C2ST_cloud, aes(x = is_temp_med, y = surface_temp_media
             y = 25,
             size = 4,
             hjust = 0)+
-  geom_text(label = paste0('n = ', length(C2ST_cloud$date)),
+  geom_text(label = paste0('n = ', nrow(C2ST_cloud)),
             x = 2,
             y = 23,
             size = 4,
             hjust = 0)+
   labs(x = expression(bold(paste(italic('in-situ'), ' median water temp (deg C)'))),
        y = '\n',
-       title = 'Collection 2',
-       subtitle = 'cloud') +
+       title = 'cloud filter') +
     theme_bw() +
   theme(plot.title = element_text(hjust = 0.5),
         plot.subtitle = element_text(hjust = 0.5)) +
@@ -356,15 +367,14 @@ DemingFigure_f <- ggplot(C2ST_maxrange, aes(x = is_temp_med, y = surface_temp_me
             y = 25,
             size = 4,
             hjust = 0)+
-  geom_text(label = paste0('n = ', length(C2ST_maxrange$date)),
+  geom_text(label = paste0('n = ', nrow(C2ST_maxrange)),
             x = 2,
             y = 23,
             size = 4,
             hjust = 0)+
-  labs(x = expression(bold(paste(italic('in-situ'), ' median water temp (deg C)'))),
+  labs(x = '',
        y = '\n',
-       title = 'Collection 2',
-       subtitle = 'range') +
+       title = 'range filter') +
     theme_bw() +
   theme(plot.title = element_text(hjust = 0.5),
         plot.subtitle = element_text(hjust = 0.5)) +
@@ -379,9 +389,10 @@ DemingFigure <- plot_grid(DemingFigure_a, DemingFigure_b, DemingFigure_c, Deming
 
 DemingFigure
 ```
-Figure S2. Deming regressions for 6 datasets of Landsat Collection 2 surface temperature product 
 
-## Summarize the slope and intercepts for each of the Deming regressions
+Figure S2. Deming regressions for 6 datasets of Landsat Collection 2 surface temperature product, arranged as least stringent to most stringent based on the number of scenes eliminated from the validation dataset. The blue line is the 1:1 line, the black line shows the Deming error-in-variables regression, and the dotted black lines indicate the 95% prediction intervals for the Deming regression. The Pearson correlation (r) and sample size (n) in the upper left corner.
+
+While increasing the stringency of Landsat scene filters generally led to increased agreement between the Landsat-derived surface temperature product and the in-situ water temperature (Figure S3), it is notable that the filter that eliminated the most scenes from the analysis (“range”) has an estimated slope and intercept furthest from 1 and 0, respectively. Here, the kurtosis filter and the cloud filter performance was very similar. This may indicate that both filters perform similar functions.
 
 ```{r, fig.dim = c(8, 4)}
 # Plot slope and intercept with 95%ci ####
@@ -424,7 +435,7 @@ slope_int_table <- slope_int_table %>%
   select(-slope_se, -int_se) %>% 
   mutate(model = factor(model, 
                         levels = c('C2ST', 'C2ST_freeze','C2ST_maxIQR', 'C2ST_kurtosis', 'C2ST_cloud', 'C2ST_maxrange'),
-                        labels = c('Collection 2', 'Collection 2\nfreeze', 'Collection 2\nIQR', 'Collection 2\nkurtosis', 'Collection 2\ncloud','Collection 2\nrange'))) %>% 
+                        labels = c('no filter', 'freeze filter', 'IQR filter', 'kurtosis filter', 'cloud filter','range filter'))) %>% 
   mutate(regression = 'Deming')
 
 slope_fig <- slope_int_table %>% 
@@ -454,7 +465,10 @@ slope_int_fig <- plot_grid(slope_fig, int_fig,
                            label_size = 12)
 slope_int_fig
 ```
-Figure S3.
+Figure S3. A simple comparison of estimated slope (a) and intercept (b) with upper and lower 95% confidence intervals for each of the Collection 2 (raw + filtered) datasets presented in Figure C indicates that the cloud filter dataset’s Deming regression provided a slope closest to 1 and an intercept closest to 0 (indicated by the dashed line on each panel). Datasets are ordered by increasing stringency, as measured by the number of scenes in the validation dataset, from left to right. 
+
+
+The two filters that seemed the most promising were the kurtosis and cloud filters. We carried out all analyses described in the main text with both filters. We chose the kurtosis filter after this excercise, because it removed a number of outliers in the long-term monthly temperature analysis that the cloud filter did not. We suspect that kurtosis, a measure of tailedness, was a successful filter because it incorporates shape and range in a single value, and we suspect these are the symptoms of cloud cover for this system. Additionally, the kurtosis filter can be applied to the lakeCoSTR dataset without *in-situ* data for validation. The kurtosis filter value (we used a value of 2), may have to be changed for other systems - analyses at other lakes that have *in-situ* data for validation will be needed to determine if the value we chose is transferable. 
 
 
 # Literature Citations
