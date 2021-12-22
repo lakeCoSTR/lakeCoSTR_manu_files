@@ -1,0 +1,343 @@
+---
+title: "Appendix S3: Validation Datasests"
+subtitle: 'lakeCoSTR: An open-source, interactive retrieval tool to facilitate use of the Landsat Collection 2 surface temperature product to estimate lake surface water temperatures'
+author: "*Herrick, C, Steele, BG*,  Brentrup, JA, Cook, B, Cottingham, KL, Ducey, M, Johnson, K, Lutz, DA, Palace, M, Sullivan, F, Thompson, M, Trout-Haney, JV, Weathers, KC"
+date: 'Ecosphere'
+output: word_document
+editor_options: 
+  markdown: 
+    wrap: 90
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(tidyverse)
+
+source('R_library.R')
+
+# point to directories
+C2_datadir <- '~/GitHub/ids-ne-lakes/data/colab-output/C2/'
+fig_dir <- '~/GitHub/ids-ne-lakes/figures/'
+
+```
+
+# Background
+
+Given that Lake Sunapee is well-instrumented with temperature recording instruments at numerous locations in the lake, we examined the performance of a number of filtered *in-situ* data sets for validation of the Landsat data from the lakeCoSTR tool. In this appendix, we present the results from 6 validation data sets from the Lake Sunapee *in-situ* temperature database in order to make suggestions about what kind of data may be needed or preferable for validation of the Landsat surface temperature product. 
+
+# Methods and Results
+
+All Landsat data were filtered using the kurtosis filter described in section 3.1.1 of the manuscript. Landsat-*in-situ* data sets presented here were filtered from the complete validation data set described in section 3.1.2 in the manuscript. All analyses here use the median Landsat surface temperature value and the median *in-situ* value from the subset of data described below. Deming regression (Deming, 1943), as described in section 3.1.2 was used to analyze performance of each of the validation data sets.
+
+Description of validation data sets presented in this appendix:
+
+  - `all data`: all Landsat-*in-situ* pairs (as presented in manuscript)
+  - `buoy`: all available data from the primary buoy only
+  - `buoy 2y`: two years (2019-2020) of data from the primary buoy
+  - `2018`: data from 2018, when temperature data were collected from 9 sites
+  - `HC`: data from Herrick Cove near-shore sensor only
+  - `NB`: data from Newbury near-shore sensor only
+  
+These subsets of data were chosen to mimic the kinds of data availability that may be present for other systems. The Herrick Cove and Newbury sites were selected due to the length of their data records. All validation regressions exhibit strong positive correlations with slopes close to 1 for the Landsat-*in-situ* temperature pairs of all validation datasets (Figure A).
+
+
+```{r subset data}
+# Read in Data ####
+C2_data <- read.csv(file.path(C2_datadir, 'C2_v2_temp_landsat_paired.csv')) %>% 
+  mutate(date = as.Date(substrRight(system.index, 8), format = '%Y%m%d'))
+  
+# filter for subsets 
+C2 <- C2_data %>% 
+  filter(surface_temp_kurtosis > 2) %>% 
+  select(date, is_temp_med, surface_temp_median) %>% 
+  filter(!is.na(is_temp_med))
+
+C2_buoy <- C2_data %>% 
+  filter(surface_temp_kurtosis > 2) %>% 
+  select(date, loon_median, surface_temp_median) %>% 
+  filter(!is.na(loon_median))
+
+C2_buoy_2y <- C2_data %>% 
+  filter(surface_temp_kurtosis > 2) %>% 
+  select(date, loon_median, surface_temp_median) %>% 
+  filter(date >= '2019-01-01')%>% 
+  filter(!is.na(loon_median))
+
+C2_2018 <- C2_data %>% 
+  filter(surface_temp_kurtosis > 2) %>% 
+  select(date, is_temp_med, surface_temp_median) %>% 
+  filter(date >= '2018-01-01' & date < '2019-01-01')
+
+C2_HCS <- C2_data %>% 
+  filter(surface_temp_kurtosis > 2) %>% 
+  select(date, HerrickCoveSouth_median, surface_temp_median) %>% 
+  filter(!is.na(HerrickCoveSouth_median))
+
+C2_NB <- C2_data %>% 
+  filter(surface_temp_kurtosis > 2) %>% 
+  select(date, Newbury_median, surface_temp_median) %>% 
+  filter(!is.na(Newbury_median))
+
+```
+
+
+
+```{r calculate deming}
+# Calculate Deming regression and statistics ####
+#all data
+C2_deming = deming::deming(C2$surface_temp_median ~ C2$is_temp_med)
+C2_slope <- as.numeric(C2_deming$coefficients[2])
+C2_r <- cor(C2$is_temp_med, C2$surface_temp_median)
+C2_deming_forresid = mcreg(x = C2$is_temp_med, y = C2$surface_temp_median, method.reg = 'Deming')
+C2_deming$opt_resid = MCResult.getResiduals(C2_deming_forresid)$optimized
+
+#just buoy data
+C2_buoy_deming = deming::deming(C2_buoy$surface_temp_median ~ C2_buoy$loon_median)
+buoy_slope <- as.numeric(C2_buoy_deming$coefficients[2])
+buoy_r <- cor(C2_buoy$loon_median, C2_buoy$surface_temp_median)
+C2_buoy_deming_forresid = mcreg(x = C2_buoy$loon_median, y = C2_buoy$surface_temp_median, method.reg = 'Deming')
+C2_buoy_deming$opt_resid = MCResult.getResiduals(C2_buoy_deming_forresid)$optimized
+
+#2 y of buoy data
+C2_2ybuoy_deming = deming::deming(C2_buoy_2y$surface_temp_median ~ C2_buoy_2y$loon_median)
+buoy2y_slope <- as.numeric(C2_2ybuoy_deming$coefficients[2])
+buoy2y_r <- cor(C2_buoy_2y$surface_temp_median, C2_buoy_2y$loon_median)
+C2_2ybuoy_deming_forresid = mcreg(x = C2_buoy_2y$loon_median, y = C2_buoy_2y$surface_temp_median, method.reg = 'Deming')
+C2_buoy_2y$opt_resid = MCResult.getResiduals(C2_2ybuoy_deming_forresid)$optimized
+
+#2018 only
+C2_2018_deming = deming::deming(C2_2018$surface_temp_median ~ C2_2018$is_temp_med)
+all2018_slope <- as.numeric(C2_2018_deming$coefficients[2])
+all2018_r <- cor(C2_2018$surface_temp_median, C2_2018$is_temp_med)
+C2_2018_deming_forresid = mcreg(x = C2_2018$is_temp_med, y = C2_2018$surface_temp_median, method.reg = 'Deming')
+C2_2018$opt_resid = MCResult.getResiduals(C2_2018_deming_forresid)$optimized
+
+#Herrick Cove South only
+C2_HCS_deming = deming::deming(C2_HCS$surface_temp_median ~ C2_HCS$HerrickCoveSouth_median)
+HCS_slope <- as.numeric(C2_HCS_deming$coefficients[2])
+HCS_r <- cor(C2_HCS$surface_temp_median, C2_HCS$HerrickCoveSouth_median)
+C2_HCS_deming_forresid = mcreg(x = C2_HCS$HerrickCoveSouth_median, y = C2_HCS$surface_temp_median, method.reg = 'Deming')
+C2_HCS$opt_resid = MCResult.getResiduals(C2_HCS_deming_forresid)$optimized
+
+#Newbury only
+C2_NB_deming = deming::deming(C2_NB$surface_temp_median ~ C2_NB$Newbury_median)
+NB_slope <- as.numeric(C2_NB_deming$coefficients[2])
+NB_r <- cor(C2_NB$surface_temp_median, C2_NB$Newbury_median)
+C2_NB_deming_forresid = mcreg(x = C2_NB$Newbury_median, y = C2_NB$surface_temp_median, method.reg = 'Deming')
+C2_NB$opt_resid = MCResult.getResiduals(C2_NB_deming_forresid)$optimized
+
+```
+
+
+
+```{r plot regression, fig.height=7, fig.width=10}
+
+FigA_a <- ggplot(C2, aes(x = is_temp_med, y = surface_temp_median)) +
+  geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
+  geom_point() +
+  #add deming regression and prediction intervals for C2 filtered for sub zero and maxIQR
+  geom_abline(intercept = C2_deming$coefficients[1], slope = C2_deming$coefficients[2], size = 0.75) +
+  geom_abline(intercept = C2_deming$ci[1,1], slope = C2_deming$ci[2,1], linetype = 3, size = 0.75) +
+  geom_abline(intercept = C2_deming$ci[1,2], slope = C2_deming$ci[2,2], linetype = 3, size = 0.75) +
+  geom_text(label = paste0('r = ', round(C2_r, digits = 3)),
+            x = 2,
+            y = 25,
+            size = 4,
+            hjust = 0)+
+  geom_text(label = paste0('slope = ', round(C2_slope, digits = 2)),
+            x = 2,
+            y = 23,
+            size = 4,
+            hjust = 0)+
+  geom_text(label = paste0('n = ', nrow(C2)),
+            x = 2,
+            y = 21,
+            size = 4,
+            hjust = 0)+
+  labs(x = NULL,
+       y = NULL,
+       title = 'all data') +
+  final_theme +
+  coord_cartesian(xlim = c(0, 27),
+                  ylim = c(0, 27))
+
+
+FigA_b <- ggplot(C2_buoy, aes(x = loon_median, y = surface_temp_median)) +
+  geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
+  geom_point() +
+  #add deming regression and prediction intervals for C2 filtered for sub zero and maxIQR
+  geom_abline(intercept = C2_buoy_deming$coefficients[1], slope = C2_buoy_deming$coefficients[2], size = 0.75) +
+  geom_abline(intercept = C2_buoy_deming$ci[1,1], slope = C2_buoy_deming$ci[2,1], linetype = 3, size = 0.75) +
+  geom_abline(intercept = C2_buoy_deming$ci[1,2], slope = C2_buoy_deming$ci[2,2], linetype = 3, size = 0.75) +
+  geom_text(label = paste0('r = ', round(buoy_r, digits = 3)),
+            x = 2,
+            y = 25,
+            size = 4,
+            hjust = 0)+
+  geom_text(label = paste0('slope = ', round(buoy_slope, digits = 2)),
+            x = 2,
+            y = 23,
+            size = 4,
+            hjust = 0)+
+    geom_text(label = paste0('n = ', nrow(C2_buoy)),
+            x = 2,
+            y = 21,
+            size = 4,
+            hjust = 0)+
+labs(x = NULL,
+       y = NULL,
+       title = '`buoy` dataset') +
+  final_theme +
+  coord_cartesian(xlim = c(0, 27),
+                  ylim = c(0, 27))
+
+FigA_c <- ggplot(C2_buoy_2y, aes(x = loon_median, y = surface_temp_median)) +
+  geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
+  geom_point() +
+  #add deming regression and prediction intervals for C2 filtered for sub zero and maxIQR
+  geom_abline(intercept = C2_2ybuoy_deming$coefficients[1], slope = C2_2ybuoy_deming$coefficients[2], size = 0.75) +
+  geom_abline(intercept = C2_2ybuoy_deming$ci[1,1], slope = C2_2ybuoy_deming$ci[2,1], linetype = 3, size = 0.75) +
+  geom_abline(intercept = C2_2ybuoy_deming$ci[1,2], slope = C2_2ybuoy_deming$ci[2,2], linetype = 3, size = 0.75) +
+  geom_text(label = paste0('r = ', round(buoy2y_r, digits = 3)),
+            x = 2,
+            y = 25,
+            size = 4,
+            hjust = 0)+
+  geom_text(label = paste0('slope = ', round(buoy2y_slope, digits = 2)),
+            x = 2,
+            y = 23,
+            size = 4,
+            hjust = 0)+
+    geom_text(label = paste0('n = ', nrow(C2_buoy_2y)),
+            x = 2,
+            y = 21,
+            size = 4,
+            hjust = 0)+
+labs(x = NULL,
+       y = NULL,
+       title =  '`buoy 2y` dataset') +
+  final_theme +
+  coord_cartesian(xlim = c(0, 27),
+                  ylim = c(0, 27))
+
+FigA_d <- ggplot(C2_2018, aes(x = is_temp_med, y = surface_temp_median)) +
+  geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
+  geom_point() +
+  #add deming regression and prediction intervals for C2 filtered for sub zero and maxIQR
+  geom_abline(intercept = C2_2018_deming$coefficients[1], slope = C2_2018_deming$coefficients[2], size = 0.75) +
+  geom_abline(intercept = C2_2018_deming$ci[1,1], slope = C2_2018_deming$ci[2,1], linetype = 3, size = 0.75) +
+  geom_abline(intercept = C2_2018_deming$ci[1,2], slope = C2_2018_deming$ci[2,2], linetype = 3, size = 0.75) +
+  geom_text(label = paste0('r = ', round(all2018_r, digits = 3)),
+            x = 2,
+            y = 25,
+            size = 4,
+            hjust = 0)+
+  geom_text(label = paste0('slope = ', round(all2018_slope, digits = 2)),
+            x = 2,
+            y = 23,
+            size = 4,
+            hjust = 0)+
+    geom_text(label = paste0('n = ', nrow(C2_2018)),
+            x = 2,
+            y = 21,
+            size = 4,
+            hjust = 0)+
+labs(x = NULL,
+       y = NULL,
+       title = '`2018` dataset') +
+  final_theme +
+  coord_cartesian(xlim = c(0, 27),
+                  ylim = c(0, 27))
+
+FigA_e <- ggplot(C2_HCS, aes(x = HerrickCoveSouth_median, y = surface_temp_median)) +
+  geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
+  geom_point() +
+  #add deming regression and prediction intervals for C2 filtered for sub zero and maxIQR
+  geom_abline(intercept = C2_HCS_deming$coefficients[1], slope = C2_HCS_deming$coefficients[2], size = 0.75) +
+  geom_abline(intercept = C2_HCS_deming$ci[1,1], slope = C2_HCS_deming$ci[2,1], linetype = 3, size = 0.75) +
+  geom_abline(intercept = C2_HCS_deming$ci[1,2], slope = C2_HCS_deming$ci[2,2], linetype = 3, size = 0.75) +
+  geom_text(label = paste0('r = ', round(HCS_r, digits = 3)),
+            x = 2,
+            y = 25,
+            size = 4,
+            hjust = 0)+
+  geom_text(label = paste0('slope = ', round(HCS_slope, digits = 2)),
+            x = 2,
+            y = 23,
+            size = 4,
+            hjust = 0)+
+    geom_text(label = paste0('n = ', nrow(C2_HCS)),
+            x = 2,
+            y = 21,
+            size = 4,
+            hjust = 0)+
+labs(x = NULL,
+       y = NULL,
+       title = '`HC` dataset') +
+  final_theme +
+  coord_cartesian(xlim = c(0, 27),
+                  ylim = c(0, 27))
+
+FigA_f <- ggplot(C2_NB, aes(x = Newbury_median, y = surface_temp_median)) +
+  geom_abline(slope = 1, intercept = 0, color = 'grey', size = 0.75) +
+  geom_point() +
+  #add deming regression and prediction intervals for C2 filtered for sub zero and maxIQR
+  geom_abline(intercept = C2_NB_deming$coefficients[1], slope = C2_NB_deming$coefficients[2], size = 0.75) +
+  geom_abline(intercept = C2_NB_deming$ci[1,1], slope = C2_NB_deming$ci[2,1], linetype = 3, size = 0.75) +
+  geom_abline(intercept = C2_NB_deming$ci[1,2], slope = C2_NB_deming$ci[2,2], linetype = 3, size = 0.75) +
+  geom_text(label = paste0('r = ', round(NB_r, digits = 3)),
+            x = 2,
+            y = 25,
+            size = 4,
+            hjust = 0)+
+  geom_text(label = paste0('slope = ', round(NB_slope, digits = 2)),
+            x = 2,
+            y = 23,
+            size = 4,
+            hjust = 0)+
+    geom_text(label = paste0('n = ', nrow(C2_NB)),
+            x = 2,
+            y = 21,
+            size = 4,
+            hjust = 0)+
+labs(x = NULL,
+       y = NULL,
+       title = '`NB` dataset') +
+  final_theme +
+  coord_cartesian(xlim = c(0, 27),
+                  ylim = c(0, 27))
+
+FigA <- plot_grid(FigA_a, FigA_b, FigA_c, FigA_d, FigA_e, FigA_f,
+          labels = c('a', 'b', 'c', 'd', 'e', 'f'))
+
+x_lab = ggdraw() + draw_label(label = expression(bold(paste(italic('in-situ'), ' median water temperature (deg C)'))),
+                      fontface = 'bold')
+
+y_lab = ggdraw() + draw_label(label = 'Landsat median water temperature (deg C)',
+                              fontface = 'bold',
+                              angle =90)
+
+plot_grid(y_lab, FigA,
+                       NULL, x_lab,
+                       ncol = 2,
+                       rel_widths = c(0.05, 1.1),
+                       rel_heights = c(1.1, 0.05))
+
+
+
+```
+
+**Figure A.** Two years of temperature data from a single buoy at a central location (c) and data from multiple locations in a single year (d) in Lake Sunapee both provide adequate data for validating Landsat-derived temperature. Even when limiting the *in-situ* validation dataset to singular near-shore sites, the regression between *in-situ* and Landsat-derived temperature seem to generally agree, though more prediction error is associated with those validation regressions (e, f). 
+
+
+# Discussion and Validtion Dataset Suggestions
+
+Generally speaking, any high-frequency temperature data can be used to validate the Landsat surface temperature data, but using a median value from multiple locations or from a single, centrally-located location will perform the best and give the user the best insight into biases in the Landsat data. Even the near-shore sites (Figure A panels e and f) show that the data obtained using lakeCoSTR are in the correct range - and given that the slope slope is near 1, no calibration of the product is required. In general, we would suggest best practice would be to validate the lakeCoSTR data with *in-situ* values from at least one centrally-located high-frequency temperature sensor. The Landsat-*in-situ* pairs should cover a large range of water temperature values in order to assess biases in the Landsat data. 
+
+It is important to note that the data collected from the cove buoys in 2018 and all of the near-shore sites were obtained using lower cost sensors, and did not require an instrumented buoy with external power. HOBO and Onset temperature sensors, like those used to gather data for at these locations, could be deployed for a few ice-free seasons in order to validate the Landsat temperature product for specific lakes. Given the additional QAQC filtering (as described in Appendix S2) that was used for this study, we would advise having enouth *in-situ* data to validate the lakeCoSTR data product for individual lakes before applying the data from the product. Especially important are data that span the month window you are interested in, given the bias observed in early-season data at Lake Sunapee (Figure GI).
+
+
+# Literature Citations
+
+Deming, W. E. 1943. Statistical adjustment of data. Dover Publications, 1985.
