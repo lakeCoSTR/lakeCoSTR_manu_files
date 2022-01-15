@@ -41,12 +41,7 @@ lmp_temp_monthly_stats <- lmp_temp_deep %>%
             is_summer_min_temp_degC = min(value),
             is_n_obs = length(value),
             day = min(day)) %>% 
-  filter((month >=5 & month < 12)) 
-
-ggplot(lmp_temp_monthly_stats, aes(x=year, y = is_summer_median_temp_degC)) +
-  facet_grid(.~month) +
-  geom_point() +
-  geom_smooth(method = 'lm', se = F)
+  filter((month >=5 & month < 11)) 
 
 ls_temp_summer_monthly_median_kurtosis <- ls_kurtosis %>% 
   mutate(month = as.numeric(format((date), '%m')),
@@ -55,12 +50,6 @@ ls_temp_summer_monthly_median_kurtosis <- ls_kurtosis %>%
   summarise(ls_summer_median_temp_degC = median(surface_temp_median),
             ls_n_obs = length(surface_temp_median))  %>% 
   filter(!is.na(month))
-
-ggplot(ls_temp_summer_monthly_median_kurtosis, aes(x=year, y = ls_summer_median_temp_degC)) +
-  facet_grid(.~month) +
-  geom_point() +
-  geom_smooth(method = 'lm', se = F)
-
 
 df1_med <- lmp_temp_monthly_stats %>% 
   select(year, month, is_summer_median_temp_degC)
@@ -138,11 +127,11 @@ DW_pval = c(car::durbinWatsonTest(is_5_lm)$p,
             car::durbinWatsonTest(ls_8_lm)$p,
             car::durbinWatsonTest(ls_9_lm)$p,
             car::durbinWatsonTest(ls_10_lm)$p)
-DW_table = data.frame(monthlist, data, DW_stat, DW_pval) %>% 
+DW_table = data.frame(month, data, DW_stat, DW_pval) %>% 
   mutate(DW_stat = round(DW_stat, digits = 3),
          DW_pval = round(DW_pval, digits = 3))
 
-write.csv(DW_table, file.path(figdir, 'STD_DW_table_ISLS_monthly.csv'), row.names = F)
+DW_table
 
 # linear model for all data together
 
@@ -215,6 +204,10 @@ summary(lm_source_jul)
 summary(all_7_lm)
 #slope and intercept are significant; plot one line for the two groups of data
 
+#see if insitu and landsat have trends separately
+summary(is_7_lm) #yes
+summary(ls_7_lm) #no
+
 ## AUG ####
 lm_source_aug_iva <- lm(value ~ year+source+year*source, data = aug_data)
 summary(lm_source_aug_iva)
@@ -223,6 +216,11 @@ lm_source_aug <- lm(value ~ year+source, data = aug_data)
 summary(lm_source_aug)
 #no sig diff in intercept; intercept and slope sig
 summary(all_8_lm)
+
+#see if insitu and landsat have trends separately
+summary(is_8_lm) #yes
+summary(ls_8_lm) #yes
+
 
 ## SEPT ####
 lm_source_sep_iva <- lm(value ~ year+source+year*source, data = sep_data)
@@ -243,6 +241,11 @@ lm_source_oct <- lm(value ~ year+source, data = oct_data)
 summary(lm_source_oct)
 #no diff in intercept
 summary(all_10_lm)
+
+#see if insitu and landsat have trends separately
+summary(is_10_lm) #no
+summary(ls_10_lm) #yes
+
 
 # IVA results to table ####
 iva_table <- NULL
@@ -385,7 +388,7 @@ slope_table
 
 write.csv(slope_table, file.path(figdir, 'STF_slope_table.csv'), row.names = F)
 
-#### plot on same axes with separate lines ####
+#### Figure 5: plot on same axes with separate lines ####
 may_is <- may_data %>% 
   filter(source == 'in-situ') 
 mean_may_is = mean(may_is$value)
@@ -443,7 +446,6 @@ jul <- temp_monthly_median %>%
   theme(legend.position = 'none')  
 jul
 
-
 aug <- temp_monthly_median %>% 
   filter(month == 8) %>% 
   ggplot(., aes(x = year, y = value))+
@@ -500,21 +502,21 @@ y_axis_title = ggdraw() + draw_label('median lake surface temperature\n(degrees 
 x_axis_title = ggdraw() + draw_label('year', size = 12, fontface = 'bold')
 legend = ggdraw() + draw_label('black = in-situ   yellow = landsat   green = all data', size = 12)
 
-FigH = plot_grid(may, june, jul, aug, sept, oct,
+Fig5 = plot_grid(may, june, jul, aug, sept, oct,
                  labels = c('a', 'b', 'c', 'd', 'e', 'f'),
           ncol = 3)
-FigH
+Fig5
 
-FigH_labels = plot_grid(y_axis_title, FigH,
+Fig5_labels = plot_grid(y_axis_title, Fig5,
                         NULL, x_axis_title,
                         NULL, legend,
                         cols = 2, 
                         rel_widths = c(0.05, 0.9),
                         rel_heights = c(0.9, 0.05, 0.05))
 
-FigH_labels
+Fig5_labels
 
-ggsave(file.path(figdir, 'FigH_application_monthly_median_temp_kurtosis_together.jpg'), 
+ggsave(file.path(figdir, 'Fig5_application_monthly_median_temp_kurtosis_together.jpg'), 
           width=9,
           height=6, 
           units = 'in', 

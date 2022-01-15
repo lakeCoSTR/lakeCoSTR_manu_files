@@ -1,14 +1,14 @@
-lat_dd,lon_dd,frequency,site,name
-43.4288,-72.0675,high frequency,georges mills,Georges Mills buoy
-43.4096,-72.033,high frequency,herrick cove,Herrick Cove buoy
-43.3436,-72.0595,high frequency,state beach,State Beach buoy
-43.40996667,-72.03683333,high frequency,Midge,Herrick Cove near-shore
-43.3234,-72.04105,high frequency,Newbury,Newbury near-shore
-43.39601667,-72.07893333,high frequency,Coffin,North Sunapee Harbor near-shore
-43.3448,-72.04368333,high frequency,Fichter,South of the Fells near-shore
-43.3913333,-72.0576666,high frequency,loon island,Primary (LSPA/GLEON) buoy (summer location)
-43.38565,-72.0812139,high frequency,harbor,Primary (LSPA/GLEON) buoy (winter location)
-43.403914,-72.043774,low frequency,200,LSPA LMP Site 200
-43.384405,-72.062433,low frequency,210,LSPA LMP Site 210
-43.3602,-72.055073,low frequency,220,LSPA LMP Site 220
-43.335879,-72.042191,low frequency,230,LSPA LMP Site 230
+lat_dd,lon_dd,frequency,site,source,name
+43.4288,-72.0675,high frequency,georges mills,Ward,Georges Mills buoy
+43.4096,-72.033,high frequency,herrick cove,Ward,Herrick Cove buoy
+43.3436,-72.0595,high frequency,state beach,Ward,State Beach buoy
+43.40996667,-72.03683333,high frequency,Midge,Cottingham,Herrick Cove near-shore
+43.3234,-72.04105,high frequency,Newbury,Cottingham,Newbury near-shore
+43.39601667,-72.07893333,high frequency,Coffin,Cottingham,North Sunapee Harbor near-shore
+43.3448,-72.04368333,high frequency,Fichter,Cottingham,South of the Fells near-shore
+43.3913333,-72.0576666,high frequency,loon island,LSPA,Primary (LSPA/GLEON) buoy (summer location)
+43.38565,-72.0812139,high frequency,harbor,LSPA,Primary (LSPA/GLEON) buoy (winter location)
+43.403914,-72.043774,low frequency,200,,LSPA LMP Site 200
+43.384405,-72.062433,low frequency,210,,LSPA LMP Site 210
+43.3602,-72.055073,low frequency,220,,LSPA LMP Site 220
+43.335879,-72.042191,low frequency,230,,LSPA LMP Site 230
