@@ -26,10 +26,6 @@ ls <- read.csv(file.path(datadir, 'colab-output/C2/C2_v2_temp_stats.csv')) %>%
 ls_kurtosis <- ls %>% 
   filter(surface_temp_kurtosis >2 )
 
-november <- ls_kurtosis %>% 
-  mutate(month = as.numeric(format(date, '%m'))) %>% 
-  filter(month == 11)
-
 #### whole lake median by month and year ####
 lmp_temp_monthly_stats <- lmp_temp_deep %>% 
   mutate(month = as.numeric(format(as.Date(date), '%m')),
@@ -41,7 +37,7 @@ lmp_temp_monthly_stats <- lmp_temp_deep %>%
             is_summer_min_temp_degC = min(value),
             is_n_obs = length(value),
             day = min(day)) %>% 
-  filter((month >=5 & month < 11)) 
+  filter((month >=5 & month <= 11)) 
 
 ls_temp_summer_monthly_median_kurtosis <- ls_kurtosis %>% 
   mutate(month = as.numeric(format((date), '%m')),
@@ -98,6 +94,7 @@ ls_7_lm <- linear_analysis(7, 'landsat')
 ls_8_lm <- linear_analysis(8, 'landsat')
 ls_9_lm <- linear_analysis(9, 'landsat')
 ls_10_lm <- linear_analysis(10, 'landsat')
+ls_11_lm <- linear_analysis(11, 'landsat')
 
 # do DW test for each month and each dataset
 month = c(5:10, 5:10)
@@ -148,7 +145,6 @@ all_7_lm <- linear_analysis_all(7)
 all_8_lm <- linear_analysis_all(8)
 all_9_lm <- linear_analysis_all(9)
 all_10_lm <- linear_analysis_all(10)
-all_11_lm <- linear_analysis_all(11)
 
 
 # indicator variable analysis ####
@@ -168,8 +164,6 @@ sep_data <- temp_monthly_median %>%
   filter(month == 9)
 oct_data <- temp_monthly_median %>% 
   filter(month == 10)
-nov_data <- temp_monthly_median %>% 
-  filter(month == 11)
 
 # iva and multivariate linear models ####
 
@@ -271,21 +265,11 @@ iva_table <- iva_table %>%
   mutate_at(vars(iva_pval, multreg_pval),
             ~ round(., digits = 3))
 
-write.csv(iva_table, file.path(figdir, 'STE_IVA_slope_results.csv'), row.names = F)
-
-
 # gather slope and CI data
 
 slope_table <- NULL
 
 slope_table$month <- c('May', 'June', 'July', 'August', 'September', 'October')
-
-slope_table$alldata_pval <- c(summary(all_5_lm)$coefficients[2,4],
-                              summary(all_6_lm)$coefficients[2,4],
-                              summary(all_7_lm)$coefficients[2,4],
-                              summary(all_8_lm)$coefficients[2,4],
-                              summary(all_9_lm)$coefficients[2,4],
-                              summary(all_10_lm)$coefficients[2,4])
 
 slope_table$alldata_slope <- c(summary(all_5_lm)$coefficients[2,1],
                                summary(all_6_lm)$coefficients[2,1],
@@ -307,13 +291,6 @@ slope_table$alldata_slope_upper <- c(confint(lm(value~year, data = may_data),'ye
                                    confint(lm(value~year, data = sep_data),'year',level=0.95)[2],
                                    confint(lm(value~year, data = oct_data),'year',level=0.95)[2])
 
-slope_table$ls_pval <- c(summary(ls_5_lm)$coefficients[2,4],
-                              summary(ls_6_lm)$coefficients[2,4],
-                              summary(ls_7_lm)$coefficients[2,4],
-                              summary(ls_8_lm)$coefficients[2,4],
-                              summary(ls_9_lm)$coefficients[2,4],
-                              summary(ls_10_lm)$coefficients[2,4])
-
 slope_table$ls_slope <- c(summary(ls_5_lm)$coefficients[2,1],
                           summary(ls_6_lm)$coefficients[2,1],
                           summary(ls_7_lm)$coefficients[2,1],
@@ -334,13 +311,6 @@ slope_table$ls_slope_upper <- c(confint(lm(value~year, data = may_data[may_data$
                               confint(lm(value~year, data = aug_data[aug_data$source == 'landsat',]), 'year', level = 0.95)[2],
                               confint(lm(value~year, data = sep_data[sep_data$source == 'landsat',]), 'year', level = 0.95)[2],
                               confint(lm(value~year, data = oct_data[oct_data$source == 'landsat',]), 'year', level = 0.95)[2])
-
-slope_table$is_pval <- c(summary(is_5_lm)$coefficients[2,4],
-                         summary(is_6_lm)$coefficients[2,4],
-                         summary(is_7_lm)$coefficients[2,4],
-                         summary(is_8_lm)$coefficients[2,4],
-                         summary(is_9_lm)$coefficients[2,4],
-                         summary(is_10_lm)$coefficients[2,4])
 
 slope_table$is_slope <- c(summary(is_5_lm)$coefficients[2,1],
                           summary(is_6_lm)$coefficients[2,1],
@@ -366,7 +336,7 @@ slope_table$is_slope_upper <- c(confint(lm(value~year, data = may_data[may_data$
 slope_table <- as.data.frame(slope_table)
 
 slope_table <-slope_table %>% 
-  pivot_longer(cols = alldata_pval:is_slope_upper, 
+  pivot_longer(cols = alldata_slope:is_slope_upper, 
                names_to = 'variable',
                values_to = 'value') %>% 
   mutate(dataset = case_when(grepl('all', variable) ~ 'all data',
@@ -386,7 +356,7 @@ slope_table <- slope_table %>%
 
 slope_table
 
-write.csv(slope_table, file.path(figdir, 'STF_slope_table.csv'), row.names = F)
+write.csv(slope_table, file.path(figdir, 'Table1_slope_CI.csv'), row.names = F)
 
 #### Figure 5: plot on same axes with separate lines ####
 may_is <- may_data %>% 
@@ -398,7 +368,7 @@ mean_may_ls = mean(may_ls$value)
 may <- temp_monthly_median %>% 
   filter(month == 5) %>% 
   ggplot(., aes(x = year, y = value))+
-  geom_point(aes(color = source)) +
+  geom_point(aes(color = source, shape = source)) +
   geom_abline(slope = 0, 
               intercept = mean_may_is, 
               lty = 2) +
@@ -418,7 +388,7 @@ mean_june = mean(jun_data$value)
 june <- temp_monthly_median %>% 
   filter(month == 6) %>% 
   ggplot(., aes(x = year, y = value))+
-  geom_point(aes(color = source)) +
+  geom_point(aes(color = source, shape = source)) +
   geom_abline(slope = 0, 
               intercept = mean_june, 
               lty = 2,
@@ -434,7 +404,7 @@ june
 jul <- temp_monthly_median %>% 
   filter(month == 7) %>% 
   ggplot(., aes(x = year, y = value))+
-  geom_point(aes(color = source)) +
+  geom_point(aes(color = source, shape = source)) +
   geom_abline(slope = summary(all_7_lm)$coefficients[2, 1],
               intercept = summary(all_7_lm)$coefficients[1,1],
               color = '#009E73') +
@@ -449,7 +419,7 @@ jul
 aug <- temp_monthly_median %>% 
   filter(month == 8) %>% 
   ggplot(., aes(x = year, y = value))+
-  geom_point(aes(color = source)) +
+  geom_point(aes(color = source, shape = source)) +
   geom_abline(slope = summary(all_8_lm)$coefficients[2, 1],
               intercept = summary(all_8_lm)$coefficients[1,1],
               color = '#009E73') +
@@ -467,7 +437,7 @@ mean_sept_is = mean(sept_is$value)
 sept <- temp_monthly_median %>% 
   filter(month ==9) %>% 
   ggplot(., aes(x = year, y = value))+
-  geom_point(aes(color = source)) +
+  geom_point(aes(color = source, shape = source)) +
   geom_abline(slope = summary(ls_9_lm)$coefficients[2, 1],
               intercept = summary(ls_9_lm)$coefficients[1,1],
               color = "#E69F00") +
@@ -485,7 +455,7 @@ sept
 oct <- temp_monthly_median %>% 
   filter(month == 10) %>% 
   ggplot(., aes(x = year, y = value))+
-  geom_point(aes(color = source)) +
+  geom_point(aes(color = source, shape = source)) +
   geom_abline(slope = summary(all_10_lm)$coefficients[2, 1],
               intercept = summary(all_10_lm)$coefficients[1,1],
               color = '#009E73') +
@@ -497,27 +467,117 @@ oct <- temp_monthly_median %>%
   theme(legend.position = 'none')  
 oct
 
+forlegend <- temp_monthly_median %>% 
+  filter(month == 10) %>% 
+  ggplot(., aes(x = year, y = value))+
+  geom_point(aes(color = source, shape = source)) +
+  final_theme+
+  labs(color = 'data source', shape = 'data source') +
+  scale_color_colorblind()+
+  theme(legend.key.width = unit(1, 'cm'))
+leg <- get_legend(forlegend)
+
+for_legline = temp_monthly_median %>% 
+  filter(month == 10) %>% 
+  ggplot(., aes(x = year, y = value))+
+  geom_point() +
+  geom_smooth(method = 'lm', se = F, aes(color = '#009E73')) +
+  geom_smooth(method = 'lm', se = F, aes(color = '#E69F00')) +
+  geom_smooth(method = 'lm', se = F, aes(color = '#000000')) +
+  theme_bw() +
+  scale_color_identity(guide = 'legend',
+                       name = 'trend model',
+                       breaks = c('#000000', '#E69F00', '#009E73'),
+                       labels = c('in-situ', 'landsat','insitu + landsat'))+
+  theme(legend.key.width = unit(1, 'cm'))
+leg_line = get_legend(for_legline)
+
+for_legdash = temp_monthly_median %>% 
+  filter(month == 10) %>% 
+  ggplot(., aes(x = year, y = value))+
+  geom_point() +
+  geom_smooth(method = 'lm', se = F, linetype = 'dashed', aes(color = '#009E73')) +
+  geom_smooth(method = 'lm', se = F, linetype = 'dashed', aes(color = '#E69F00')) +
+  geom_smooth(method = 'lm', se = F, linetype = 'dashed', aes(color = '#000000')) +
+  theme_bw() +
+  scale_color_identity(guide = 'legend',
+                       name = 'no slope model',
+                       breaks = c('#000000', '#E69F00', '#009E73'),
+                       labels = c('in-situ', 'landsat','insitu + landsat')) +
+  theme(legend.key.width = unit(1, 'cm'))
+leg_dash = get_legend(for_legdash)
+
 #save title
 y_axis_title = ggdraw() + draw_label('median lake surface temperature\n(degrees C)', size = 12, fontface = "bold", angle = 90) 
 x_axis_title = ggdraw() + draw_label('year', size = 12, fontface = 'bold')
-legend = ggdraw() + draw_label('black = in-situ   yellow = landsat   green = all data', size = 12)
 
 Fig5 = plot_grid(may, june, jul, aug, sept, oct,
                  labels = c('a', 'b', 'c', 'd', 'e', 'f'),
+                 label_size = 10,
+                 label_x = 0.05,
+                 label_y = 0.97,
           ncol = 3)
 Fig5
 
 Fig5_labels = plot_grid(y_axis_title, Fig5,
                         NULL, x_axis_title,
-                        NULL, legend,
-                        cols = 2, 
-                        rel_widths = c(0.05, 0.9),
-                        rel_heights = c(0.9, 0.05, 0.05))
+                        ncol = 2, 
+                        rel_widths = c(0.05, 0.95),
+                        rel_heights = c(0.95, 0.05))
 
 Fig5_labels
 
+legend = plot_grid(NULL, leg, leg_line, leg_dash, NULL,
+                   align = 'v', 
+                   ncol = 1)
+
+Fig5_labels_leg = plot_grid(Fig5_labels, legend,
+                            ncol = 2, 
+                            rel_widths = c(0.8, 0.2))
+Fig5_labels_leg
+
 ggsave(file.path(figdir, 'Fig5_application_monthly_median_temp_kurtosis_together.jpg'), 
           width=9,
-          height=6, 
+          height=5, 
           units = 'in', 
           dpi = 300)
+
+# Supplemental Figure 2: November data ####
+#see if there is a trend
+summary(ls_11_lm)
+#no statistically significant trend, so no-slope model here
+nov_data <- ls_temp_summer_monthly_median_kurtosis %>% 
+  filter(month == 11)
+nov_mean = mean(nov_data$ls_summer_median_temp_degC)
+nov <- ls_temp_summer_monthly_median_kurtosis %>% 
+  filter(month == 11) %>% 
+  ggplot(., aes(x = year, y = ls_summer_median_temp_degC))+
+  geom_point(color = '#E69F00',
+             shape = 17) +
+  geom_abline(slope = 0,
+              intercept = nov_mean,
+              linetype = 'dashed',
+              color = '#E69F00') +
+  labs(x = 'year', 
+       y = 'median lake surface temperature\n(dgrees C)', 
+       title = 'November') +
+  final_theme +
+  coord_cartesian(xlim = c(1980, 2020)) +
+  scale_color_colorblind() +
+  theme(legend.position = 'none')  
+nov
+
+legend_nov = plot_grid(leg, leg_line, leg_dash,
+                   align = 'v', 
+                   ncol = 1)
+
+nov_leg = plot_grid(nov, legend_nov,
+                            ncol = 2, 
+                            rel_widths = c(0.7, 0.3))
+nov_leg
+
+ggsave(file.path(figdir, 'SF2_Nov_mediantemp.jpg'), 
+       width=5,
+       height=3, 
+       units = 'in', 
+       dpi = 300)

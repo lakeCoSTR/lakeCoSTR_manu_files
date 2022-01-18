@@ -1,6 +1,5 @@
 # this script summarizes the insitu data collated in the 'validation - data download and collate.Rmd' script.
 
-# last modified 09Nov2021
 # authored by B. Steele
 
 source('scripts/R_library.R')
@@ -64,7 +63,6 @@ range_summary <- range_per_date %>%
 
 
 ## Summary of location/depth/measurement
-
 insitu %>% 
   mutate(year = format(datetime, '%Y'),
          month = as.numeric(format(datetime, '%m'))) %>% 
@@ -76,5 +74,5 @@ insitu %>%
   pivot_longer(!c(year, location), names_to = 'variable', values_to = 'value') %>% 
   pivot_wider(id_cols = c(year, variable, value),
               names_from = c(location, variable)) %>% 
-  write.csv(., file.path(figdir, 'STB_insitu_data_extent_summary.csv'), row.names = F)
+  write.csv(., file.path(figdir, 'ST2_insitu_data_extent_summary.csv'), row.names = F)
 
