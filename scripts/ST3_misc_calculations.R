@@ -74,39 +74,5 @@ month_summary_kurt <- C2_mission %>%
 
 tableb <- full_join(mission_summary, mission_summary_kurt)
 
-write.csv(tableb, file.path(figdir, 'TableB_C1C2filtercount.csv'), row.names = F)
-
-# ## load and analyze LS-IS matches ####
-# C1match <- read_csv(file.path(C1_datadir, 'C1_temp_landsat_paired.csv')) %>% 
-#   mutate(date = as.Date(substrRight(`system:index`, 8), format = '%Y%m%d')) %>% 
-#   mutate(LSmission = case_when(grepl('LT05', `system:index`) ~ 'LS 5',
-#                                grepl('LT04', `system:index`) ~ 'LS 4',
-#                                grepl('LE07', `system:index`) ~ 'LS 7',
-#                                grepl('LC08', `system:index`) ~ 'LS 8',
-#                                TRUE ~ NA_character_),
-#          collection = 'C1',
-#          filter = 'none')
-# 
-# C2match <- read_csv(file.path(C2_datadir, 'C2_v2_temp_landsat_paired.csv')) %>% 
-#   mutate(date = as.Date(substrRight(`system:index`, 8), format = '%Y%m%d')) %>% 
-#   mutate(LSmission = case_when(grepl('LT05', `system:index`) ~ 'LS 5',
-#                                grepl('LT04', `system:index`) ~ 'LS 4',
-#                                grepl('LE07', `system:index`) ~ 'LS 7',
-#                                grepl('LC08', `system:index`) ~ 'LS 8',
-#                                TRUE ~ NA_character_),
-#          collection = 'C2',
-#          filter = 'none')
-# 
-# 
-# #calculate percentage change in matches
-# allmatchdata <- full_join(C1match, C2match)
-# mission_summary_matches <- allmatchdata %>% 
-#   group_by(LSmission, collection) %>% 
-#   summarise(count = length(LSmission)) %>% 
-#   pivot_wider(names_from = collection,
-#               values_from = count) %>% 
-#   mutate(perc_change = round(((C2-C1)/C1)*100, digits = 1))
-# 
-
-
+write.csv(tableb, file.path(figdir, 'ST3_C1C2filtercount.csv'), row.names = F)
 
