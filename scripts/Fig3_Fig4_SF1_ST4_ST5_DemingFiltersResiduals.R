@@ -26,8 +26,7 @@ C1SC <- read_csv(file.path(C1_datadir, 'C1_temp_landsat_paired.csv')) %>%
                                TRUE ~ NA_character_)) %>% 
   mutate(collection = 1,
          month = format(date, '%m'),
-         doy = format(date, '%j')) %>% 
-  select(-X1)
+         doy = format(date, '%j'))
 head(C1SC)
 
 # rename LS-related columns
@@ -140,23 +139,23 @@ Fig3_a <- ggplot(C1SC, aes(x = is_temp_med, y = surface_temp_median)) +
   geom_abline(intercept = C1_deming$ci[1,1], slope = C1_deming$ci[2,1], linetype = 3, size = 0.75) +
   geom_abline(intercept = C1_deming$ci[1,2], slope = C1_deming$ci[2,2], linetype = 3, size = 0.75) +
   geom_text(label = paste0('r = ', round(cor(C1SC$surface_temp_median, C1SC$is_temp_med), digits = 3)),
-            x = 2,
+            x = 0,
             y = 25,
-            size = 4,
+            size = 3.5,
             hjust = 0)+
   geom_text(label = paste0('n = ', length(C1SC$date)),
-            x = 2,
+            x = 0,
             y = 23,
-            size = 4,
+            size = 3.5,
             hjust = 0)+
   geom_text(label = paste0('y = ', 
                            round(C1_deming$coefficients[1], digits = 2), 
                            ' + ', 
                            round(C1_deming$coefficients[2], digits = 2), 
                            ' * x'),
-            x = 2,
+            x = 0,
             y = 27,
-            size = 4,
+            size = 3.5,
             hjust = 0) +
   labs(x = NULL,
        y = NULL,
@@ -175,23 +174,23 @@ Fig3_b <- ggplot(C2ST, aes(x = is_temp_med, y = surface_temp_median)) +
   geom_abline(intercept = C2_deming$ci[1,1], slope = C2_deming$ci[2,1], linetype = 3, size = 0.75) +
   geom_abline(intercept = C2_deming$ci[1,2], slope = C2_deming$ci[2,2], linetype = 3, size = 0.75) +
   geom_text(label = paste0('r = ', round(cor(C2ST$surface_temp_median, C2ST$is_temp_med), digits = 3)),
-            x = 2,
+            x = 0,
             y = 25,
-            size = 4,
+            size = 3.5,
             hjust = 0)+
   geom_text(label = paste0('n = ', length(C2ST$date)),
-            x = 2,
+            x = 0,
             y = 23,
-            size = 4,
+            size = 3.5,
             hjust = 0)+
   geom_text(label = paste0('y = ', 
                            round(C2_deming$coefficients[1], digits = 2), 
                            ' + ', 
                            round(C2_deming$coefficients[2], digits = 2), 
                            ' * x'),
-            x = 2,
+            x = 0,
             y = 27,
-            size = 4,
+            size = 3.5,
             hjust = 0) +
   labs(x = NULL,
        y = NULL,
@@ -236,23 +235,23 @@ Fig3_d <- ggplot(C2ST_kurtosis, aes(x = is_temp_med, y = surface_temp_median)) +
   geom_abline(intercept = C2_kurtosis_deming$ci[1,1], slope = C2_kurtosis_deming$ci[2,1], linetype = 3, size = 0.75) +
   geom_abline(intercept = C2_kurtosis_deming$ci[1,2], slope = C2_kurtosis_deming$ci[2,2], linetype = 3, size = 0.75) +
   geom_text(label = paste0('r = ', round(cor(C2ST_kurtosis$surface_temp_median, C2ST_kurtosis$is_temp_med), digits = 3)),
-            x = 2,
+            x = 0,
             y = 25,
-            size = 4,
+            size = 3.5,
             hjust = 0)+
   geom_text(label = paste0('n = ', length(C2ST_kurtosis$date)),
-            x = 2,
+            x = 0,
             y = 23,
-            size = 4,
+            size = 3.5,
             hjust = 0)+
   geom_text(label = paste0('y = ', 
                            round(C2_kurtosis_deming$coefficients[1], digits = 2), 
                            ' + ', 
                            round(C2_kurtosis_deming$coefficients[2], digits = 2), 
                            ' * x'),
-            x = 2,
+            x = 0,
             y = 27,
-            size = 4,
+            size = 3.5,
             hjust = 0) +
   labs(x = NULL,
        y = NULL,
@@ -270,11 +269,12 @@ Fig3_plot <- plot_grid(Fig3_a, Fig3_b,
                    # ncol = 2,
                    ncol = 3, 
                    labels = c('a', 'b','c'),
+                   label_size = 12,
                    label_x = 0.07)
 
 Fig3_plot
 
-x_lab = ggdraw() + draw_label(label = expression(bold(paste(italic('in-situ'), ' median water temp (deg C)'))),
+x_lab = ggdraw() + draw_label(label = expression(bold(paste(italic('in situ'), ' median water temp (deg C)'))),
                       fontface = 'bold', size = 12)
 
 y_lab = ggdraw() + draw_label(label = 'Landsat median water temp (deg C)',
