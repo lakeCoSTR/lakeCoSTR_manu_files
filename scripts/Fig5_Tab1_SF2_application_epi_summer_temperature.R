@@ -56,7 +56,7 @@ df2_med_kurtosis <- ls_temp_summer_monthly_median_kurtosis %>%
 temp_monthly_median <- full_join(df1_med, df2_med_kurtosis) %>% 
   pivot_longer(., cols = c(ls_summer_median_temp_degC, is_summer_median_temp_degC), names_to='source', values_to = 'value') %>% 
   mutate(source = case_when(grepl('is_', source) ~ 'in-situ',
-                            grepl('ls_', source) ~ 'landsat',
+                            grepl('ls_', source) ~ 'Landsat',
                             TRUE ~ NA_character_)) %>% 
   filter(!is.na(value))
 
@@ -85,14 +85,14 @@ linear_analysis = function(mm, ds){
 is_7_lm <- linear_analysis(7, 'in-situ')
 is_8_lm <- linear_analysis(8, 'in-situ')
 is_9_lm <- linear_analysis(9, 'in-situ')
-ls_7_lm <- linear_analysis(7, 'landsat')
-ls_8_lm <- linear_analysis(8, 'landsat')
-ls_9_lm <- linear_analysis(9, 'landsat')
+ls_7_lm <- linear_analysis(7, 'Landsat')
+ls_8_lm <- linear_analysis(8, 'Landsat')
+ls_9_lm <- linear_analysis(9, 'Landsat')
 
 # do DW test for each month and each dataset
 month = c(7:9, 7:9)
 data = c('in-situ','in-situ','in-situ',
-         'landast','landast','landast')
+         'Landsat','Landsat','Landsat')
 DW_stat = c(car::durbinWatsonTest(is_7_lm)$dw,
             car::durbinWatsonTest(is_8_lm)$dw,
             car::durbinWatsonTest(is_9_lm)$dw,
@@ -149,7 +149,7 @@ summary(lm_source_jul)
 summary(all_7_lm)
 #slope and intercept are significant; plot one line for the two groups of data
 
-#see if insitu and landsat have trends separately
+#see if insitu and Landsat have trends separately
 summary(is_7_lm) #yes
 summary(ls_7_lm) #no
 
@@ -162,7 +162,7 @@ summary(lm_source_aug)
 #no sig diff in intercept; intercept and slope sig
 summary(all_8_lm)
 
-#see if insitu and landsat have trends separately
+#see if insitu and Landsat have trends separately
 summary(is_8_lm) #yes
 summary(ls_8_lm) #yes
 
@@ -176,7 +176,7 @@ summary(lm_source_sep)
 
 summary(is_9_lm)
 summary(ls_9_lm)
-#plot one line for landsat
+#plot one line for Landsat
 
 
 # IVA results to table ####
@@ -218,13 +218,13 @@ slope_table$ls_slope <- c(summary(ls_7_lm)$coefficients[2,1],
                           summary(ls_8_lm)$coefficients[2,1],
                           summary(ls_9_lm)$coefficients[2,1])
 
-slope_table$ls_slope_lower <- c(confint(lm(value~year, data = jul_data[jul_data$source == 'landsat',]), 'year', level = 0.95)[1],
-                              confint(lm(value~year, data = aug_data[aug_data$source == 'landsat',]), 'year', level = 0.95)[1],
-                              confint(lm(value~year, data = sep_data[sep_data$source == 'landsat',]), 'year', level = 0.95)[1])
+slope_table$ls_slope_lower <- c(confint(lm(value~year, data = jul_data[jul_data$source == 'Landsat',]), 'year', level = 0.95)[1],
+                              confint(lm(value~year, data = aug_data[aug_data$source == 'Landsat',]), 'year', level = 0.95)[1],
+                              confint(lm(value~year, data = sep_data[sep_data$source == 'Landsat',]), 'year', level = 0.95)[1])
 
-slope_table$ls_slope_upper <- c(confint(lm(value~year, data = jul_data[jul_data$source == 'landsat',]), 'year', level = 0.95)[2],
-                              confint(lm(value~year, data = aug_data[aug_data$source == 'landsat',]), 'year', level = 0.95)[2],
-                              confint(lm(value~year, data = sep_data[sep_data$source == 'landsat',]), 'year', level = 0.95)[2])
+slope_table$ls_slope_upper <- c(confint(lm(value~year, data = jul_data[jul_data$source == 'Landsat',]), 'year', level = 0.95)[2],
+                              confint(lm(value~year, data = aug_data[aug_data$source == 'Landsat',]), 'year', level = 0.95)[2],
+                              confint(lm(value~year, data = sep_data[sep_data$source == 'Landsat',]), 'year', level = 0.95)[2])
 
 slope_table$is_slope <- c(summary(is_7_lm)$coefficients[2,1],
                           summary(is_8_lm)$coefficients[2,1],
@@ -245,7 +245,7 @@ slope_table <-slope_table %>%
                names_to = 'variable',
                values_to = 'value') %>% 
   mutate(dataset = case_when(grepl('all', variable) ~ 'all data',
-                             grepl('ls', variable) ~ 'landast',
+                             grepl('ls', variable) ~ 'Landsat',
                              grepl('is', variable) ~ 'in situ',
                              TRUE ~ ''),
          variable = case_when(grepl('lower', variable) ~ 'lower',
@@ -325,11 +325,11 @@ forlegend <- temp_monthly_median %>%
   labs(color = 'data source', shape = 'data source') +
   scale_color_colorblind(guide = 'legend',
                          name = 'data source', 
-                         labels = c(expression(paste(italic('in situ'))), 'landsat'))+
+                         labels = c(expression(paste(italic('in situ'))), 'Landsat'))+
   scale_shape_manual(guide = 'legend',
                      name = 'data source',
                     values = c(16,17),
-                     labels = c(expression(paste(italic('in situ'))), 'landsat'))+
+                     labels = c(expression(paste(italic('in situ'))), 'Landsat'))+
   theme(legend.key.width = unit(1, 'cm'))
 leg <- get_legend(forlegend)
 
@@ -339,12 +339,11 @@ for_legline = temp_monthly_median %>%
   geom_point() +
   geom_smooth(method = 'lm', se = F, aes(color = '#009E73')) +
   geom_smooth(method = 'lm', se = F, aes(color = '#E69F00')) +
-  geom_smooth(method = 'lm', se = F, aes(color = '#000000')) +
   theme_bw() +
   scale_color_identity(guide = 'legend',
                        name = 'trend model',
-                       breaks = c('#000000', '#E69F00', '#009E73'),
-                       labels = c(expression(paste(italic('in situ'))), 'landsat', expression(paste(italic('in situ'), ' + landsat'))))+
+                       breaks = c('#E69F00', '#009E73'),
+                       labels = c('Landsat', expression(paste(italic('in situ'), ' + Landsat'))))+
   theme(legend.key.width = unit(1, 'cm'))
 leg_line = get_legend(for_legline)
 
@@ -352,14 +351,12 @@ for_legdash = temp_monthly_median %>%
   filter(month == 9) %>% 
   ggplot(., aes(x = year, y = value))+
   geom_point() +
-  geom_smooth(method = 'lm', se = F, linetype = 'dashed', aes(color = '#009E73')) +
-  geom_smooth(method = 'lm', se = F, linetype = 'dashed', aes(color = '#E69F00')) +
   geom_smooth(method = 'lm', se = F, linetype = 'dashed', aes(color = '#000000')) +
   theme_bw() +
   scale_color_identity(guide = 'legend',
                        name = 'no slope model',
-                       breaks = c('#000000', '#E69F00', '#009E73'),
-                       labels = c(expression(paste(italic('in situ'))), 'landsat', expression(paste(italic('in situ'), ' + landsat'))))+
+                       breaks = c('#000000'),
+                       labels = c(expression(paste(italic('in situ')))))+
   theme(legend.key.width = unit(1, 'cm'))
 leg_dash = get_legend(for_legdash)
 

@@ -274,10 +274,10 @@ Fig3_plot <- plot_grid(Fig3_a, Fig3_b,
 
 Fig3_plot
 
-x_lab = ggdraw() + draw_label(label = expression(bold(paste(italic('in situ'), ' median water temp (deg C)'))),
+x_lab = ggdraw() + draw_label(label = expression(bold(paste(italic('in situ'), ' median water temperature (degrees C)'))),
                       fontface = 'bold', size = 12)
 
-y_lab = ggdraw() + draw_label(label = 'Landsat median water temp (deg C)',
+y_lab = ggdraw() + draw_label(label = 'Landsat median water temperature\n(degrees C)',
                               fontface = 'bold',
                               angle =90,
                               size = 12)
@@ -302,7 +302,7 @@ ggsave(file.path(fig_dir, 'Figure3_deming_filters.jpg'),
 istemp <- ggplot(C2ST_kurtosis, aes(x = is_temp_med, y = opt_resid)) +
   geom_point() +
   # geom_line(aes(group = date)) +
-  labs(x = 'in-situ median water temp\n(deg C)',
+  labs(x = 'in-situ median water temp\n(degree C)',
        y = '\n') +
   geom_abline(intercept =  0, slope = 0) +
   coord_cartesian(ylim = c(-5, 5)) +
@@ -349,7 +349,7 @@ sunelev <- ggplot(C2ST_kurtosis, aes(x = elev, y = opt_resid)) +
   geom_abline(intercept =  0, slope = 0) +
   coord_cartesian(ylim = c(-5, 5)) +
   labs(x = 'sun elevation (UNITS)\n',
-       y = 'Deming-optimized residual\n(deg C)') +
+       y = 'Deming-optimized residual\n(degrees C)') +
   final_theme
 sunelev
 
@@ -519,7 +519,7 @@ Fig4_a <- kurtosis_biasmae %>%
   filter(variable == 'bias') %>% 
   ggplot(., aes(x = month, y = value)) +
   geom_point(aes(shape = mission), size =2) +
-  labs(y = 'bias (deg C)',
+  labs(y = 'bias\n(degrees C)',
        x = NULL) +
   geom_abline(intercept = 0,
               slope = 0, 
@@ -539,7 +539,7 @@ Fig4_b <- kurtosis_biasmae %>%
   geom_abline(intercept = 0,
               slope = 0, 
               lty = 2) +
-  labs(y = 'mean absolute error (deg C)',
+  labs(y = 'mean absolute error\n(degrees C)',
        x = NULL) +
   final_theme+
   theme(axis.title=element_text(size=10,face="bold")) +
