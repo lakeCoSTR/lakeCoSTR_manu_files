@@ -89,8 +89,7 @@ NE_base = tm_shape(NA_wstates, bbox = bbox_NE) +
   tm_polygons() +
 tm_shape(northamer) +
   tm_borders(lwd = 2)+
-  tm_scale_bar(position = c('right', 'bottom')) +
-tm_shape(bbox_sunapee) +
+tm_shape(st_as_sfc(bbox_sunapee)) +
   tm_borders(lwd = 3, col = 'blue') +
   tm_layout(frame.lwd = 3, frame = 'red')
 NE_base
@@ -108,11 +107,10 @@ bbox_NA <- bbox_NA %>%  # take the bounding box ...
   st_as_sfc() # ... and make it a sf polygon
 
 # NA with better focus
-NA_base = tm_shape(NA_wstates, bbox = bbox_new) +
+NA_base = tm_shape(NA_wstates, bbox = bbox_NA) +
   tm_polygons() +
 tm_shape(northamer) +
   tm_borders(lwd = 2) +
-  tm_scale_bar(position = c('right', 'bottom')) +
 tm_shape(bbox_NE) +
   tm_borders(lwd = 3, col = 'red')
 NA_base
@@ -120,11 +118,11 @@ NA_base
 
 #put it all together
 png(file = file.path(fig_dir, 'Fig2_DataExtent.png'),
-                     width = 6,
-                     height = 6,
+                     width = 5.5,
+                     height = 5.5,
     units = 'in',
     res = 300)
-print(NA_base, vp = grid::viewport(0.22, 0.847, width= 0.4))
-print(NE_base, vp = grid::viewport(0.22, 0.342, width = 0.4))
-print(sunbase, vp = grid::viewport(0.7, 0.5, height = 1))
+print(NA_base, vp = grid::viewport(0.78, 0.847, width= 0.4))
+print(NE_base, vp = grid::viewport(0.78, 0.342, width = 0.4))
+print(sunbase, vp = grid::viewport(0.3, 0.5, height = 1))
 dev.off()
