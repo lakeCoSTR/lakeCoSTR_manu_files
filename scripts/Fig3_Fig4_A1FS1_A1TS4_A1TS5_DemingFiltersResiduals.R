@@ -1,6 +1,6 @@
 # this script creates Figures in the Herrick, Steele, et al MS
 
-# last modified 2022-01-14
+# last modified 2022-02-25
 # written by B. Steele 
 
 # Set up Workspace ####
@@ -201,33 +201,7 @@ Fig3_b <- ggplot(C2ST, aes(x = is_temp_med, y = surface_temp_median)) +
                   ylim = c(0, 27))
 Fig3_b
 
-# Fig3_c <- ggplot(C1SC_kurtosis, aes(x = is_temp_med, y = surface_temp_median)) +
-#   geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
-#   geom_point() +
-#   #add deming regression and prediction intervals for C2 filtered for sub zero and kurtosis
-#   geom_abline(intercept = C1_kurtosis_deming$coefficients[1], slope = C1_kurtosis_deming$coefficients[2], size = 0.75) +
-#   geom_abline(intercept = C1_kurtosis_deming$ci[1,1], slope = C1_kurtosis_deming$ci[2,1], linetype = 3, size = 0.75) +
-#   geom_abline(intercept = C1_kurtosis_deming$ci[1,2], slope = C1_kurtosis_deming$ci[2,2], linetype = 3, size = 0.75) +
-#   geom_text(label = paste0('r = ', round(cor(C1SC_kurtosis$surface_temp_median, C1SC_kurtosis$is_temp_med), digits = 3)),
-#             x = 2,
-#             y = 25,
-#             size = 4,
-#             hjust = 0)+
-#   geom_text(label = paste0('n = ', length(C1SC_kurtosis$date)),
-#             x = 2,
-#             y = 23,
-#             size = 4,
-#             hjust = 0)+
-#   labs(x = '',
-#        y = '\n',
-#        title = 'Collection 1',
-#        subtitle = 'kurtosis filter') +
-#   final_theme +
-#   coord_cartesian(xlim = c(0, 27),
-#                   ylim = c(0, 27))
-# Fig3_c
-
-Fig3_d <- ggplot(C2ST_kurtosis, aes(x = is_temp_med, y = surface_temp_median)) +
+Fig3_c <- ggplot(C2ST_kurtosis, aes(x = is_temp_med, y = surface_temp_median)) +
   geom_abline(slope = 1, intercept = 0, color = '#006cd1', size = 0.75) +
   geom_point() +
   #add deming regression and prediction intervals for C2 filtered for sub zero and kurtosis
@@ -260,13 +234,10 @@ Fig3_d <- ggplot(C2ST_kurtosis, aes(x = is_temp_med, y = surface_temp_median)) +
   final_theme +
   coord_cartesian(xlim = c(0, 27),
                   ylim = c(0, 27))
-Fig3_d
+Fig3_c
 
 
-Fig3_plot <- plot_grid(Fig3_a, Fig3_b, 
-                       #Fig3_c, 
-                       Fig3_d,
-                   # ncol = 2,
+Fig3_plot <- plot_grid(Fig3_a, Fig3_b, Fig3_c,
                    ncol = 3, 
                    labels = c('a', 'b','c'),
                    label_size = 12,
@@ -274,10 +245,10 @@ Fig3_plot <- plot_grid(Fig3_a, Fig3_b,
 
 Fig3_plot
 
-x_lab = ggdraw() + draw_label(label = expression(bold(paste(italic('in situ'), ' median water temperature (degrees C)'))),
+x_lab = ggdraw() + draw_label(label = expression(bold(paste(italic('in situ'), ' median water temperature (°C)'))),
                       fontface = 'bold', size = 12)
 
-y_lab = ggdraw() + draw_label(label = 'Landsat median water temperature\n(degrees C)',
+y_lab = ggdraw() + draw_label(label = 'Landsat median water temperature\n(°C)',
                               fontface = 'bold',
                               angle =90,
                               size = 12)
@@ -302,7 +273,7 @@ ggsave(file.path(fig_dir, 'Figure3_deming_filters.jpg'),
 istemp <- ggplot(C2ST_kurtosis, aes(x = is_temp_med, y = opt_resid)) +
   geom_point() +
   # geom_line(aes(group = date)) +
-  labs(x = 'in-situ median water temp\n(degree C)',
+  labs(x = 'in-situ median water temp\n(°C)',
        y = '\n') +
   geom_abline(intercept =  0, slope = 0) +
   coord_cartesian(ylim = c(-5, 5)) +
@@ -348,8 +319,8 @@ sunelev <- ggplot(C2ST_kurtosis, aes(x = elev, y = opt_resid)) +
   # geom_line(aes(group = date)) +
   geom_abline(intercept =  0, slope = 0) +
   coord_cartesian(ylim = c(-5, 5)) +
-  labs(x = 'sun elevation (UNITS)\n',
-       y = 'Deming-optimized residual\n(degrees C)') +
+  labs(x = 'sun elevation (degrees)\n',
+       y = 'Deming-optimized residual\n(°C)') +
   final_theme
 sunelev
 
@@ -359,7 +330,7 @@ esd <- ggplot(C2ST_kurtosis, aes(x = esd, y = opt_resid)) +
   # geom_line(aes(group = date)) +
   geom_abline(intercept =  0, slope = 0) +
   coord_cartesian(ylim = c(-5, 5)) +
-  labs(x = 'earth sun distance (UNITS)\n',
+  labs(x = 'earth sun distance\n(astronomical units)',
        y = '\n') +
   final_theme 
 esd
@@ -414,7 +385,7 @@ plot_grid(istemp, doy, perclake, cloud, sunelev, esd, azi, depth, sd, count,
           label_x = 0.07,
           label_y = 1)
 
-ggsave(file.path(fig_dir, 'SFA_resid_summary_C2kurtosis_v12Nov2021.jpg'), 
+ggsave(file.path(fig_dir, 'FS1_resid_summary_C2kurtosis.jpg'), 
        height = 12, width = 8, units = 'in', dpi = 300)
 
 
@@ -519,7 +490,7 @@ Fig4_a <- kurtosis_biasmae %>%
   filter(variable == 'bias') %>% 
   ggplot(., aes(x = month, y = value)) +
   geom_point(aes(shape = mission), size =2) +
-  labs(y = 'bias\n(degrees C)',
+  labs(y = 'bias\n(°C)',
        x = NULL) +
   geom_abline(intercept = 0,
               slope = 0, 
@@ -539,7 +510,7 @@ Fig4_b <- kurtosis_biasmae %>%
   geom_abline(intercept = 0,
               slope = 0, 
               lty = 2) +
-  labs(y = 'mean absolute error\n(degrees C)',
+  labs(y = 'mean absolute error\n(°C)',
        x = NULL) +
   final_theme+
   theme(axis.title=element_text(size=10,face="bold")) +
