@@ -66,7 +66,7 @@ temp_monthly_median %>%
   geom_point(aes(color = source)) +
   # geom_line(aes(color = source)) +
   facet_grid(.~month) +
-  labs(y = 'lake surface temperature\n(degrees C)') +
+  labs(y = 'lake surface temperature\n(°C)') +
   # geom_smooth(method = 'lm', se = F, inherit.aes = T) +
   final_theme
 
@@ -361,7 +361,7 @@ for_legdash = temp_monthly_median %>%
 leg_dash = get_legend(for_legdash)
 
 #save title
-y_axis_title = ggdraw() + draw_label('median lake surface temperature\n(degrees C)', size = 12, fontface = "bold", angle = 90) 
+y_axis_title = ggdraw() + draw_label('median lake surface temperature\n(°C)', size = 12, fontface = "bold", angle = 90) 
 x_axis_title = ggdraw() + draw_label('year', size = 12, fontface = 'bold')
 
 Fig5 = plot_grid(jul, aug, sept,
