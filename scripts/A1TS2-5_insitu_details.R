@@ -4,7 +4,7 @@
 
 source('scripts/R_library.R')
 
-datadir = 'data/'
+datadir = 'data/in-situ locs/'
 figdir = 'figures/'
 
 #load in all high-frequency insitu data for historical data analysis
@@ -63,16 +63,43 @@ range_summary <- range_per_date %>%
 
 
 ## Summary of location/depth/measurement
-insitu %>% 
+insitu_vert = insitu %>% 
   mutate(year = format(datetime, '%Y'),
          month = as.numeric(format(datetime, '%m'))) %>% 
-  group_by(year, location) %>% 
+  group_by(year, location, source) %>% 
   summarise(min_depth_m = min(depth_m),
             max_depth_m = max(depth_m),
             min_month = min(month),
             max_month = max(month)) %>% 
-  pivot_longer(!c(year, location), names_to = 'variable', values_to = 'value') %>% 
-  pivot_wider(id_cols = c(year, variable, value),
-              names_from = c(location, variable)) %>% 
-  write.csv(., file.path(figdir, 'ST2_insitu_data_extent_summary.csv'), row.names = F)
+  ungroup() %>% 
+  pivot_longer(-c(year, location,source), names_to = 'variable', values_to = 'value') 
+
+insitu_buoy = insitu_vert %>% 
+  filter(source == 'edi.499.2') %>% 
+  pivot_wider(id_cols = c('year'),
+              names_from = c('variable', 'location'),
+              values_from = 'value') %>% 
+  write.csv(., file.path(figdir, 'A1ST2_insitu_data_extent_summary.csv'), row.names = F)    
+
+insitu_gloeo = insitu_vert %>% 
+  filter(source == 'edi.498.1') %>% 
+  pivot_wider(id_cols = c('year'),
+              names_from = c('variable', 'location'),
+              values_from = 'value') %>% 
+  write.csv(., file.path(figdir, 'A1ST3_insitu_data_extent_summary.csv'), row.names = F)    
+
+insitu_ward = insitu_vert %>% 
+  filter(source == 'edi.395.2') %>% 
+  pivot_wider(id_cols = c('year'),
+              names_from = c('variable', 'location'),
+              values_from = 'value') %>% 
+  write.csv(., file.path(figdir, 'A1ST4_insitu_data_extent_summary.csv'), row.names = F)    
+
+
+insitu_winter = insitu_vert %>% 
+  filter(source == 'edi.500.2') %>% 
+  pivot_wider(id_cols = c('year'),
+              names_from = c('variable', 'location'),
+              values_from = 'value') %>% 
+  write.csv(., file.path(figdir, 'A1ST5_insitu_data_extent_summary.csv'), row.names = F)    
 

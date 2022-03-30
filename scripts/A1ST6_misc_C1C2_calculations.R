@@ -74,5 +74,5 @@ month_summary_kurt <- C2_mission %>%
 
 tableb <- full_join(mission_summary, mission_summary_kurt)
 
-write.csv(tableb, file.path(figdir, 'ST3_C1C2filtercount.csv'), row.names = F)
+write.csv(tableb, file.path(figdir, 'ST6_C1C2filtercount.csv'), row.names = F)
 

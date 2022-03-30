@@ -267,7 +267,7 @@ ggsave(file.path(fig_dir, 'Figure3_deming_filters.jpg'),
        width = 7.5,
        units = 'in')
 
-# Supplemental Figure A: Look at C2 kurtosis data set residuals against other variables ####
+# Appendix 1 Figure 1: Look at C2 kurtosis data set residuals against other variables ####
 
 # by insitu temp
 istemp <- ggplot(C2ST_kurtosis, aes(x = is_temp_med, y = opt_resid)) +
@@ -385,12 +385,12 @@ plot_grid(istemp, doy, perclake, cloud, sunelev, esd, azi, depth, sd, count,
           label_x = 0.07,
           label_y = 1)
 
-ggsave(file.path(fig_dir, 'FS1_resid_summary_C2kurtosis.jpg'), 
+ggsave(file.path(fig_dir, 'A1SF1_resid_summary_C2kurtosis.jpg'), 
        height = 12, width = 8, units = 'in', dpi = 300)
 
 
 
-# Supplemental Table C and D Calculate error for various models ####
+# Appendix 1 Table 7 and 8 Calculate error for various models ####
 alldata_error <- all_surface_temp %>% 
   group_by(collection, filter) %>% 
   summarise(mse = round(sum((opt_resid^2))/n(), digits = 2),
@@ -426,7 +426,7 @@ alldata_error <- full_join(alldata_error, mission_error) %>%
 
 alldata_error %>% 
   select(-month) %>% 
-  write.csv(., file.path(figdir, 'STC_deming_performance_bymission.csv'), row.names = F)
+  write.csv(., file.path(figdir, 'A1ST7_deming_performance_bymission.csv'), row.names = F)
 
 month_mission_error <- all_surface_temp %>% 
   group_by(collection, month, LSmission, filter) %>% 
@@ -464,7 +464,7 @@ month_error <- full_join(month_mission_error, month_error) %>%
   filter(filter == 'kurtosis') %>% 
   select(month, variable, `All missions`, `LS 5`, `LS 7`, `LS 8`)
 
-write.csv(month_error, file.path(figdir, 'STD_deming_kurtosis_performancebymonth.csv'), row.names = F)
+write.csv(month_error, file.path(figdir, 'A1ST8_deming_kurtosis_performancebymonth.csv'), row.names = F)
 
 # Figure 4 create point (by mission for bias, mae, rmse) faceted by model ####
 
