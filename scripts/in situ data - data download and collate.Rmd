@@ -1564,7 +1564,7 @@ all_temp_filtered <- all_temp_filtered %>%
 ```{r}
 all_temp_filtered %>% 
   mutate(datetime = as.character(datetime)) %>% 
-  write_csv(., paste0(dumpdir, 'in-situ locs/STB_insitu_temp_data_v', Sys.Date(), '.csv'))
+  write_csv(., paste0(dumpdir, 'in-situ locs/insitu_temp_data_v', Sys.Date(), '.csv'))
 
 all_temp_filtered  %>% 
   group_by(lat_dd, long_dd, location, source) %>% 
