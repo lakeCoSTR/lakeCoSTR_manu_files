@@ -1,0 +1,1 @@
+All figures in this folder were created through the processing of the scripts located in the folder path: *ids-ne-lakes/scripts*
