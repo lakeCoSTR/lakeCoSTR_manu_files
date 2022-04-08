@@ -19,52 +19,28 @@ source('R_library.R')
 R.version$version.string
 
 # point to directories
-datadir = '~/GitHub/ids-ne-lakes/data/'
+datadir = '~/GitHub/ids-ne-lakes/data/in-situ locs/'
 C2_datadir <- '~/GitHub/ids-ne-lakes/data/colab-output/C2/'
 ```
 
 # Background:
 
-Upon inspection of the lakeCoSTR-exported histograms, it was clear that
-some of the ranges of data seemed ecologically unfeasible,
-displaying a range of 20 degrees Celsius or more over the surface of Lake
-Sunapee. We assume that these types of spread are indicative of lingering 
-atmospheric correction issues or cloud effects. In this appendix, we explore some of the additional quality
-assurance filters that we tried that may be helpful for others using
-this tool.
+During our preliminary work to evaluate the Landsat Collection 2 surface water temperature data relative to in situ measurements for Lake Sunapee, NH, we looked carefully at the histograms of pixel-level data exported by lakeCoSTR for each Landsat scene. It was clear that some data distributions seemed ecologically unfeasible, displaying a range of 20 degrees Celsius or more over the surface of Lake Sunapee on a single flyover date (Figure S1). We assumed that these types of spread were indicative of lingering atmospheric correction issues or cloud effects, and that additional quality assurance filters were needed. In this appendix, we describe some of the filters we tried that may be helpful for others using this tool.
 
-![Landsat 4:
-1990-07-21](C:/Users/steeleb/Documents/GitHub/ids-ne-lakes/data/colab-output/C2/histograms/LT04_L1TP_013030_19900721_20200915_02_T1_histo.png){width="3in"}![Landsat
-5:
-1998-07-23](C:/Users/steeleb/Documents/GitHub/ids-ne-lakes/data/colab-output/C2/histograms/LT05_L1TP_013030_19880723_20200917_02_T1_histo.png){width="3in"}
+![Landsat 4: 1990-07-21](C:/Users/steeleb/Documents/GitHub/ids-ne-lakes/data/colab-output/C2/histograms/LT04_L1TP_013030_19900721_20200915_02_T1_histo.png){width="3in"}
+![Landsat 5: 1998-07-23](C:/Users/steeleb/Documents/GitHub/ids-ne-lakes/data/colab-output/C2/histograms/LT05_L1TP_013030_19880723_20200917_02_T1_histo.png){width="3in"}
 
-![Landsat 7:
-2018-05-31](C:/Users/steeleb/Documents/GitHub/ids-ne-lakes/data/colab-output/C2/histograms/LE07_L1TP_013030_20180531_20200829_02_T1_histo.png){width="3in"}![Landsat
-8:
-2020-09-17](C:/Users/steeleb/Documents/GitHub/ids-ne-lakes/data/colab-output/C2/histograms/LC08_L1TP_013030_20200917_20201005_02_T1_histo.png){width="3in"}
+![Landsat 7: 2018-05-31](C:/Users/steeleb/Documents/GitHub/ids-ne-lakes/data/colab-output/C2/histograms/LE07_L1TP_013030_20180531_20200829_02_T1_histo.png){width="3in"}
+![Landsat 8: 2020-09-17](C:/Users/steeleb/Documents/GitHub/ids-ne-lakes/data/colab-output/C2/histograms/LC08_L1TP_013030_20200917_20201005_02_T1_histo.png){width="3in"}
 
-Figure S1. Four histograms, one from each Landsat Mission, exhibiting unusual frequency distributions as exported from the lakeCoSTR tool. 
+__Figure S1. Four histograms, one from each Landsat Mission, exhibiting unusual frequency distributions as exported from the lakeCoSTR tool.__ 
 
-In addition to the possible range-of-value issues shown in Figure S1, 
-there is also evidence of non-unimodal distributions. Because we were 
-intersted in using a single median value to describe the lake surface 
-temperature in a scene, we determined these scenes were not suitable for
-our analysis.  Note that bimodal
-distributions in surface temperature across a lake surface are certainly
-ecologically possible outcomes and may be true for some systems or useful for some
-analyses. Finally, There were also scenes
-with negative temperatures reported even though pixels classified as
-snow or ice were filtered out in the Colab script. 
+In addition to the possible range-of-value issues shown in Figure S1, there is also evidence of multi-modal distributions. Because we were interested in using a single median value to describe the lake surface temperature in a scene, we determined these scenes were not suitable for our analysis. Note that bimodal distributions in surface temperature across a lake surface are certainly ecologically possible outcomes and may be true for some systems or useful for some analyses. Finally, there were also scenes with negative temperatures even though pixels classified as snow or ice were filtered out in the Colab script.
 
-Our desire was to create a filter that would remove the Landsat scenes with presumed atmospheric
-interference (indicated by grossly large estimated temperature ranges) or those that were otherwise 
-not suitable for our analysis. We used measurements from the extensive *in-situ* data network at 
-Lake Sunapee to define some of these filters. We used statistical measures of distribution, including 
-quartile values, spread, and measurement of distribution kurtosis (the
-'tailedness' of the distribution). Knowing that we did not filter for
-clouds or cloud shadows explicitly in the tool, and given that there is documented interference
-with the surface temperature product (Cook, et al., 2014), we also tried a cloud filter to
-eliminate some scenes.
+![Landsat filters](C:/users/steeleb/Documents/GitHub/ids-ne-lakes/figures/S2 Fig 2.png)
+__Figure S2. The five filters we applied to the Landsat Collection 2 surface water temperature data to improve the Deming regression models relating Landsat - in situ data.__
+
+Our desire was to create a filter that would remove the Landsat scenes with presumed atmospheric interference (indicated by grossly large estimated temperature ranges) or that were otherwise not suitable for our analysis. We used measurements from the extensive *in situ() data network at Lake Sunapee to define some of these filters, as well as statistical measures of distribution, including quartile values, spread, and kurtosis (the ‘tailedness’ of the distribution). While we filter for clouds and cloud shadows in Google Earth Engine using the bitmask metadata at a pixel-level, there is documented interference of clouds and cloud shadows with the surface temperature product (Cook et al. 2014). Because the potential for pixels with cloud contamination is higher in scenes with greater cloud cover, we also tried a cloud filter to eliminate data where the scene-level metadata indicated cloud cover greater than 40%.
 
 # Methods
 
@@ -75,8 +51,7 @@ based on the number of scenes eliminated from analysis, were:
     0 degrees Celsius
 
 -   **IQR**: removing scenes that reported
-    interquartile temperature ranges greater than 110% in a summary of the *in-situ* temperature
-    record
+    interquartile temperature ranges greater than 110% in a summary of the high-frequency *in-situ* temperature record used in the main text
 
 -   **kurtosis**: removing any scenes whose histogram has a kurtosis value
     less than 2
@@ -85,7 +60,7 @@ based on the number of scenes eliminated from analysis, were:
     greater than 40%
 
 -   **range**: removing scenes that reported temperature ranges
-    greater than 110% observed in a summary of the *in-situ* temperature record
+    greater than 110% observed in a summary of the high-frequency *in-situ* temperature record used in the main text
 
 ## Load, summarize, and filter data
 
@@ -99,12 +74,7 @@ insitu <- read.csv(paste0(datadir, 'insitu_temp_data_v2021-10-20.csv')) %>%
 C2ST <- read.csv(file.path(C2_datadir,paste0('C2_v2_temp_landsat_paired.csv')))
 ```
 
-To define some filters, we used the validation dataset described in section 3.1.2 of the main text, filtered
-to those temperatures measured between the hours of 9 and 11 am (the
-approximate time of Landsat flyover). These values were aggregated to daily values of range, 
-interquartile range, and number of locations contributing the ranges. From
-these daily values, we calculated the maximum range and interquartile range from the
-observed temperature data.
+To define some filters, we used the validation dataset described in section 3.1.2 of the main text, filtered to those temperatures measured between the months of May and October and the hours of 9 and 11 am (the approximate time of Landsat flyover). These values were aggregated to daily values of range, interquartile range, and number of locations contributing the ranges. From these daily values, we calculated the maximum range and interquartile range from the observed temperature data.
 
 ```{r}
 # Summarize in-situ to define spread and IQR limits ####
@@ -211,7 +181,7 @@ C2ST_kurtosis$filter = 'kurtosis'
 
 # Presentation and discussion of filter performance
 
-To analyze the performance of each of the filters, we performed a Deming regression (Deming, 1943) on each of the Landsat *in-situ* pair datasets filtered, as described above, from the output of the lakeCoSTR tool described in section 3.1.2 of the main text. 
+To analyze the performance of each of the filters, we performed a Deming regression (Deming, 1943) on each of the Landsat *in situ* pair datasets filtered, as described above, from the output of the lakeCoSTR tool. 
 
 The considerations we made when comparing filter performance were: 
 
@@ -220,7 +190,7 @@ The considerations we made when comparing filter performance were:
 3) presence/absence of outliers
 4) slope and intercept of the regression line
 
-Scenes for validation ranged from 157 (no additional QAQC) to 71 (*in-situ* range filter). All datasets, including the unfiltered Collection 2 dataset, had acceptable Pearson correlation coefficients above 0.9 (Figure S2). The filters that reduced the outliers were the kurtosis filter, cloud filter, and the range filter. Of those, the kurtosis filter performed the best at reducing outliers. Of note, most outliers lie below the 1:1 line (Figure S2) - the presence of clouds and cloud shadows lowers the median temperature for each scene by reporting surface temperature values that are much cooler than in actuality.
+Scenes for validation ranged from 157 (no additional QAQC) to 71 (*in situ* range filter). All datasets, including the unfiltered Collection 2 dataset, had acceptable Pearson correlation coefficients above 0.9 (Figure S3). The filters that reduced the outliers were the kurtosis filter, cloud filter, and the range filter. Of those, the kurtosis filter performed the best at reducing outliers. Of note, most outliers lie below the 1:1 line (Figure S3) - the presence of clouds and cloud shadows lowers the median temperature for each scene by reporting surface temperature values that are much cooler than in actuality.
 
 
 ```{r, fig.dim=c(10, 6)}
@@ -390,9 +360,9 @@ DemingFigure <- plot_grid(DemingFigure_a, DemingFigure_b, DemingFigure_c, Deming
 DemingFigure
 ```
 
-Figure S2. Deming regressions for 6 datasets of Landsat Collection 2 surface temperature product, arranged as least stringent to most stringent based on the number of scenes eliminated from the validation dataset. The blue line is the 1:1 line, the black line shows the Deming error-in-variables regression, and the dotted black lines indicate the 95% prediction intervals for the Deming regression. The Pearson correlation (r) and sample size (n) in the upper left corner.
+__Figure S3. Deming regressions for 6 differently filtered datasets from the Landsat Collection 2 surface temperature product, arranged from least stringent to most stringent based on the number of scenes eliminated. Within each panel, the blue line is the 1:1 line, the black line shows the Deming error-in-variables regression, and the dotted black lines indicate the 95% prediction intervals for the Deming regression. The Pearson correlation (r) and sample size (n) are indicated in the upper left corner.__
 
-While increasing the stringency of Landsat scene filters generally led to increased agreement between the Landsat-derived surface temperature product and the in-situ water temperature (Figure S3), it is notable that the filter that eliminated the most scenes from the analysis (“range”) has an estimated slope and intercept furthest from 1 and 0, respectively. Here, the kurtosis filter and the cloud filter performance was very similar. This may indicate that both filters perform similar functions.
+While increasing the stringency of Landsat scene filters generally led to increased agreement between the Landsat-derived surface temperature product and the *in situ* water temperature (Figure S4), it is notable that the filter that eliminated the most scenes from the analysis (“range”) has an estimated slope and intercept furthest from 1 and 0, respectively. However, the kurtosis filter and the cloud filter performance was very similar, which may indicate that both filters perform similar functions.
 
 ```{r, fig.dim = c(8, 4)}
 # Plot slope and intercept with 95%ci ####
@@ -465,10 +435,9 @@ slope_int_fig <- plot_grid(slope_fig, int_fig,
                            label_size = 12)
 slope_int_fig
 ```
-Figure S3. A simple comparison of estimated slope (a) and intercept (b) with upper and lower 95% confidence intervals for each of the Collection 2 (raw + filtered) datasets presented in Figure C indicates that the cloud filter dataset’s Deming regression provided a slope closest to 1 and an intercept closest to 0 (indicated by the dashed line on each panel). Datasets are ordered by increasing stringency, as measured by the number of scenes in the validation dataset, from left to right. 
+__Figure S4. A simple comparison of estimated slope (a) and intercept (b) with upper and lower 95% confidence intervals for each of the Collection 2 (raw + filtered) datasets presented in Figure C indicates that the cloud filter dataset’s Deming regression provided a slope closest to 1 and an intercept closest to 0 (indicated by the dashed line on each panel). Datasets are ordered by increasing stringency, as measured by the number of scenes in the validation dataset, from left to right.__
 
-
-The two filters that seemed the most promising were the kurtosis and cloud filters. We carried out all analyses described in the main text with both filters. We chose the kurtosis filter after this excercise, because it removed a number of outliers in the long-term monthly temperature analysis that the cloud filter did not. We suspect that kurtosis, a measure of tailedness, was a successful filter because it incorporates shape and range in a single value, and we suspect these are the symptoms of cloud cover for this system. Additionally, the kurtosis filter can be applied to the lakeCoSTR dataset without *in-situ* data for validation. The kurtosis filter value (we used a value of 2), may have to be changed for other systems - analyses at other lakes that have *in-situ* data for validation will be needed to determine if the value we chose is transferable. 
+Because the two filters that seemed the most promising were the kurtosis and cloud filters, we carried out all analyses described in the main text with both filters. We chose the kurtosis filter after this exercise, because it removed a number of outliers in the long-term monthly temperature analysis that the cloud filter did not. We suspect that kurtosis, a measure of tailedness, was a successful filter because it incorporates shape and range in a single value, and we suspect these are the symptoms of cloud cover for this system. Additionally, the kurtosis filter resulted in a dataset that did not require calibration for Lake Sunapee. Importantly, though, the kurtosis filter threshold (we used a value of 2) may have to be changed for other systems - analyses at other lakes that have *in situ* data for ground truthing will be needed to determine if the value we chose is transferable.
 
 
 # Literature Citations
