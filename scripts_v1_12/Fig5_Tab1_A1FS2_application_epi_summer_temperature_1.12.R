@@ -89,27 +89,6 @@ ls_7_lm <- linear_analysis(7, 'Landsat')
 ls_8_lm <- linear_analysis(8, 'Landsat')
 ls_9_lm <- linear_analysis(9, 'Landsat')
 
-# do DW test for each month and each dataset
-month = c(7:9, 7:9)
-data = c('in-situ','in-situ','in-situ',
-         'Landsat','Landsat','Landsat')
-DW_stat = c(car::durbinWatsonTest(is_7_lm)$dw,
-            car::durbinWatsonTest(is_8_lm)$dw,
-            car::durbinWatsonTest(is_9_lm)$dw,
-            car::durbinWatsonTest(ls_7_lm)$dw,
-            car::durbinWatsonTest(ls_8_lm)$dw,
-            car::durbinWatsonTest(ls_9_lm)$dw)
-DW_pval = c(car::durbinWatsonTest(is_7_lm)$p,
-            car::durbinWatsonTest(is_8_lm)$p,
-            car::durbinWatsonTest(is_9_lm)$p,
-            car::durbinWatsonTest(ls_7_lm)$p,
-            car::durbinWatsonTest(ls_8_lm)$p,
-            car::durbinWatsonTest(ls_9_lm)$p)
-DW_table = data.frame(month, data, DW_stat, DW_pval) %>% 
-  mutate(DW_stat = round(DW_stat, digits = 3),
-         DW_pval = round(DW_pval, digits = 3))
-
-DW_table
 
 # linear model for all data together
 
@@ -140,41 +119,67 @@ sep_data <- temp_monthly_median %>%
 # iva and multivariate linear models ####
 
 ## JULY ####
+#IVA
 lm_source_jul_iva <- lm(value ~ year+source+year*source, data = jul_data)
 summary(lm_source_jul_iva)
-# no sig diff in slope; intercept and slope are sig
+#test for autocorrelation within residuals
+car::durbinWatsonTest(lm_source_jul_iva)
+# p>0.05 no autocorrelation, continue!
+summary(lm_source_jul_iva)
+# no sig diff in slope
 lm_source_jul <- lm(value ~ year+source, data = jul_data)
+#test for autocorrelatoin within residuals
+car::durbinWatsonTest(lm_source_jul)
+#P>0.05, no autocorrelation, continue!
 summary(lm_source_jul)
 # no sig diff in intercept; intercept and slope are sig
 summary(all_7_lm)
-#slope and intercept are significant; plot one line for the two groups of data
+#test for autocorrelation within residuals
+car::durbinWatsonTest(all_7_lm)
+# no serial autocorrelation (p-value is >0.05). continue!
 
-#see if insitu and Landsat have trends separately
-summary(is_7_lm) #yes
-summary(ls_7_lm) #no
+#slope and intercept are significant across both datasets; plot one line for the two groups of data
+
 
 ## AUG ####
+#IVA
 lm_source_aug_iva <- lm(value ~ year+source+year*source, data = aug_data)
+#test for serial autocorrelation
+car::durbinWatsonTest(lm_source_aug_iva)
+#no autocorrelation, continue!
 summary(lm_source_aug_iva)
 # no sig diff in slope
 lm_source_aug <- lm(value ~ year+source, data = aug_data)
+car::durbinWatsonTest(lm_source_aug)
+# no autocorrelation, continue!
 summary(lm_source_aug)
 #no sig diff in intercept; intercept and slope sig
-summary(all_8_lm)
 
-#see if insitu and Landsat have trends separately
-summary(is_8_lm) #yes
-summary(ls_8_lm) #yes
+#plot one line for both datasets
+car::durbinWatsonTest(all_8_lm)
+#no autocorrelation, coninue!
+summary(all_8_lm)
 
 
 ## SEPT ####
-lm_source_sep_iva <- lm(value ~ year+source+year*source, data = sep_data)
-summary(lm_source_sep_iva)
-# there is a significant difference in slope
-lm_source_sep <- lm(value ~ year+source, data = sep_data)
-summary(lm_source_sep)
 
+#IVA
+lm_source_sep_iva <- lm(value ~ year+source+year*source, data = sep_data)
+#test for autocorrelation
+car::durbinWatsonTest(lm_source_sep_iva)
+#no autocorrlation, continute!
+summary(lm_source_sep_iva)
+# there is a significant difference in slope, plot separately
+
+#perform Durbin Watson to test for serial autocorrelation in subset
+car::durbinWatsonTest(is_9_lm)
+# no serial autocorrelation (p-value is >0.05). continue with linear model
 summary(is_9_lm)
+#no slope model
+
+#perform Durbin Watson to test for serial autocorrelation in subset
+car::durbinWatsonTest(ls_9_lm)
+# no serial autocorrelation (p-value is >0.05). continue with linear model
 summary(ls_9_lm)
 #plot one line for Landsat
 
@@ -394,4 +399,5 @@ ggsave(file.path(figdir, 'Fig5_application_monthly_median_temp_kurtosis_together
           width=8,
           height=3, 
           units = 'in', 
-          dpi = 300)
+          dpi = 600,
+       bg = 'white')

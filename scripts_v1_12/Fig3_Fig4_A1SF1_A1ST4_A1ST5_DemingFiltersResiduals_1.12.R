@@ -10,7 +10,7 @@ source('scripts/R_library.R')
 
 # point to directories
 datadir = '~/GitHub/ids-ne-lakes/data/'
-C1_datadir <- '~/GitHub/ids-ne-lakes/data/colab-output/C1/'
+C1_datadir <- '~/GitHub/ids-ne-lakes/data/colab-output/C1_v4/'
 C2_datadir <- '~/GitHub/ids-ne-lakes/data/colab-output/C2_v1_12/'
 fig_dir <- '~/GitHub/ids-ne-lakes/figures_v1_12/'
 
@@ -249,10 +249,11 @@ Fig3_label = plot_grid(y_lab, Fig3_plot,
 Fig3_label
 
 ggsave(file.path(fig_dir, 'Figure3_deming_filters.jpg'), 
-       dpi = 300,
+       dpi = 600,
        height = 3,
        width = 7.5,
-       units = 'in')
+       units = 'in',
+       bg = 'white')
 
 # Appendix 1 Figure 1: Look at C2 kurtosis data set residuals against other variables ####
 
@@ -373,7 +374,8 @@ plot_grid(istemp, doy, perclake, cloud, sunelev, esd, azi, depth, sd, count,
           label_y = 1)
 
 ggsave(file.path(fig_dir, 'A1SF1_resid_summary_C2kurtosis.jpg'), 
-       height = 12, width = 8, units = 'in', dpi = 300)
+       height = 12, width = 8, units = 'in', dpi = 600,
+       bg = 'white')
 
 
 
@@ -413,7 +415,7 @@ alldata_error <- full_join(alldata_error, mission_error) %>%
 
 alldata_error %>% 
   select(-month) %>% 
-  write.csv(., file.path(figdir, 'A1ST7_deming_performance_bymission.csv'), row.names = F)
+  write.csv(., file.path(fig_dir, 'A1ST7_deming_performance_bymission.csv'), row.names = F)
 
 month_mission_error <- all_surface_temp %>% 
   group_by(collection, month, LSmission, filter) %>% 
@@ -536,5 +538,6 @@ Fig4_label
 plot_grid(Fig4_label, leg, rel_widths = c(0.9,0.15))
 
 ggsave(file.path(fig_dir, 'Fig4_errorbymission.jpg'), 
-       height = 4, width = 6, units = 'in', dpi = 300)
+       height = 3, width = 6, units = 'in', dpi = 600,
+       bg = 'white')
 

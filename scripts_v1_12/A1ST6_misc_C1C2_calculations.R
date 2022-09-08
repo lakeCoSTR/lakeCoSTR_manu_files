@@ -3,7 +3,7 @@
 source('scripts/R_library.R')
 
 # point to directories
-C1_datadir <- '~/GitHub/ids-ne-lakes/data/colab-output/C1/'
+C1_datadir <- '~/GitHub/ids-ne-lakes/data/colab-output/C1_v4/'
 C2_datadir <- '~/GitHub/ids-ne-lakes/data/colab-output/C2_v1_12/'
 figdir <- '~/GitHub/ids-ne-lakes/figures_v1_12/'
 

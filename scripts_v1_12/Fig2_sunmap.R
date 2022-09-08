@@ -121,7 +121,7 @@ png(file = file.path(fig_dir, 'Fig2_DataExtent.png'),
                      width = 5.5,
                      height = 5.5,
     units = 'in',
-    res = 300)
+    res = 600)
 print(NA_base, vp = grid::viewport(0.78, 0.847, width= 0.4))
 print(NE_base, vp = grid::viewport(0.78, 0.342, width = 0.4))
 print(sunbase, vp = grid::viewport(0.3, 0.5, height = 1))
