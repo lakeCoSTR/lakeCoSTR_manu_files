@@ -13,7 +13,7 @@ library(RColorBrewer)
 gis_dir = 'C:/Users/steeleb/Dropbox/travel/gis/project/Sunapee/'
 data_dir = 'data/in-situ locs/'
 nat_gis_dir = 'F:/GIS_data_general/North_America/political_bound/'
-fig_dir = 'figures/'
+fig_dir = 'figures_v1_12/'
 
 tmap_mode('plot')
 

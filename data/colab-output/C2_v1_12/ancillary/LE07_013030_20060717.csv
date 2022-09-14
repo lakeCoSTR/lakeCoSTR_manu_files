@@ -1,0 +1,2 @@
+,datetime,lat_dd,long_dd,location,depth_m,temp_degC,source,month,datetime_utc,dt_delta,delta_secs
+369144,2006-07-17 10:00:00,43.4096,-72.0365,HerrickCoveSouth,1.5,24.41,edi.498.1,7,2006-07-17 15:00:00+00:00,0 days 00:22:39.882000,1359

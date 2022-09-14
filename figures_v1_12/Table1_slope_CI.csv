@@ -1,0 +1,10 @@
+"month","dataset","slope","lower","upper"
+"July","all data",0.087,0.05,0.123
+"July","Landsat",0.056,-0.001,0.113
+"July","in situ",0.114,0.064,0.163
+"August","all data",0.069,0.036,0.103
+"August","Landsat",0.097,0.041,0.154
+"August","in situ",0.048,0.006,0.089
+"September","all data",0.074,0.029,0.118
+"September","Landsat",0.107,0.052,0.161
+"September","in situ",0.013,-0.061,0.086
