@@ -36,6 +36,7 @@ lmp_temp_monthly_stats <- lmp_temp_deep %>%
             is_summer_max_temp_degC = max(value),
             is_summer_min_temp_degC = min(value),
             is_n_obs = length(value),
+            is_n_date = length(unique(date)),
             day = min(day)) %>% 
   filter((month >=7 & month <= 9)) 
 
@@ -48,10 +49,10 @@ ls_temp_summer_monthly_median_kurtosis <- ls_kurtosis %>%
   filter(!is.na(month))
 
 df1_med <- lmp_temp_monthly_stats %>% 
-  select(year, month, is_summer_median_temp_degC)
+  select(year, month, is_summer_median_temp_degC, is_n_obs, is_n_date)
 
 df2_med_kurtosis <- ls_temp_summer_monthly_median_kurtosis %>% 
-  select(year, month, ls_summer_median_temp_degC)
+  select(year, month, ls_summer_median_temp_degC, ls_n_obs)
 
 temp_monthly_median <- full_join(df1_med, df2_med_kurtosis) %>% 
   pivot_longer(., cols = c(ls_summer_median_temp_degC, is_summer_median_temp_degC), names_to='source', values_to = 'value') %>% 
