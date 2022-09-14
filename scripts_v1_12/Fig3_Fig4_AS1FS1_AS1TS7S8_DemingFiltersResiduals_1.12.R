@@ -6,7 +6,7 @@
 # Set up Workspace ####
 
 # read in libraries and functions
-source('scripts/R_library.R')
+source('scripts_v1_12/R_library.R')
 
 # point to directories
 datadir = '~/GitHub/ids-ne-lakes/data/'
@@ -250,9 +250,9 @@ Fig3_label
 
 ggsave(file.path(fig_dir, 'Figure3_deming_filters.jpg'), 
        dpi = 600,
-       height = 3,
-       width = 7.5,
-       units = 'in',
+       height = 8,
+       width = 18,
+       units = 'cm',
        bg = 'white')
 
 # Appendix 1 Figure 1: Look at C2 kurtosis data set residuals against other variables ####
@@ -538,6 +538,6 @@ Fig4_label
 plot_grid(Fig4_label, leg, rel_widths = c(0.9,0.15))
 
 ggsave(file.path(fig_dir, 'Fig4_errorbymission.jpg'), 
-       height = 3, width = 6, units = 'in', dpi = 600,
+       height = 8, width = 18, units = 'cm', dpi = 600,
        bg = 'white')
 

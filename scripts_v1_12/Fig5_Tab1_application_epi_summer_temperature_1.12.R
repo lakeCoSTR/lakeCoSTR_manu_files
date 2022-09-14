@@ -1,6 +1,6 @@
 # application of the data, examining trends from lspa 200-230 to see if they are similar to Landsat-derived data
 
-source('scripts/R_library.R')
+source('scripts_v1_12/R_library.R')
 
 figdir = 'figures_v1_12/'
 datadir = 'data/'
@@ -49,10 +49,10 @@ ls_temp_summer_monthly_median_kurtosis <- ls_kurtosis %>%
   filter(!is.na(month))
 
 df1_med <- lmp_temp_monthly_stats %>% 
-  select(year, month, is_summer_median_temp_degC, is_n_obs, is_n_date)
+  select(year, month, is_summer_median_temp_degC)
 
 df2_med_kurtosis <- ls_temp_summer_monthly_median_kurtosis %>% 
-  select(year, month, ls_summer_median_temp_degC, ls_n_obs)
+  select(year, month, ls_summer_median_temp_degC)
 
 temp_monthly_median <- full_join(df1_med, df2_med_kurtosis) %>% 
   pivot_longer(., cols = c(ls_summer_median_temp_degC, is_summer_median_temp_degC), names_to='source', values_to = 'value') %>% 
@@ -279,8 +279,8 @@ jul <- temp_monthly_median %>%
               intercept = summary(all_7_lm)$coefficients[1,1],
               color = '#009E73') +
   final_theme +
-  coord_cartesian(ylim = c(14, 26),
-                  xlim = c(1980, 2020)) +
+  coord_cartesian(ylim = c(18, 26),
+                  xlim = c(1985, 2020)) +
   scale_color_colorblind() +
   labs(x = NULL, y = NULL, title = 'July') +
   theme(legend.position = 'none')  
@@ -294,37 +294,37 @@ aug <- temp_monthly_median %>%
               intercept = summary(all_8_lm)$coefficients[1,1],
               color = '#009E73') +
   final_theme +
-  coord_cartesian(ylim = c(14, 26),
-                  xlim = c(1980, 2020)) +
+  coord_cartesian(ylim = c(18, 26),
+                  xlim = c(1985, 2020)) +
   scale_color_colorblind() +
   labs(x = NULL, y = NULL, title = 'August') +
   theme(legend.position = 'none')  
 aug
 
-sept_is <- sep_data %>% 
-  filter(source == 'in-situ') 
-mean_sept_is = mean(sept_is$value)
-sept <- temp_monthly_median %>% 
-  filter(month ==9) %>% 
-  ggplot(., aes(x = year, y = value))+
-  geom_point(aes(color = source, shape = source)) +
-  geom_abline(slope = summary(ls_9_lm)$coefficients[2, 1],
-              intercept = summary(ls_9_lm)$coefficients[1,1],
-              color = "#E69F00") +
-  geom_abline(slope = 0,
-              intercept = mean_sept_is,
-              lty = 2) +
-  final_theme +
-  coord_cartesian(ylim = c(14, 26),
-                  xlim = c(1980, 2020)) +
-  scale_color_colorblind() +
-  labs(x = NULL, y = NULL, title = 'September') +
-  theme(legend.position = 'none')  
-sept
+# sept_is <- sep_data %>% 
+#   filter(source == 'in-situ') 
+# mean_sept_is = mean(sept_is$value)
+# sept <- temp_monthly_median %>% 
+#   filter(month ==9) %>% 
+#   ggplot(., aes(x = year, y = value))+
+#   geom_point(aes(color = source, shape = source)) +
+#   geom_abline(slope = summary(ls_9_lm)$coefficients[2, 1],
+#               intercept = summary(ls_9_lm)$coefficients[1,1],
+#               color = "#E69F00") +
+#   geom_abline(slope = 0,
+#               intercept = mean_sept_is,
+#               lty = 2) +
+#   final_theme +
+#   coord_cartesian(ylim = c(14, 26),
+#                   xlim = c(1980, 2020)) +
+#   scale_color_colorblind() +
+#   labs(x = NULL, y = NULL, title = 'September') +
+#   theme(legend.position = 'none')  
+# sept
 
 
 forlegend <- temp_monthly_median %>% 
-  filter(month == 9) %>% 
+  filter(month == 8) %>% 
   ggplot(., aes(x = year, y = value))+
   geom_point(aes(color = source, shape = source)) +
   final_theme+
@@ -340,42 +340,42 @@ forlegend <- temp_monthly_median %>%
 leg <- get_legend(forlegend)
 
 for_legline = temp_monthly_median %>% 
-  filter(month == 9) %>% 
+  filter(month == 8) %>% 
   ggplot(., aes(x = year, y = value))+
   geom_point() +
   geom_smooth(method = 'lm', se = F, aes(color = '#009E73')) +
-  geom_smooth(method = 'lm', se = F, aes(color = '#E69F00')) +
   theme_bw() +
   scale_color_identity(guide = 'legend',
                        name = 'trend model',
-                       breaks = c('#E69F00', '#009E73'),
-                       labels = c('Landsat', expression(paste(italic('in situ'), ' + Landsat'))))+
+                       breaks = c('#009E73'),
+                       labels = c(expression(paste(italic('in situ'), ' + Landsat'))))+
   theme(legend.key.width = unit(1, 'cm'))
 leg_line = get_legend(for_legline)
 
-for_legdash = temp_monthly_median %>% 
-  filter(month == 9) %>% 
-  ggplot(., aes(x = year, y = value))+
-  geom_point() +
-  geom_smooth(method = 'lm', se = F, linetype = 'dashed', aes(color = '#000000')) +
-  theme_bw() +
-  scale_color_identity(guide = 'legend',
-                       name = 'no slope model',
-                       breaks = c('#000000'),
-                       labels = c(expression(paste(italic('in situ')))))+
-  theme(legend.key.width = unit(1, 'cm'))
-leg_dash = get_legend(for_legdash)
+# for_legdash = temp_monthly_median %>% 
+#   filter(month == 9) %>% 
+#   ggplot(., aes(x = year, y = value))+
+#   geom_point() +
+#   geom_smooth(method = 'lm', se = F, linetype = 'dashed', aes(color = '#000000')) +
+#   theme_bw() +
+#   scale_color_identity(guide = 'legend',
+#                        name = 'no slope model',
+#                        breaks = c('#000000'),
+#                        labels = c(expression(paste(italic('in situ')))))+
+#   theme(legend.key.width = unit(1, 'cm'))
+# leg_dash = get_legend(for_legdash)
 
 #save title
-y_axis_title = ggdraw() + draw_label('median lake surface temperature\n(°C)', size = 12, fontface = "bold", angle = 90) 
+y_axis_title = ggdraw() + draw_label('median lake\nsurface temperature\n(°C)', size = 12, fontface = "bold", angle = 90) 
 x_axis_title = ggdraw() + draw_label('year', size = 12, fontface = 'bold')
 
-Fig5 = plot_grid(jul, aug, sept,
-                 labels = c('a', 'b', 'c'),
+Fig5 = plot_grid(jul, aug, 
+                 # sept,
+                 labels = c('a', 'b'), #, 'c'),
                  label_size = 10,
                  label_x = 0.05,
                  label_y = 0.97,
-          ncol = 3)
+          ncol = 2)
 Fig5
 
 Fig5_labels = plot_grid(y_axis_title, Fig5,
@@ -386,19 +386,19 @@ Fig5_labels = plot_grid(y_axis_title, Fig5,
 
 Fig5_labels
 
-legend = plot_grid(leg, leg_line, leg_dash,
+legend = plot_grid(NULL,leg, leg_line,NULL,
                    align = 'v', 
                    ncol = 1)
 legend
 
 Fig5_labels_leg = plot_grid(Fig5_labels, legend,
                             ncol = 2, 
-                            rel_widths = c(0.8, 0.2))
+                            rel_widths = c(0.75, 0.25))
 Fig5_labels_leg
 
 ggsave(file.path(figdir, 'Fig5_application_monthly_median_temp_kurtosis_together.jpg'), 
-          width=8,
-          height=3, 
-          units = 'in', 
+          width=18,
+          height=8, 
+          units = 'cm', 
           dpi = 600,
        bg = 'white')

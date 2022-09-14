@@ -1,12 +1,11 @@
 # script for Figure 2 in lakeCoSTR MS
 
 library(tidyverse)
-library(leaflet)
 library(sf)
 library(tmap)
 library(tmaptools)
 library(raster)
-library(RColorBrewer)
+# library(RColorBrewer)
 # library(usmap)
 
 #point to directories
@@ -38,9 +37,9 @@ yrange <- bbox_sunapee$ymax - bbox_sunapee$ymin # range of y values
 
 #create a new one and modify
 bbox_sun_new <- st_bbox(sun_bathy) 
-bbox_sun_new[1] <- bbox_sun_new[1] - (0.25 * xrange) # xmin - left
-bbox_sun_new[3] <- bbox_sun_new[3] + (0.25 * xrange) # xmax - right
-bbox_sun_new[2] <- bbox_sun_new[2] - (0.075 * yrange) # ymin - bottom
+bbox_sun_new[1] <- bbox_sun_new[1] - (0.45 * xrange) # xmin - left
+bbox_sun_new[3] <- bbox_sun_new[3] + (0.2 * xrange) # xmax - right
+bbox_sun_new[2] <- bbox_sun_new[2] - (0.1 * yrange) # ymin - bottom
 bbox_sun_new[4] <- bbox_sun_new[4] + (0.025 * yrange) # ymax - top
 
 
@@ -58,7 +57,8 @@ sunbase = tm_shape(sun_bathy, bbox = bbox_sun_new) +
              title = 'sampling\nfrequency',
           palette = c('black', 'yellow')) +
   tm_compass(position = c('right', 'bottom')) +
-  tm_scale_bar(position = c('right', 'bottom')) +
+  tm_scale_bar(position = c('right', 'bottom'),
+              size = 0.75) +
   tm_layout(frame.lwd = 3, frame = 'blue',
             legend.position = c('left', 'bottom'))
 sunbase
@@ -77,8 +77,8 @@ yrange <- bbox_existing$ymax - bbox_existing$ymin # range of y values
 bbox_NE <- st_bbox(northamer) 
 bbox_NE[1] <- bbox_NE[1] + (0.29 * xrange) # xmin - left
 bbox_NE[3] <- bbox_NE[3] - (0.69 * xrange) # xmax - right
-bbox_NE[2] <- bbox_NE[2] + (0.40 * yrange) # ymin - bottom
-bbox_NE[4] <- bbox_NE[4] - (0.49 * yrange) # ymax - top
+bbox_NE[2] <- bbox_NE[2] + (0.43 * yrange) # ymin - bottom
+bbox_NE[4] <- bbox_NE[4] - (0.51 * yrange) # ymax - top
 
 #transform into polygon
 bbox_NE <- bbox_NE %>%  
@@ -117,12 +117,12 @@ NA_base
 
 
 #put it all together
-png(file = file.path(fig_dir, 'Fig2_DataExtent.png'),
-                     width = 5.5,
-                     height = 5.5,
-    units = 'in',
+jpeg(file = file.path(fig_dir, 'Fig2_DataExtent.jpg'),
+                     width = 8,
+                     height = 15,
+    units = 'cm',
     res = 600)
-print(NA_base, vp = grid::viewport(0.78, 0.847, width= 0.4))
-print(NE_base, vp = grid::viewport(0.78, 0.342, width = 0.4))
-print(sunbase, vp = grid::viewport(0.3, 0.5, height = 1))
+print(NA_base, vp = grid::viewport(0.32, 0.92, height = 0.2, width= 0.4))
+print(NE_base, vp = grid::viewport(0.73, 0.92, height = 0.15, width = 0.3))
+print(sunbase, vp = grid::viewport(0.5, 0.43, height = 0.87))
 dev.off()

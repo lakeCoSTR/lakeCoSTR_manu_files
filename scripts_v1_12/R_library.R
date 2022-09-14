@@ -1,12 +1,12 @@
 
 #libraries and themes
 library(tidyverse) #v 1.3.0
-library(readxl) 
+# library(readxl) 
 library(ggthemes)
-library(reticulate)
 library(mcr)
 library(cowplot)
-library(Metrics)
+library(car)
+# library(Metrics)
 library(deming)
 
 final_theme=theme_bw() +
