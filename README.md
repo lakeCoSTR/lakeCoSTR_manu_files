@@ -1,11 +1,12 @@
-# ids-ne-lakes
+# lakeCoSTR_manu_files
 
 This repository contains all files for the manuscript *lakeCoSTR: A tool to facilitate use of the Landsat Collection 2 to estimate lake surface water temperatures* (in revision, Ecosphere, Herrick and Steele et al.)*
 
 All code, data, and analyses for the manuscript featuring the lakeCoSTR tool (v 1.12), which acquires Landsat Collection 2 temperature data for lakes using a Google Colab (Python) script and Google Earth Engine are stored here.
 
-Citation of manuscript forthcoming.
+The full description of the lakeCoSTR tool, along with un-executed Colab file, and data examples, are located [here](https://github.com/lakeCoSTR/lakeCoSTR_colab). 
 
+lakeCoSTR_manu_files DOI:
 
 ## folder structure
 
