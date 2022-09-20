@@ -17,7 +17,7 @@ library(tidyverse)
 source('R_library.R')
 
 # point to directories
-C2_datadir <- '~/GitHub/ids-ne-lakes/data/colab-output/C2/'
+C2_datadir <- '~/GitHub/ids-ne-lakes/data/colab-output/C2_v1_12/'
 fig_dir <- '~/GitHub/ids-ne-lakes/figures/'
 
 ```
@@ -26,13 +26,13 @@ fig_dir <- '~/GitHub/ids-ne-lakes/figures/'
 
 Given that Lake Sunapee is well-instrumented with temperature recording instruments at numerous locations in the lake (Figure S1), we examined the performance of a number of filtered *in situ* data sets for ground-truthing of the Landsat data from the lakeCoSTR tool. In this appendix, we present the results from 6 Landsat-*in situ* data sets from the Lake Sunapee *in situ* temperature database in order to make suggestions about what kind of data may be needed or preferable for validation of the Landsat surface temperature product.
 
-![Lake Sunapee with locations labelled](C:/users/steeleb/documents/github/ids-ne-lakes/figures/A3SF1_labeled_sites.png)
+![Lake Sunapee with locations labelled](C:/users/steeleb/documents/github/ids-ne-lakes/figures_v1_12/A3SF1_labeled_sites.png)
 
 __Figure S1. The study area, Lake Sunapee, on the right with all *in situ* sites labeled.__
 
 # Methods and Results
 
-All Landsat data were filtered using the kurtosis filter described in section 3.1.1 of the manuscript and Appendix S2. The paired Landsat-(in situ* data sets presented here were filtered from the complete validation data set described in section 3.1.2 in the manuscript. All analyses here use the median Landsat surface temperature value and the median *in situ* value from the subset of data described below. Deming regression (Deming 1943), as described in section 3.1.2, was used to analyze performance of each of the validation data sets.
+All Landsat data were filtered using the kurtosis filter described in “Additional filtering of the Landsat scene record” of the manuscript and Appendix S2. The paired Landsat-(in situ* data sets presented here were filtered from the complete validation data set described in “Lake Sunapee Landsat-in situ dataset” in the manuscript. All analyses here use the median Landsat surface temperature value and the median *in situ* value from the subset of data described below. Deming regression (Deming 1943), as described in “Lake Sunapee Landsat-in situ dataset”, was used to analyze performance of each of the validation data sets.
 
 Description of Landsat-*in situ* paired data sets presented in this appendix:
   *	all data: all Landsat-*in situ* pairs (as presented in manuscript)
@@ -49,7 +49,7 @@ Regressions for each of these data subsets exhibited strong positive correlation
 
 ```{r subset data}
 # Read in Data ####
-C2_data <- read.csv(file.path(C2_datadir, 'C2_v2_temp_landsat_paired.csv')) %>% 
+C2_data <- read.csv(file.path(C2_datadir, 'sunapee_v1_12_temp_landsat_paired.csv')) %>% 
   mutate(date = as.Date(substrRight(system.index, 8), format = '%Y%m%d'))
   
 # filter for subsets 
