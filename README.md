@@ -6,7 +6,7 @@ All code, data, and analyses for the manuscript featuring the lakeCoSTR tool (v 
 
 The full description of the lakeCoSTR tool, along with un-executed Colab file, and data examples, are located [here](https://github.com/lakeCoSTR/lakeCoSTR_colab). 
 
-lakeCoSTR_manu_files DOI:
+lakeCoSTR_manu_files DOI: [![DOI](https://zenodo.org/badge/176574844.svg)](https://zenodo.org/badge/latestdoi/176574844)
 
 ## folder structure
 
