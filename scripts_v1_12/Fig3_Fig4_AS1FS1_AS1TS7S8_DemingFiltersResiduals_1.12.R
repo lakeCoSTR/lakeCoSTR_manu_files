@@ -147,7 +147,7 @@ Fig3_a <- ggplot(C1SC, aes(x = is_temp_med, y = surface_temp_median)) +
   labs(x = NULL,
        y = NULL,
        title = 'Collection 1',
-       subtitle = 'single-channel algorithm') +
+       subtitle = 'single-channel\nalgorithm') +
   final_theme +
   coord_cartesian(xlim = c(0, 27),
                   ylim = c(0, 27))
@@ -182,7 +182,7 @@ Fig3_b <- ggplot(C2ST, aes(x = is_temp_med, y = surface_temp_median)) +
   labs(x = NULL,
        y = NULL,
        title = 'Collection 2',
-       subtitle = 'surface temperature product') +
+       subtitle = 'surface temperature\nproduct') +
   final_theme +
   coord_cartesian(xlim = c(0, 27),
                   ylim = c(0, 27))
@@ -217,7 +217,7 @@ Fig3_c <- ggplot(C2ST_kurtosis, aes(x = is_temp_med, y = surface_temp_median)) +
   labs(x = NULL,
        y = NULL,
        title = 'Collection 2',
-       subtitle = 'kurtosis filter') +
+       subtitle = 'kurtosis\nfilter') +
   final_theme +
   coord_cartesian(xlim = c(0, 27),
                   ylim = c(0, 27))
