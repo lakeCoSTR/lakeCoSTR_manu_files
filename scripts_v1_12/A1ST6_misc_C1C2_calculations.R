@@ -1,6 +1,6 @@
 # miscellaneous calculations in the MS
 
-source('scripts/R_library.R')
+source('scripts_v1_12/R_library.R')
 
 # point to directories
 C1_datadir <- '~/GitHub/ids-ne-lakes/data/colab-output/C1_v4/'
